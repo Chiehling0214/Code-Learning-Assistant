@@ -1,6 +1,9 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useSessionStore } from "@/store/session";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
@@ -11,6 +14,15 @@ const NAV_ITEMS = [
 ];
 
 export function AppLayout() {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const user = useSessionStore((s) => s.user);
+
+  async function handleSignOut() {
+    await signOut();
+    navigate("/login");
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b">
@@ -33,6 +45,16 @@ export function AppLayout() {
                 {item.label}
               </NavLink>
             ))}
+            <NavLink
+              to="/profile"
+              className="ml-2 max-w-[12rem] truncate text-sm text-muted-foreground hover:text-foreground"
+              title="Profile"
+            >
+              {user?.displayName || user?.email || "Profile"}
+            </NavLink>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              Sign out
+            </Button>
           </nav>
         </div>
       </header>

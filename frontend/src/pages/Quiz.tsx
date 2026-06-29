@@ -8,7 +8,7 @@ export function QuizPage() {
     <PagePlaceholder
       title="Quiz"
       description={`Knowledge check${id ? ` (id: ${id})` : ""} with scored questions.`}
-      sprint={3}
+      sprint={5}
     />
   );
 }

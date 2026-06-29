@@ -8,7 +8,7 @@ export function CoursePage() {
     <PagePlaceholder
       title="Course"
       description={`Course overview${slug ? ` for "${slug}"` : ""} and its lessons.`}
-      sprint={1}
+      sprint={2}
     />
   );
 }

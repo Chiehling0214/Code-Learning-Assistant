@@ -15,13 +15,15 @@
 - Interactive docs: `GET /docs` (Swagger), `GET /redoc`, schema at
   `GET /api/v1/openapi.json`.
 
-## Implemented in Sprint 0
+## Implemented
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/health` | none | Liveness + version. |
-| GET | `/api/v1/health` | none | Versioned health (db check). |
-| GET | `/api/v1/me` | bearer | Returns the current (stub) identity. |
+| Method | Path | Auth | Sprint | Description |
+|--------|------|------|--------|-------------|
+| GET | `/health` | none | 0 | Liveness + version. |
+| GET | `/api/v1/health` | none | 0 | Versioned health (db check). |
+| GET | `/api/v1/me` | bearer | 1 | DB-backed current user (provisions on first login). |
+| GET | `/api/v1/me/profile` | bearer | 1 | Current user's profile. |
+| PUT | `/api/v1/me/profile` | bearer | 1 | Update display name / skill level. |
 
 ### `GET /health`
 
@@ -37,28 +39,53 @@
 
 ### `GET /api/v1/me`
 
-Requires `Authorization: Bearer <token>`. In Sprint 0 the auth middleware runs
-in stub mode and returns a fixed development identity.
+Requires `Authorization: Bearer <token>`. Resolves the token to a persisted
+user, creating the `User` (and an empty `StudentProfile`) on first sign-in. With
+`AUTH_STUB_ENABLED=true` the auth middleware accepts a fixed dev identity.
 
 ```json
-{ "uid": "stub-uid", "email": "dev@codepath.local", "is_admin": false }
+{
+  "id": "0f9b…-uuid",
+  "uid": "stub-uid",
+  "email": "dev@codepath.local",
+  "display_name": null,
+  "is_admin": false
+}
 ```
+
+### `GET /api/v1/me/profile`
+
+```json
+{ "display_name": null, "email": "dev@codepath.local", "skill_level": "beginner", "is_admin": false }
+```
+
+### `PUT /api/v1/me/profile`
+
+Body (both fields optional; only provided fields change):
+
+```json
+{ "display_name": "Ada", "skill_level": "intermediate" }
+```
+
+Returns the updated `ProfileResponse` (same shape as the `GET`).
 
 ## Planned endpoints (later sprints — not implemented)
 
-These are documented for design alignment only.
+These are documented for design alignment only. Sprint numbers follow the
+[Sprint_02…08](Sprint_02.md) plan.
 
 | Sprint | Resource | Endpoints (sketch) |
 |--------|----------|--------------------|
-| 1 | Courses | `GET /courses`, `GET /courses/{slug}` |
-| 1 | Languages | `GET /languages` |
-| 1 | Profile | `GET/PUT /me/profile` |
-| 2 | Exercises | `GET /exercises/{id}`, `POST /exercises/{id}/submit` |
-| 3 | Quizzes | `GET /quizzes/{id}`, `POST /quizzes/{id}/submit` |
-| 4 | AI | `POST /ai/teacher`, `POST /ai/tutor` |
-| 5 | Today | `GET /today` |
-| 5 | Progress | `GET /progress` |
-| 6 | Subscription | `GET /subscription`, `POST /subscription/checkout` |
+| 2 | Languages | `GET /languages` |
+| 2 | Courses | `GET /courses`, `GET /courses/{slug}` |
+| 2 | Lessons | `GET /lessons/{id}` |
+| 3 | Exercises | `GET /exercises/{id}`, `POST /exercises/{id}/submit` |
+| 4 | Execution | `POST /exercises/{id}/run`, `GET /submissions/{id}` |
+| 5 | Quizzes | `GET /quizzes/{id}`, `POST /quizzes/{id}/submit` |
+| 6 | AI | `POST /ai/teacher`, `POST /ai/tutor` |
+| 7 | Today | `GET /today` |
+| 7 | Progress | `GET /progress` |
+| 8 | Subscription | `GET /subscription`, `POST /subscription/checkout` |
 
 ## Versioning
 

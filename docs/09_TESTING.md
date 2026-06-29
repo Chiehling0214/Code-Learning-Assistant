@@ -23,9 +23,15 @@ ruff check .
 pytest -q
 ```
 
+Tests use in-memory fake repositories (`tests/fakes.py`) and dependency
+overrides (`tests/conftest.py`), so the suite runs without a database.
+
 Included tests:
 
-- `tests/test_health.py` — asserts `GET /health` returns `200` and `status: ok`.
+- `tests/test_health.py` — `GET /health` returns `200` and `status: ok`.
+- `tests/test_user_service.py` — user/profile provisioning + profile updates.
+- `tests/test_me_api.py` — `/me` and `/me/profile` behaviour, plus the `401`
+  path when stub auth is disabled.
 
 ## Frontend
 

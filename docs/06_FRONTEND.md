@@ -23,17 +23,19 @@ frontend/
 │   ├── main.tsx              # app entry, providers
 │   ├── App.tsx              # router + layout
 │   ├── index.css            # tailwind layers + theme tokens
-│   ├── pages/               # one file per route (placeholders)
+│   ├── pages/               # one file per route (Profile is live; others placeholder)
 │   ├── components/
 │   │   ├── ui/              # shadcn primitives (button, card, ...)
-│   │   └── layout/         # AppLayout, NavBar
+│   │   ├── layout/         # AppLayout (nav + sign out)
+│   │   └── ProtectedRoute.tsx  # auth guard for private routes
 │   ├── lib/
 │   │   ├── utils.ts        # cn() helper
 │   │   ├── api.ts          # fetch wrapper -> backend
 │   │   ├── query-client.ts # TanStack Query client
-│   │   └── firebase.ts     # Firebase init (guarded if unconfigured)
+│   │   ├── firebase.ts     # Firebase init (guarded if unconfigured)
+│   │   └── auth.tsx        # AuthProvider + useAuth (sign in/out, session sync)
 │   ├── store/
-│   │   └── session.ts      # Zustand session/UI store
+│   │   └── session.ts      # Zustand session store (current user)
 │   └── routes.tsx           # route table
 ├── tailwind.config.js
 ├── postcss.config.js
@@ -44,28 +46,41 @@ frontend/
 
 ## Routes / Pages
 
-All pages render and compile. Business content is placeholder.
+`/` and `/login` are public. Everything below is wrapped in `ProtectedRoute`
+(redirects to `/login` when unauthenticated) and rendered inside `AppLayout`.
+Profile is fully implemented; the remaining private pages are placeholders.
 
-| Path | Page |
-|------|------|
-| `/` | Landing |
-| `/login` | Login |
-| `/dashboard` | Dashboard |
-| `/today` | Today |
-| `/courses/:slug` | Course |
-| `/lessons/:id` | Lesson |
-| `/exercises/:id` | Coding Exercise (Monaco editor mounted) |
-| `/quizzes/:id` | Quiz |
-| `/progress` | Progress |
-| `/subscription` | Subscription |
-| `/admin` | Admin |
+| Path | Page | Access |
+|------|------|--------|
+| `/` | Landing | public |
+| `/login` | Login (Google / email, or dev mode) | public |
+| `/dashboard` | Dashboard | private |
+| `/today` | Today | private |
+| `/courses/:slug` | Course | private |
+| `/lessons/:id` | Lesson | private |
+| `/exercises/:id` | Coding Exercise (Monaco editor mounted) | private |
+| `/quizzes/:id` | Quiz | private |
+| `/progress` | Progress | private |
+| `/subscription` | Subscription | private |
+| `/admin` | Admin | private |
+| `/profile` | Profile (view/edit display name & skill level) | private |
+
+## Authentication (Sprint 1)
+
+- `lib/auth.tsx` provides `AuthProvider` + `useAuth`. It subscribes to Firebase
+  `onAuthStateChanged`, and on sign-in fetches `/me` to populate the session.
+- When Firebase is **not** configured, a dev sign-in path is available
+  (persisted in `localStorage`) so the app works against the backend's stub
+  auth mode locally.
+- `ProtectedRoute` shows a loader while auth resolves, then redirects
+  unauthenticated users to `/login`.
 
 ## State Management
 
 - **TanStack Query** owns all server data (queries/mutations against the API).
   A shared `QueryClient` is provided at the root.
-- **Zustand** owns lightweight client/UI/session state (e.g. current user,
-  theme). Keep it small; prefer Query for anything fetched.
+- **Zustand** (`store/session.ts`) holds the current `SessionUser`, populated by
+  the `AuthProvider`. Keep it small; prefer Query for anything fetched.
 
 ## API Access
 
@@ -76,7 +91,7 @@ and attaches the Firebase ID token when available.
 
 `src/lib/firebase.ts` initializes the Web SDK only when the `VITE_FIREBASE_*`
 variables are present; otherwise it exports `null` so the app still runs locally
-without credentials (Sprint 0 dev mode).
+without credentials (dev mode).
 
 ## Conventions
 

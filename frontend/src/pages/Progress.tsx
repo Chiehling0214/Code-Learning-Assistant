@@ -5,7 +5,7 @@ export function ProgressPage() {
     <PagePlaceholder
       title="Progress"
       description="Track your learning progress over time."
-      sprint={5}
+      sprint={7}
     />
   );
 }

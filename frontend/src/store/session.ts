@@ -1,8 +1,10 @@
 import { create } from "zustand";
 
 export interface SessionUser {
+  id: string;
   uid: string;
   email: string | null;
+  displayName: string | null;
   isAdmin: boolean;
 }
 
@@ -15,6 +17,7 @@ interface SessionState {
 /**
  * Lightweight client-side session store. Server data belongs in TanStack Query;
  * this holds only the small slice of session/UI state the app needs everywhere.
+ * Populated by the AuthProvider (see src/lib/auth.tsx).
  */
 export const useSessionStore = create<SessionState>((set) => ({
   user: null,

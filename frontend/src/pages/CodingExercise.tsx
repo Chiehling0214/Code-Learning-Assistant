@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STARTER_CODE = `# Coding exercise editor
-# Code execution via Judge0 arrives in Sprint 2.
+# Code execution via Judge0 arrives in Sprint 4.
 
 def solution():
     return "Hello, CodePath!"
@@ -26,9 +26,9 @@ export function CodingExercisePage() {
           <h1 className="text-3xl font-bold tracking-tight">Coding Exercise</h1>
           <p className="text-muted-foreground">{id ? `Exercise ${id}` : "Practice editor"}</p>
         </div>
-        {/* Execution is wired in Sprint 2 (Judge0); the button stays disabled until then. */}
-        <Button disabled title="Code execution arrives in Sprint 2">
-          Run (Sprint 2)
+        {/* Execution is wired in Sprint 4 (Judge0); the button stays disabled until then. */}
+        <Button disabled title="Code execution arrives in Sprint 4">
+          Run (Sprint 4)
         </Button>
       </div>
 

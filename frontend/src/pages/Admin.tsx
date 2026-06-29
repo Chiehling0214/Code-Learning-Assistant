@@ -5,7 +5,7 @@ export function AdminPage() {
     <PagePlaceholder
       title="Admin"
       description="Manage courses, languages, and content."
-      sprint={1}
+      sprint={2}
     />
   );
 }

@@ -19,12 +19,18 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 
 
 def get_session() -> Iterator[Session]:
-    """Yield a database session, ensuring it is closed afterwards.
+    """Yield a database session as a per-request unit of work.
 
-    Used as a FastAPI dependency (see ``app/api/deps.py``).
+    Commits when the request handler returns successfully and rolls back on any
+    error, so repository write methods only need to ``add``/``flush``. Used as a
+    FastAPI dependency (see ``app/api/deps.py``).
     """
     session = SessionLocal()
     try:
         yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()

@@ -29,18 +29,21 @@ Judge0 runs and grades code.
 
 ## Feature Matrix (by sprint)
 
+Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
+
 | Feature | Sprint | Status |
 |---------|--------|--------|
-| Project scaffold & infra | 0 | ✅ this repo |
-| Firebase auth | 1 | ⬜ stubbed |
-| User / StudentProfile | 1 | ⬜ entity placeholder |
-| Courses & Lessons | 1 | ⬜ entity placeholder |
-| Coding exercises + Judge0 | 2 | ⬜ |
-| Quizzes | 3 | ⬜ |
-| AI Teacher / AI Tutor | 4 | ⬜ |
-| Recommendation ("Today") | 5 | ⬜ |
-| Progress analytics | 5 | ⬜ |
-| Subscriptions | 6 | ⬜ |
+| Project scaffold & infra | 0 | ✅ done |
+| Firebase auth (real verification) | 1 | ✅ done |
+| User / StudentProfile + provisioning | 1 | ✅ done |
+| Profile view/edit | 1 | ✅ done |
+| Courses & Lessons | 2 | ⬜ entity placeholder |
+| Coding exercises (model & submissions) | 3 | ⬜ |
+| Judge0 execution & grading | 4 | ⬜ |
+| Quizzes | 5 | ⬜ |
+| AI Teacher / AI Tutor | 6 | ⬜ |
+| Recommendation ("Today") + progress | 7 | ⬜ |
+| Subscriptions & hardening | 8 | ⬜ |
 
 ## Functional Requirements
 

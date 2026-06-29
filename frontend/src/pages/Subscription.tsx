@@ -5,7 +5,7 @@ export function SubscriptionPage() {
     <PagePlaceholder
       title="Subscription"
       description="Manage your plan and billing."
-      sprint={6}
+      sprint={8}
     />
   );
 }

@@ -8,7 +8,7 @@ export function LessonPage() {
     <PagePlaceholder
       title="Lesson"
       description={`AI-taught lesson content${id ? ` (id: ${id})` : ""}.`}
-      sprint={4}
+      sprint={2}
     />
   );
 }

@@ -5,7 +5,7 @@ export function TodayPage() {
     <PagePlaceholder
       title="Today"
       description="Your personalized daily learning plan."
-      sprint={5}
+      sprint={7}
     />
   );
 }

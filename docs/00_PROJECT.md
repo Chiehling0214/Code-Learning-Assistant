@@ -40,15 +40,20 @@ The platform combines:
 
 ## Roadmap (high level)
 
-| Sprint | Theme |
-|--------|-------|
-| **0** | Project bootstrap (this sprint) — scaffold, docs, infra. |
-| 1 | Auth + user/profile domain, course & lesson CRUD. |
-| 2 | Coding exercises + Judge0 integration. |
-| 3 | Quizzes + grading. |
-| 4 | AI Teacher & AI Tutor. |
-| 5 | Recommendation engine ("Today") + progress analytics. |
-| 6 | Subscriptions & billing. |
+Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
+[Sprint_08.md](Sprint_08.md).
+
+| Sprint | Theme | Status |
+|--------|-------|--------|
+| **0** | Project bootstrap — scaffold, docs, infra. | ✅ done |
+| **1** | Authentication & user/profile (provisioning, profile edit). | ✅ done |
+| 2 | Content: languages, courses & lessons + admin CRUD. | ⬜ |
+| 3 | Coding exercises (model & submissions). | ⬜ |
+| 4 | Judge0 code execution & grading. | ⬜ |
+| 5 | Quizzes & auto-grading. | ⬜ |
+| 6 | AI Teacher & AI Tutor (Claude). | ⬜ |
+| 7 | Recommendation ("Today") & progress analytics. | ⬜ |
+| 8 | Subscriptions, billing & hardening. | ⬜ |
 
 See [01_PRD.md](01_PRD.md) for product requirements and the rest of the `docs/`
 folder for technical detail.

@@ -37,6 +37,10 @@ htmlcov/
 
 # ---- Secrets / Credentials ----
 firebase-service-account.json
+# Firebase Admin SDK service-account keys (any project / filename)
+*firebase-adminsdk*.json
+*-adminsdk-*.json
+*serviceAccount*.json
 *.pem
 *.key
 

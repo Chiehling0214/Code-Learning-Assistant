@@ -9,3 +9,7 @@ venv/
 .env.*
 !.env.example
 tests/
+# Never bake Firebase service-account keys into the image (mounted at runtime).
+*firebase-adminsdk*.json
+*-adminsdk-*.json
+*serviceAccount*.json

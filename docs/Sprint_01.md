@@ -65,16 +65,64 @@ frontend/
 
 ## Acceptance Criteria
 
-- [ ] A valid Firebase ID token is verified server-side; an invalid/missing
-      token returns `401`.
-- [ ] First authenticated call creates exactly one `users` row and one
-      `student_profiles` row.
-- [ ] `GET /me` returns the persisted user; `PUT /me/profile` updates and
+- [x] A valid Firebase ID token is verified server-side; an invalid/missing
+      token returns `401` (`test_me_requires_token_when_stub_disabled`).
+- [x] First authenticated call creates exactly one `users` row and one
+      `student_profiles` row (verified live; repeat `/me` keeps `count = 1`).
+- [x] `GET /me` returns the persisted user; `PUT /me/profile` updates and
       persists changes.
-- [ ] Frontend redirects unauthenticated users from private routes to `/login`.
-- [ ] Sign-in, session persistence across refresh, and sign-out all work.
-- [ ] `ruff`, `pytest`, frontend `lint` + `build` pass.
+- [x] Frontend redirects unauthenticated users from private routes to `/login`
+      (`ProtectedRoute`).
+- [x] Sign-in, session persistence across refresh, and sign-out all work
+      (Firebase `onAuthStateChanged` + dev-mode `localStorage`).
+- [x] `ruff`, `pytest` (9 tests), frontend `lint` + `build` pass.
 
 ## Dependency
 
 - **Sprint 0** (scaffold, `User`/`StudentProfile` entities, auth stub, DI).
+
+## Status — ✅ Complete
+
+**Date:** 2026-06-29
+
+### Delivered
+
+**Backend**
+- Per-request unit-of-work session (commit/rollback) in
+  `infrastructure/db/session.py`.
+- `UserRepository` write methods + new `StudentProfileRepository`
+  (interfaces in `domain/repositories.py`, impls in
+  `infrastructure/repositories/sqlalchemy_repositories.py`).
+- `UserService` (`application/services/user_service.py`):
+  `get_or_create_from_identity` (idempotent provisioning) + `update_profile`.
+- `GET /api/v1/me` now DB-backed; new `GET`/`PUT /api/v1/me/profile`
+  (`api/v1/routes/profile.py`), wired via `api/deps.py`
+  (`get_user_service`, `get_current_db_user`).
+- Schemas: `CurrentUserResponse`, `ProfileResponse`, `UpdateProfileRequest`.
+- Tests: `tests/fakes.py`, `tests/conftest.py`, `tests/test_user_service.py`,
+  `tests/test_me_api.py` (DB-free; 9 tests pass).
+
+**Frontend**
+- `lib/auth.tsx` (`AuthProvider` + `useAuth`): Firebase `onAuthStateChanged`,
+  Google + email sign-in, dev-mode sign-in, sign-out; populates the Zustand
+  session store from `/me`.
+- `components/ProtectedRoute.tsx`; private routes wrapped in `routes.tsx`.
+- `pages/Profile.tsx` (view/edit display name + skill level via TanStack Query
+  mutation); real sign-in in `pages/Login.tsx`; sign-out + profile link in
+  `AppLayout`.
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 9/9 pass.
+- Frontend: `lint` clean, `build` succeeds (138 modules).
+- Live (Docker stack): `/me` provisioned one user + profile; `/me/profile`
+  defaulted to `beginner`; `PUT` persisted `display_name` + `skill_level`;
+  repeat `/me` kept user count at 1; confirmed via `psql`.
+
+### Notes / follow-ups
+
+- No schema migration was needed — the Sprint 0 `users` / `student_profiles`
+  tables already matched. Future profile fields will add a migration.
+- Real Firebase verification is implemented but exercised only with
+  `AUTH_STUB_ENABLED=false` + configured credentials; local/dev defaults to stub
+  mode and the frontend dev sign-in.

@@ -12,10 +12,13 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from app.application.services.user_service import UserService
 from app.core.config import Settings, get_settings
 from app.core.security import Identity, verify_token
+from app.domain.entities import User
 from app.infrastructure.db.session import get_session
 from app.infrastructure.repositories.sqlalchemy_repositories import (
+    SqlAlchemyStudentProfileRepository,
     SqlAlchemyUserRepository,
 )
 
@@ -46,4 +49,26 @@ def get_user_repository(session: DbSession) -> SqlAlchemyUserRepository:
     return SqlAlchemyUserRepository(session)
 
 
-UserRepositoryDep = Annotated[SqlAlchemyUserRepository, Depends(get_user_repository)]
+def get_profile_repository(session: DbSession) -> SqlAlchemyStudentProfileRepository:
+    return SqlAlchemyStudentProfileRepository(session)
+
+
+def get_user_service(
+    users: Annotated[SqlAlchemyUserRepository, Depends(get_user_repository)],
+    profiles: Annotated[SqlAlchemyStudentProfileRepository, Depends(get_profile_repository)],
+) -> UserService:
+    return UserService(users, profiles)
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+
+def get_current_db_user(current_user: CurrentUser, service: UserServiceDep) -> User:
+    """Resolve the authenticated identity to a persisted user.
+
+    Provisions the user (and an empty profile) on first sign-in.
+    """
+    return service.get_or_create_from_identity(current_user)
+
+
+CurrentDbUser = Annotated[User, Depends(get_current_db_user)]

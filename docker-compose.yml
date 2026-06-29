@@ -24,11 +24,17 @@ services:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-codepath}:${POSTGRES_PASSWORD:-codepath}@postgres:5432/${POSTGRES_DB:-codepath}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
-      FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-}
+      # Path INSIDE the container; the host key is mounted there via volumes below.
+      FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-/run/secrets/firebase-key.json}
       AUTH_STUB_ENABLED: ${AUTH_STUB_ENABLED:-true}
       BACKEND_PORT: 8000
     ports:
       - "8000:8000"
+    volumes:
+      # Mounts the Firebase service-account key read-only. Defaults to a harmless
+      # in-repo file so `docker compose up` still works in stub mode with no .env;
+      # set FIREBASE_CREDENTIALS_HOST_FILE to your key path to use real auth.
+      - ${FIREBASE_CREDENTIALS_HOST_FILE:-./backend/.env.example}:/run/secrets/firebase-key.json:ro
     depends_on:
       postgres:
         condition: service_healthy

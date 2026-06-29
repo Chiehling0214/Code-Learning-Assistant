@@ -23,7 +23,8 @@ backend/
 │   │       ├── router.py       # aggregates v1 routes
 │   │       └── routes/
 │   │           ├── health.py
-│   │           └── me.py
+│   │           ├── me.py
+│   │           └── profile.py
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -33,17 +34,19 @@ backend/
 │   │   └── repositories.py
 │   ├── application/             # use cases / services
 │   │   └── services/
-│   │       └── health_service.py
+│   │       ├── health_service.py
+│   │       └── user_service.py  # provisioning + profile (Sprint 1)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base
-│   │   │   └── session.py      # engine + SessionLocal
+│   │   │   └── session.py      # engine + per-request unit of work
 │   │   ├── models/             # SQLAlchemy ORM models
 │   │   │   └── models.py
 │   │   └── repositories/        # concrete repo implementations
-│   │       └── sqlalchemy_repositories.py
+│   │       └── sqlalchemy_repositories.py  # User + StudentProfile repos
 │   └── schemas/                 # Pydantic DTOs
-│       └── health.py
+│       ├── health.py
+│       └── user.py             # current user + profile schemas
 ├── alembic/
 │   ├── env.py
 │   ├── script.py.mako
@@ -63,19 +66,29 @@ backend/
 
 ## Dependency Injection
 
-FastAPI `Depends` wires concrete infrastructure into the API edge:
+FastAPI `Depends` wires concrete infrastructure into the API edge (see
+`app/api/deps.py`):
 
-- `get_db()` yields a SQLAlchemy `Session`.
+- `get_db()` yields a request-scoped `Session` (unit of work: commits on
+  success, rolls back on error).
 - `get_current_user()` verifies the bearer token (or returns the stub identity
   when `AUTH_STUB_ENABLED=true`).
-- Repository implementations are constructed from the session and passed to
-  application services.
+- `get_user_service()` builds `UserService` from the user + profile
+  repositories.
+- `get_current_db_user()` resolves the token identity to a persisted `User`,
+  provisioning it on first sign-in.
 
-## Authentication (Sprint 0)
+## Authentication & User Provisioning (Sprint 1)
 
 `core/security.py` exposes `verify_token`. When `AUTH_STUB_ENABLED=true` it
 returns a fixed development identity without contacting Firebase. When disabled,
-it verifies the ID token via `firebase-admin` (wired but unused until Sprint 1).
+it verifies the Firebase ID token via `firebase-admin` and returns `401` on a
+missing/invalid token.
+
+On the first authenticated request, `UserService.get_or_create_from_identity`
+creates the `User` row and an empty `StudentProfile`. Subsequent requests reuse
+the existing user (idempotent). Profile reads/updates go through
+`/api/v1/me/profile`.
 
 ## Logging
 
@@ -102,5 +115,7 @@ docker compose up backend
 
 ## Testing
 
-See [09_TESTING.md](09_TESTING.md). `pytest` with FastAPI `TestClient`; a smoke
-test covers `/health`.
+See [09_TESTING.md](09_TESTING.md). `pytest` with FastAPI `TestClient`. Tests use
+in-memory fake repositories (`tests/fakes.py`) so the suite needs no database:
+`/health` smoke test, `UserService` unit tests, and `/me` + `/me/profile` API
+tests (including the `401` path when stub auth is disabled).

@@ -4,13 +4,17 @@
 
 CodePath AI guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
-sandbox. This repository contains the **Sprint 0 foundation**: a
-production-quality scaffold that compiles, builds, and runs. Business features
-(AI Teacher/Tutor, Judge0, quizzes, exercises, recommendations) are intentionally
-deferred to later sprints.
+sandbox.
 
-See [`docs/`](docs/) for full design documentation, starting with
-[00_PROJECT.md](docs/00_PROJECT.md).
+**Status — through Sprint 1:** production-quality scaffold (Sprint 0) plus
+authentication & user profiles (Sprint 1): real Firebase token verification,
+automatic user provisioning on first sign-in, and profile view/edit. The
+remaining business features (content CRUD, Judge0, quizzes, AI Teacher/Tutor,
+recommendations, billing) are scheduled across Sprints 2–8.
+
+See [`docs/`](docs/) for full design documentation — start with
+[00_PROJECT.md](docs/00_PROJECT.md) and the per-sprint plans
+[Sprint_01.md](docs/Sprint_01.md) … [Sprint_08.md](docs/Sprint_08.md).
 
 ---
 
@@ -112,6 +116,12 @@ All configuration is environment-driven. Copy [.env.example](.env.example) to
 `.env` and adjust. Never commit a real `.env`. Variable reference lives in the
 example file and [docs/08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md).
 
+**Authentication:** with `AUTH_STUB_ENABLED=true` (default) the backend accepts a
+fixed dev identity and the frontend offers a "Continue (development mode)"
+sign-in — no Firebase needed for local work. To use real auth, set the
+`FIREBASE_*` (backend) and `VITE_FIREBASE_*` (frontend) variables and set
+`AUTH_STUB_ENABLED=false`.
+
 ## Documentation
 
 | Doc | Topic |
@@ -126,6 +136,7 @@ example file and [docs/08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md).
 | [07_BACKEND.md](docs/07_BACKEND.md) | Backend structure |
 | [08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md) | Running & deployment |
 | [09_TESTING.md](docs/09_TESTING.md) | Testing & quality |
+| [Sprint_01.md](docs/Sprint_01.md) … [Sprint_08.md](docs/Sprint_08.md) | Per-sprint implementation plans |
 
 ## License
 
