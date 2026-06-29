@@ -74,11 +74,38 @@ implemented yet** — fields will be expanded in later sprints.
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
+### `exercises` (Sprint 3)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| lesson_id | UUID (FK → lessons.id) | cascade delete |
+| language | str | e.g. "python" (Judge0 language in Sprint 4) |
+| title | str | |
+| slug | str | unique per lesson (`uq_exercises_lesson_slug`) |
+| prompt | text | exercise statement |
+| starter_code | text | seeds the editor |
+| test_spec | jsonb | hidden test cases (used by the grader in Sprint 4) |
+| created_at / updated_at | timestamptz | |
+
+### `submissions` (Sprint 3)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| user_id | UUID (FK → users.id) | cascade delete |
+| exercise_id | UUID (FK → exercises.id) | cascade delete |
+| code | text | submitted source |
+| status | str | `pending` \| `passed` \| `failed` \| `error` (starts `pending`) |
+| result | jsonb, nullable | grading output (populated in Sprint 4) |
+| created_at / updated_at | timestamptz | |
+
 ## ER
 
 ```text
 users 1───1 student_profiles
-programming_languages 1───* courses 1───* lessons
+users 1───* submissions *───1 exercises
+programming_languages 1───* courses 1───* lessons 1───* exercises
 ```
 
 ## Migrations
@@ -87,6 +114,7 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 
 - `0001_initial` — users, student_profiles, programming_languages, courses.
 - `0002_lessons` — lessons table.
+- `0003_exercises` — exercises and submissions tables.
 
 ```bash
 # create/upgrade to latest

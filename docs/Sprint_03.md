@@ -62,14 +62,60 @@ frontend/
 
 ## Acceptance Criteria
 
-- [ ] Migration `0003` creates `exercises` and `submissions` tables.
-- [ ] `GET /exercises/{id}` returns prompt + starter code + language.
-- [ ] Monaco loads the starter code in the exercise's language.
-- [ ] `POST /exercises/{id}/submit` persists a submission with status `pending`.
-- [ ] Submissions history lists prior attempts.
-- [ ] `ruff`, `pytest`, frontend `lint` + `build` pass.
+- [x] Migration `0003` creates `exercises` and `submissions` tables (applied
+      live by the backend container; confirmed via `\dt`).
+- [x] `GET /exercises/{id}` returns prompt + starter code + language (and never
+      leaks `test_spec`).
+- [x] Monaco loads the starter code in the exercise's language.
+- [x] `POST /exercises/{id}/submit` persists a submission with status `pending`
+      (`test_submissions.py`; submit requires auth → `401` without a token).
+- [x] Submissions history lists prior attempts.
+- [x] `ruff`, `pytest` (24 tests), frontend `lint` + `build` pass.
 
 ## Dependency
 
 - **Sprint 2** (lessons/courses to attach exercises to).
 - **Sprint 1** (authenticated user owning the submission).
+
+## Status — ✅ Complete
+
+**Date:** 2026-06-30
+
+### Delivered
+
+**Backend**
+- `Exercise` + `Submission` ORM models and migration `0003_exercises`
+  (`test_spec`/`result` as JSONB; submission `status` defaults `pending`).
+- Domain entities + `ExerciseRepository`/`SubmissionRepository` interfaces and
+  SQLAlchemy implementations.
+- `ExerciseService` and `SubmissionService` (`application/services/`).
+- Endpoints (`api/v1/routes/exercises.py`): public `GET /exercises/{id}` and
+  `GET /lessons/{id}/exercises`; learner `POST /exercises/{id}/submit` +
+  `GET /exercises/{id}/submissions`; admin `POST/DELETE /admin/exercises`.
+- `ExerciseResponse` excludes `test_spec` (hidden test cases).
+- Seed extended with a sample exercise ("Hello, CodePath").
+- `tests/test_submissions.py` + exercise/submission fakes; shared `fakes`
+  fixture in `conftest.py` (24 tests total, DB-free).
+
+**Frontend**
+- `features/exercises/hooks.ts` (exercise/submission queries + submit mutation).
+- Coding Exercise page wired: loads exercise, seeds Monaco with starter code +
+  language, submits code (`pending`), shows submission history
+  (`components/SubmissionList.tsx`). Run button stays disabled (Sprint 4).
+- Lesson page links to its exercises.
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 24/24 pass.
+- Frontend: `lint` clean, `build` succeeds.
+- Live (Docker stack): migration `0003` applied; seed added the exercise;
+  `GET /lessons/{id}/exercises` and `GET /exercises/{id}` work (no `test_spec`
+  leak); submit/admin without token → `401`.
+
+### Notes / follow-ups
+
+- Submissions are stored `pending`; **Sprint 4** adds Judge0 execution + grading
+  that fills `status`/`result`. The `test_spec` column already carries the hidden
+  test cases for that.
+- Admin can author exercises via the API (`POST /admin/exercises`); a dedicated
+  Admin-page exercises UI can be added later if desired.

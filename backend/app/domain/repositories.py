@@ -10,7 +10,15 @@ from __future__ import annotations
 import uuid
 from typing import Protocol
 
-from app.domain.entities import Course, Lesson, ProgrammingLanguage, StudentProfile, User
+from app.domain.entities import (
+    Course,
+    Exercise,
+    Lesson,
+    ProgrammingLanguage,
+    StudentProfile,
+    Submission,
+    User,
+)
 
 
 class UserRepository(Protocol):
@@ -113,3 +121,44 @@ class LessonRepository(Protocol):
     ) -> Lesson: ...
 
     def delete(self, lesson_id: uuid.UUID) -> None: ...
+
+
+class ExerciseRepository(Protocol):
+    """Persistence operations for :class:`~app.domain.entities.Exercise`."""
+
+    def get_by_id(self, exercise_id: uuid.UUID) -> Exercise | None: ...
+
+    def list_by_lesson(self, lesson_id: uuid.UUID) -> list[Exercise]: ...
+
+    def create(
+        self,
+        *,
+        lesson_id: uuid.UUID,
+        language: str,
+        title: str,
+        slug: str,
+        prompt: str,
+        starter_code: str,
+        test_spec: dict,
+    ) -> Exercise: ...
+
+    def delete(self, exercise_id: uuid.UUID) -> None: ...
+
+
+class SubmissionRepository(Protocol):
+    """Persistence operations for :class:`~app.domain.entities.Submission`."""
+
+    def get_by_id(self, submission_id: uuid.UUID) -> Submission | None: ...
+
+    def list_for_user_and_exercise(
+        self, user_id: uuid.UUID, exercise_id: uuid.UUID
+    ) -> list[Submission]: ...
+
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        exercise_id: uuid.UUID,
+        code: str,
+        status: str = "pending",
+    ) -> Submission: ...

@@ -6,12 +6,12 @@ CodePath AI guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
 sandbox.
 
-**Status — through Sprint 2:** production-quality scaffold (Sprint 0),
-authentication & user profiles (Sprint 1), and a content domain (Sprint 2) —
-languages, courses, and lessons with public read APIs, admin CRUD, markdown
-lesson rendering, and a seed script. The remaining business features (Judge0,
-quizzes, AI Teacher/Tutor, recommendations, billing) are scheduled across
-Sprints 3–8.
+**Status — through Sprint 3:** production-quality scaffold (Sprint 0),
+authentication & user profiles (Sprint 1), a content domain (Sprint 2 —
+languages, courses, lessons + admin CRUD), and coding exercises (Sprint 3 —
+exercise model, in-browser Monaco editor, and submission storage). Code
+execution/grading via Judge0 lands in Sprint 4; quizzes, AI Teacher/Tutor,
+recommendations, and billing follow in Sprints 5–8.
 
 See [`docs/`](docs/) for full design documentation — start with
 [00_PROJECT.md](docs/00_PROJECT.md) and the per-sprint plans

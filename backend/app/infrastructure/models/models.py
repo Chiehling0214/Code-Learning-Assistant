@@ -1,13 +1,14 @@
-"""Placeholder ORM models for Sprint 0.
+"""ORM models for the CodePath AI domain.
 
-These define just enough schema to prove the migration pipeline. They carry no
-business logic; columns and relationships will be expanded in later sprints.
+Tables are introduced incrementally per sprint; see the Alembic migrations under
+``alembic/versions`` for the schema history.
 """
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -19,7 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import Base
@@ -117,3 +118,43 @@ class Lesson(TimestampMixin, Base):
     content: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
     course: Mapped[Course] = relationship(back_populates="lessons")
+    exercises: Mapped[list[Exercise]] = relationship(
+        back_populates="lesson",
+        cascade="all, delete-orphan",
+        order_by="Exercise.title",
+    )
+
+
+class Exercise(TimestampMixin, Base):
+    __tablename__ = "exercises"
+    __table_args__ = (UniqueConstraint("lesson_id", "slug", name="uq_exercises_lesson_slug"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lessons.id", ondelete="CASCADE"), index=True
+    )
+    language: Mapped[str] = mapped_column(String(32), default="python", nullable=False)
+    title: Mapped[str] = mapped_column(String(255))
+    slug: Mapped[str] = mapped_column(String(255))
+    prompt: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    starter_code: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Hidden test specification used by the Judge0 grader in Sprint 4.
+    test_spec: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+
+    lesson: Mapped[Lesson] = relationship(back_populates="exercises")
+
+
+class Submission(TimestampMixin, Base):
+    __tablename__ = "submissions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    exercise_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("exercises.id", ondelete="CASCADE"), index=True
+    )
+    code: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # pending | passed | failed | error — graded in Sprint 4; starts "pending".
+    status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

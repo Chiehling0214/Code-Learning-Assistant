@@ -34,6 +34,8 @@ Included tests:
   path when stub auth is disabled.
 - `tests/test_content.py` — content reads (ordered lessons, `404`s) and the
   admin guard (`403` for non-admins, create/delete for admins).
+- `tests/test_submissions.py` — exercise reads (no `test_spec` leak), submitting
+  (`pending`), submission history, and the admin create guard.
 
 ## Frontend
 

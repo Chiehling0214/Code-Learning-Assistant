@@ -61,3 +61,29 @@ class Lesson:
     content: str
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class Exercise:
+    id: uuid.UUID
+    lesson_id: uuid.UUID
+    language: str
+    title: str
+    slug: str
+    prompt: str
+    starter_code: str
+    test_spec: dict
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class Submission:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    exercise_id: uuid.UUID
+    code: str
+    status: str
+    result: dict | None
+    created_at: datetime
+    updated_at: datetime

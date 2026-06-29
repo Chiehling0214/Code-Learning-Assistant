@@ -6,10 +6,20 @@ Alembic relies on for autogeneration.
 
 from app.infrastructure.models.models import (
     Course,
+    Exercise,
     Lesson,
     ProgrammingLanguage,
     StudentProfile,
+    Submission,
     User,
 )
 
-__all__ = ["User", "StudentProfile", "ProgrammingLanguage", "Course", "Lesson"]
+__all__ = [
+    "User",
+    "StudentProfile",
+    "ProgrammingLanguage",
+    "Course",
+    "Lesson",
+    "Exercise",
+    "Submission",
+]

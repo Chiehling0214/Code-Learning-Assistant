@@ -5,7 +5,15 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from app.domain.entities import Course, Lesson, ProgrammingLanguage, StudentProfile, User
+from app.domain.entities import (
+    Course,
+    Exercise,
+    Lesson,
+    ProgrammingLanguage,
+    StudentProfile,
+    Submission,
+    User,
+)
 
 
 def _now() -> datetime:
@@ -238,3 +246,87 @@ class FakeLessonRepository:
         if lesson_id not in self._items:
             raise LookupError(f"Lesson {lesson_id} not found")
         del self._items[lesson_id]
+
+
+class FakeExerciseRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, Exercise] = {}
+
+    def get_by_id(self, exercise_id: uuid.UUID) -> Exercise | None:
+        return self._items.get(exercise_id)
+
+    def list_by_lesson(self, lesson_id: uuid.UUID) -> list[Exercise]:
+        items = [x for x in self._items.values() if x.lesson_id == lesson_id]
+        return sorted(items, key=lambda x: x.title)
+
+    def create(
+        self,
+        *,
+        lesson_id: uuid.UUID,
+        language: str,
+        title: str,
+        slug: str,
+        prompt: str,
+        starter_code: str,
+        test_spec: dict,
+    ) -> Exercise:
+        now = _now()
+        exercise = Exercise(
+            id=uuid.uuid4(),
+            lesson_id=lesson_id,
+            language=language,
+            title=title,
+            slug=slug,
+            prompt=prompt,
+            starter_code=starter_code,
+            test_spec=test_spec,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[exercise.id] = exercise
+        return exercise
+
+    def delete(self, exercise_id: uuid.UUID) -> None:
+        if exercise_id not in self._items:
+            raise LookupError(f"Exercise {exercise_id} not found")
+        del self._items[exercise_id]
+
+
+class FakeSubmissionRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, Submission] = {}
+
+    def get_by_id(self, submission_id: uuid.UUID) -> Submission | None:
+        return self._items.get(submission_id)
+
+    def list_for_user_and_exercise(
+        self, user_id: uuid.UUID, exercise_id: uuid.UUID
+    ) -> list[Submission]:
+        items = [
+            x
+            for x in self._items.values()
+            if x.user_id == user_id and x.exercise_id == exercise_id
+        ]
+        return sorted(items, key=lambda x: x.created_at, reverse=True)
+
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        exercise_id: uuid.UUID,
+        code: str,
+        status: str = "pending",
+    ) -> Submission:
+        now = _now()
+        submission = Submission(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            exercise_id=exercise_id,
+            code=code,
+            status=status,
+            result=None,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[submission.id] = submission
+        return submission

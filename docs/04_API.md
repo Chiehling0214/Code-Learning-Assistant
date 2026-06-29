@@ -31,6 +31,12 @@
 | POST/PUT/DELETE | `/api/v1/admin/languages[/{id}]` | admin | 2 | Manage languages. |
 | POST/PUT/DELETE | `/api/v1/admin/courses[/{id}]` | admin | 2 | Manage courses. |
 | POST/PUT/DELETE | `/api/v1/admin/lessons[/{id}]` | admin | 2 | Manage lessons. |
+| GET | `/api/v1/lessons/{id}/exercises` | none | 3 | List a lesson's exercises. |
+| GET | `/api/v1/exercises/{id}` | none | 3 | Exercise (prompt + starter code; no test spec). |
+| POST | `/api/v1/exercises/{id}/submit` | bearer | 3 | Store a submission (`pending`). |
+| GET | `/api/v1/exercises/{id}/submissions` | bearer | 3 | Current user's submissions for the exercise. |
+| POST | `/api/v1/admin/exercises` | admin | 3 | Create an exercise. |
+| DELETE | `/api/v1/admin/exercises/{id}` | admin | 3 | Delete an exercise. |
 
 ### `GET /health`
 
@@ -100,14 +106,24 @@ return `403` otherwise. Duplicate slugs return `409`.
 Promote a user to admin with `python -m scripts.set_admin <email>` in the
 backend container.
 
+### Exercises & submissions (Sprint 3)
+
+Reads are public; submitting requires a signed-in learner. A submission is
+stored with `status: "pending"` — execution and grading arrive in Sprint 4.
+The exercise read never includes `test_spec` (hidden test cases).
+
+```jsonc
+// POST /api/v1/exercises/{id}/submit   { "code": "print('hi')" }  -> 201
+{ "id": "…", "exercise_id": "…", "code": "print('hi')", "status": "pending", "result": null, "created_at": "…" }
+```
+
 ## Planned endpoints (later sprints — not implemented)
 
 These are documented for design alignment only. Sprint numbers follow the
-[Sprint_03…08](Sprint_03.md) plan.
+[Sprint_04…08](Sprint_04.md) plan.
 
 | Sprint | Resource | Endpoints (sketch) |
 |--------|----------|--------------------|
-| 3 | Exercises | `GET /exercises/{id}`, `POST /exercises/{id}/submit` |
 | 4 | Execution | `POST /exercises/{id}/run`, `GET /submissions/{id}` |
 | 5 | Quizzes | `GET /quizzes/{id}`, `POST /quizzes/{id}/submit` |
 | 6 | AI | `POST /ai/teacher`, `POST /ai/tutor` |

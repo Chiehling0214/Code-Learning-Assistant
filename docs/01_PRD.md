@@ -38,7 +38,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | User / StudentProfile + provisioning | 1 | ✅ done |
 | Profile view/edit | 1 | ✅ done |
 | Languages, Courses & Lessons + admin CRUD | 2 | ✅ done |
-| Coding exercises (model & submissions) | 3 | ⬜ |
+| Coding exercises (model & submissions) | 3 | ✅ done |
 | Judge0 execution & grading | 4 | ⬜ |
 | Quizzes | 5 | ⬜ |
 | AI Teacher / AI Tutor | 6 | ⬜ |

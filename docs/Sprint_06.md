@@ -9,6 +9,10 @@ Claude. See [05_AI.md](05_AI.md) for the design this sprint implements.
 Implement the `AIProvider` port and a concrete `ClaudeAIProvider`, exposing an
 **AI Teacher** (explains/expands lesson content for the learner's level) and an
 **AI Tutor** (reviews submitted code, gives hints/feedback, answers questions).
+The AI Teacher can also **generate lessons/exercises that are written back into
+the existing `lessons`/`exercises` tables** (see "Content generation" in
+[05_AI.md](05_AI.md)), so generated content is served and graded by the same
+Sprint 2–4 machinery.
 
 ## User Story
 
@@ -17,6 +21,8 @@ Implement the `AIProvider` port and a concrete `ClaudeAIProvider`, exposing an
 - As a learner stuck on an exercise, I can ask the AI Tutor for a hint or
   feedback on my current code without being given the full answer.
 - As the platform, I control which Claude model is used and cap usage per user.
+- As an admin, I can have the AI Teacher generate a lesson or exercise for a
+  topic/level; it is saved as a (reviewable) row in the normal content tables.
 
 ## Tasks
 
@@ -34,6 +40,21 @@ Implement the `AIProvider` port and a concrete `ClaudeAIProvider`, exposing an
 6. Per-user rate limiting / token budget; log token usage.
 7. Tests with a mocked provider (no live API calls).
 
+### Backend — content generation
+8. Add a `source` column (`human` | `ai`) to `lessons` and `exercises` (migration
+   `0006_content_source`) so AI-authored rows are distinguishable and reviewable.
+9. `GenerateContentService` (`application/services/generate_content_service.py`):
+   builds a generation request from topic + learner level, calls
+   `AIProvider.teach()`, and **writes the result through `ContentService` into the
+   `lessons`/`exercises` tables** — generation is just another author, so serving
+   (`GET /courses|/lessons|/exercises`) and grading (Judge0) are unchanged.
+10. Self-verify generated exercises before publishing: run the reference solution
+    against the generated `test_spec` via the Sprint 4 Judge0 path; reject if it
+    doesn't pass its own tests.
+11. Admin endpoint `POST /admin/ai/generate` to trigger generation for a
+    lesson/exercise (guarded by `require_admin`); generated rows default to
+    `source = "ai"` for later review.
+
 ### Frontend
 1. "Ask AI Teacher" panel on the `Lesson` page.
 2. AI Tutor side panel on the `CodingExercise` page (sends current editor code).
@@ -47,8 +68,10 @@ backend/
   app/application/ports/ai_provider.py        (new)
   app/infrastructure/ai/claude_provider.py    (new)
   app/application/services/{ai_teacher_service,ai_tutor_service}.py  (new)
-  app/infrastructure/models/models.py          # + AIInteraction
+  app/application/services/generate_content_service.py  (new — AI -> lessons/exercises)
+  app/infrastructure/models/models.py          # + AIInteraction, + source columns
   alembic/versions/0005_ai_interactions.py     (new)
+  alembic/versions/0006_content_source.py      (new — source on lessons/exercises)
   app/api/v1/routes/ai.py                       (new)
   app/schemas/ai.py                             (new)
   tests/test_ai.py                              (new, mocked provider)
@@ -69,6 +92,11 @@ frontend/
 - [ ] Token usage is logged; per-user rate limit is enforced.
 - [ ] All AI calls go through `AIProvider` — no provider SDK calls leak into the
       api/application layers.
+- [ ] AI-generated lessons/exercises are written via `ContentService` into the
+      existing tables, marked `source = "ai"`, and served unchanged by the
+      existing `GET` endpoints.
+- [ ] A generated exercise is self-verified (its reference solution passes its
+      own `test_spec` via Judge0) before being published.
 - [ ] Tests pass with the provider mocked (no network).
 - [ ] `ruff`, `pytest`, frontend `lint` + `build` pass.
 

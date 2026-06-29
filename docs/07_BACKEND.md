@@ -28,7 +28,8 @@ backend/
 │   │           ├── languages.py     # content reads (Sprint 2)
 │   │           ├── courses.py
 │   │           ├── lessons.py
-│   │           └── admin_content.py # admin CRUD (Sprint 2)
+│   │           ├── admin_content.py # admin CRUD (Sprint 2)
+│   │           └── exercises.py     # exercises + submissions (Sprint 3)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -39,8 +40,10 @@ backend/
 │   ├── application/             # use cases / services
 │   │   └── services/
 │   │       ├── health_service.py
-│   │       ├── user_service.py     # provisioning + profile (Sprint 1)
-│   │       └── content_service.py  # languages/courses/lessons (Sprint 2)
+│   │       ├── user_service.py        # provisioning + profile (Sprint 1)
+│   │       ├── content_service.py     # languages/courses/lessons (Sprint 2)
+│   │       ├── exercise_service.py    # exercises (Sprint 3)
+│   │       └── submission_service.py  # submissions (Sprint 3)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base
@@ -52,11 +55,12 @@ backend/
 │   └── schemas/                 # Pydantic DTOs
 │       ├── health.py
 │       ├── user.py             # current user + profile schemas
-│       └── content.py          # language/course/lesson schemas
+│       ├── content.py          # language/course/lesson schemas
+│       └── exercise.py         # exercise + submission schemas
 ├── alembic/
 │   ├── env.py
 │   ├── script.py.mako
-│   └── versions/{0001_initial,0002_lessons}.py
+│   └── versions/{0001_initial,0002_lessons,0003_exercises}.py
 ├── scripts/                     # seed.py, set_admin.py
 ├── alembic.ini
 ├── pyproject.toml
@@ -130,7 +134,7 @@ docker compose up backend
 ## Testing
 
 See [09_TESTING.md](09_TESTING.md). `pytest` with FastAPI `TestClient`. Tests use
-in-memory fake repositories (`tests/fakes.py`) so the suite needs no database:
-`/health` smoke test, `UserService` unit tests, `/me` + `/me/profile` API tests
-(including the `401` path when stub auth is disabled), and content read/admin-guard
-tests.
+in-memory fake repositories (`tests/fakes.py`, shared via a `fakes` fixture) so
+the suite needs no database: `/health` smoke test, `UserService` unit tests,
+`/me` + `/me/profile` API tests (including the `401` path when stub auth is
+disabled), content read/admin-guard tests, and exercise/submission tests.

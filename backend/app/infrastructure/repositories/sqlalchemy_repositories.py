@@ -12,14 +12,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.entities import Course as CourseEntity
+from app.domain.entities import Exercise as ExerciseEntity
 from app.domain.entities import Lesson as LessonEntity
 from app.domain.entities import ProgrammingLanguage as LanguageEntity
 from app.domain.entities import StudentProfile as ProfileEntity
+from app.domain.entities import Submission as SubmissionEntity
 from app.domain.entities import User as UserEntity
 from app.infrastructure.models.models import Course as CourseModel
+from app.infrastructure.models.models import Exercise as ExerciseModel
 from app.infrastructure.models.models import Lesson as LessonModel
 from app.infrastructure.models.models import ProgrammingLanguage as LanguageModel
 from app.infrastructure.models.models import StudentProfile as ProfileModel
+from app.infrastructure.models.models import Submission as SubmissionModel
 from app.infrastructure.models.models import User as UserModel
 
 
@@ -325,3 +329,125 @@ class SqlAlchemyLessonRepository:
             raise LookupError(f"Lesson {lesson_id} not found")
         self._session.delete(model)
         self._session.flush()
+
+
+def _to_exercise(model: ExerciseModel) -> ExerciseEntity:
+    return ExerciseEntity(
+        id=model.id,
+        lesson_id=model.lesson_id,
+        language=model.language,
+        title=model.title,
+        slug=model.slug,
+        prompt=model.prompt,
+        starter_code=model.starter_code,
+        test_spec=model.test_spec or {},
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+def _to_submission(model: SubmissionModel) -> SubmissionEntity:
+    return SubmissionEntity(
+        id=model.id,
+        user_id=model.user_id,
+        exercise_id=model.exercise_id,
+        code=model.code,
+        status=model.status,
+        result=model.result,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyExerciseRepository:
+    """Concrete :class:`~app.domain.repositories.ExerciseRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_id(self, exercise_id: uuid.UUID) -> ExerciseEntity | None:
+        model = self._session.get(ExerciseModel, exercise_id)
+        return _to_exercise(model) if model else None
+
+    def list_by_lesson(self, lesson_id: uuid.UUID) -> list[ExerciseEntity]:
+        stmt = (
+            select(ExerciseModel)
+            .where(ExerciseModel.lesson_id == lesson_id)
+            .order_by(ExerciseModel.title)
+        )
+        return [_to_exercise(m) for m in self._session.scalars(stmt).all()]
+
+    def create(
+        self,
+        *,
+        lesson_id: uuid.UUID,
+        language: str,
+        title: str,
+        slug: str,
+        prompt: str,
+        starter_code: str,
+        test_spec: dict,
+    ) -> ExerciseEntity:
+        model = ExerciseModel(
+            lesson_id=lesson_id,
+            language=language,
+            title=title,
+            slug=slug,
+            prompt=prompt,
+            starter_code=starter_code,
+            test_spec=test_spec,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_exercise(model)
+
+    def delete(self, exercise_id: uuid.UUID) -> None:
+        model = self._session.get(ExerciseModel, exercise_id)
+        if model is None:
+            raise LookupError(f"Exercise {exercise_id} not found")
+        self._session.delete(model)
+        self._session.flush()
+
+
+class SqlAlchemySubmissionRepository:
+    """Concrete :class:`~app.domain.repositories.SubmissionRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_id(self, submission_id: uuid.UUID) -> SubmissionEntity | None:
+        model = self._session.get(SubmissionModel, submission_id)
+        return _to_submission(model) if model else None
+
+    def list_for_user_and_exercise(
+        self, user_id: uuid.UUID, exercise_id: uuid.UUID
+    ) -> list[SubmissionEntity]:
+        stmt = (
+            select(SubmissionModel)
+            .where(
+                SubmissionModel.user_id == user_id,
+                SubmissionModel.exercise_id == exercise_id,
+            )
+            .order_by(SubmissionModel.created_at.desc())
+        )
+        return [_to_submission(m) for m in self._session.scalars(stmt).all()]
+
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        exercise_id: uuid.UUID,
+        code: str,
+        status: str = "pending",
+    ) -> SubmissionEntity:
+        model = SubmissionModel(
+            user_id=user_id,
+            exercise_id=exercise_id,
+            code=code,
+            status=status,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_submission(model)

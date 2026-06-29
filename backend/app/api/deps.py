@@ -13,6 +13,8 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.application.services.content_service import ContentService
+from app.application.services.exercise_service import ExerciseService
+from app.application.services.submission_service import SubmissionService
 from app.application.services.user_service import UserService
 from app.core.config import Settings, get_settings
 from app.core.security import Identity, verify_token
@@ -20,9 +22,11 @@ from app.domain.entities import User
 from app.infrastructure.db.session import get_session
 from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyCourseRepository,
+    SqlAlchemyExerciseRepository,
     SqlAlchemyLanguageRepository,
     SqlAlchemyLessonRepository,
     SqlAlchemyStudentProfileRepository,
+    SqlAlchemySubmissionRepository,
     SqlAlchemyUserRepository,
 )
 
@@ -97,3 +101,23 @@ def get_content_service(session: DbSession) -> ContentService:
 
 
 ContentServiceDep = Annotated[ContentService, Depends(get_content_service)]
+
+
+def get_exercise_service(session: DbSession) -> ExerciseService:
+    return ExerciseService(
+        SqlAlchemyExerciseRepository(session),
+        SqlAlchemyLessonRepository(session),
+    )
+
+
+ExerciseServiceDep = Annotated[ExerciseService, Depends(get_exercise_service)]
+
+
+def get_submission_service(session: DbSession) -> SubmissionService:
+    return SubmissionService(
+        SqlAlchemySubmissionRepository(session),
+        SqlAlchemyExerciseRepository(session),
+    )
+
+
+SubmissionServiceDep = Annotated[SubmissionService, Depends(get_submission_service)]

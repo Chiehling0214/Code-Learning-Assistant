@@ -8,7 +8,7 @@ Idempotent: safe to run repeatedly (rows are keyed by slug). Run with:
 from __future__ import annotations
 
 from app.infrastructure.db.session import SessionLocal
-from app.infrastructure.models.models import Course, Lesson, ProgrammingLanguage
+from app.infrastructure.models.models import Course, Exercise, Lesson, ProgrammingLanguage
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -72,6 +72,17 @@ def _get_or_create_course(session: Session, language: ProgrammingLanguage) -> Co
     return course
 
 
+EXERCISE = {
+    "lesson_slug": "variables-and-types",
+    "slug": "hello-codepath",
+    "title": "Hello, CodePath",
+    "language": "python",
+    "prompt": 'Write a function `solution()` that returns the string "Hello, CodePath!".',
+    "starter_code": "def solution():\n    # your code here\n    pass\n\n\nprint(solution())\n",
+    "test_spec": {"cases": [{"input": "", "expected": "Hello, CodePath!"}]},
+}
+
+
 def _seed_lessons(session: Session, course: Course) -> int:
     created = 0
     for data in LESSONS:
@@ -84,16 +95,47 @@ def _seed_lessons(session: Session, course: Course) -> int:
     return created
 
 
+def _seed_exercise(session: Session, course: Course) -> int:
+    lesson = session.scalars(
+        select(Lesson).where(
+            Lesson.course_id == course.id, Lesson.slug == EXERCISE["lesson_slug"]
+        )
+    ).first()
+    if lesson is None:
+        return 0
+    exists = session.scalars(
+        select(Exercise).where(
+            Exercise.lesson_id == lesson.id, Exercise.slug == EXERCISE["slug"]
+        )
+    ).first()
+    if exists is not None:
+        return 0
+    session.add(
+        Exercise(
+            lesson_id=lesson.id,
+            slug=EXERCISE["slug"],
+            title=EXERCISE["title"],
+            language=EXERCISE["language"],
+            prompt=EXERCISE["prompt"],
+            starter_code=EXERCISE["starter_code"],
+            test_spec=EXERCISE["test_spec"],
+        )
+    )
+    return 1
+
+
 def seed() -> None:
     session = SessionLocal()
     try:
         language = _get_or_create_language(session)
         course = _get_or_create_course(session, language)
         created = _seed_lessons(session, course)
+        session.flush()  # ensure lessons have ids before attaching an exercise
+        exercises = _seed_exercise(session, course)
         session.commit()
         print(
             f"Seeded language '{language.slug}', course '{course.slug}', "
-            f"{created} new lesson(s)."
+            f"{created} new lesson(s), {exercises} new exercise(s)."
         )
     except Exception:
         session.rollback()

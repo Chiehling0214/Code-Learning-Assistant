@@ -25,7 +25,8 @@ frontend/
 │   ├── index.css            # tailwind layers + theme tokens
 │   ├── pages/               # one file per route (Dashboard/Course/Lesson/Admin/Profile live)
 │   ├── features/
-│   │   └── content/        # content query/mutation hooks (Sprint 2)
+│   │   ├── content/        # content query/mutation hooks (Sprint 2)
+│   │   └── exercises/      # exercise + submission hooks (Sprint 3)
 │   ├── components/
 │   │   ├── ui/              # shadcn primitives (button, card, ...)
 │   │   ├── layout/         # AppLayout (nav + sign out)
@@ -61,8 +62,8 @@ pages are placeholders.
 | `/dashboard` | Dashboard (lists courses) | private |
 | `/today` | Today | private |
 | `/courses/:slug` | Course (header + ordered lessons) | private |
-| `/lessons/:id` | Lesson (rendered markdown) | private |
-| `/exercises/:id` | Coding Exercise (Monaco editor mounted) | private |
+| `/lessons/:id` | Lesson (rendered markdown + exercise links) | private |
+| `/exercises/:id` | Coding Exercise (Monaco + submit + history) | private |
 | `/quizzes/:id` | Quiz | private |
 | `/progress` | Progress | private |
 | `/subscription` | Subscription | private |
@@ -76,6 +77,16 @@ pages are placeholders.
 - Lesson markdown is rendered via `lib/markdown.ts` (`marked` + `DOMPurify`).
 - The Admin page calls the admin endpoints; non-admin users get `403` and a
   banner explaining how to be promoted (`scripts.set_admin`).
+
+## Exercises (Sprint 3)
+
+- `features/exercises/hooks.ts`: `useExercise`, `useLessonExercises`,
+  `useSubmissions`, `useSubmit`.
+- The Coding Exercise page loads the exercise, seeds Monaco with its starter
+  code and language, submits code (stored `pending`), and shows a submission
+  history (`components/SubmissionList.tsx`). The "Run" button stays disabled
+  until Judge0 lands in Sprint 4.
+- The Lesson page links to its exercises.
 
 ## Authentication (Sprint 1)
 

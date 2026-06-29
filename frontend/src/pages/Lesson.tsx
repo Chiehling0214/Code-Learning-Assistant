@@ -1,13 +1,15 @@
 import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { useLesson } from "@/features/content/hooks";
+import { useLessonExercises } from "@/features/exercises/hooks";
 import { renderMarkdown } from "@/lib/markdown";
 
 export function LessonPage() {
   const { id } = useParams<{ id: string }>();
   const { data: lesson, isLoading, isError } = useLesson(id);
+  const { data: exercises = [] } = useLessonExercises(id);
 
   const html = useMemo(() => (lesson ? renderMarkdown(lesson.content) : ""), [lesson]);
 
@@ -29,6 +31,24 @@ export function LessonPage() {
           />
         </CardContent>
       </Card>
+
+      {exercises.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">Exercises</h2>
+          {exercises.map((exercise) => (
+            <Card key={exercise.id} className="transition-colors hover:bg-accent">
+              <Link to={`/exercises/${exercise.id}`}>
+                <CardContent className="flex items-center justify-between py-4">
+                  <span className="font-medium">{exercise.title}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {exercise.language}
+                  </span>
+                </CardContent>
+              </Link>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
