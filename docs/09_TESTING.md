@@ -1,0 +1,71 @@
+# 09 — Testing & Quality
+
+## Philosophy
+
+Sprint 0 establishes the testing *harness* and quality gates. Coverage is
+intentionally minimal (smoke tests) since business logic arrives in later
+sprints. The goal: the project compiles, builds, lints, and a basic test passes.
+
+## Backend
+
+| Tool | Purpose |
+|------|---------|
+| `pytest` | test runner |
+| `ruff` | lint + format check |
+| FastAPI `TestClient` | HTTP-level tests |
+
+Run:
+
+```bash
+cd backend
+pip install -r requirements.txt
+ruff check .
+pytest -q
+```
+
+Included tests:
+
+- `tests/test_health.py` — asserts `GET /health` returns `200` and `status: ok`.
+
+## Frontend
+
+| Tool | Purpose |
+|------|---------|
+| `tsc` (via `vite build`) | type checking |
+| `eslint` | linting |
+
+Run:
+
+```bash
+cd frontend
+npm install
+npm run lint
+npm run build      # type-check + bundle; fails on type errors
+```
+
+A unit-test runner (Vitest) can be added in Sprint 1 when components gain logic.
+
+## CI
+
+`.github/workflows/ci.yml` runs two jobs on push/PR:
+
+1. **backend** — install deps, `ruff check`, `pytest`.
+2. **frontend** — `npm ci`, `npm run lint`, `npm run build`.
+
+## Quality Gates (Sprint 0 definition of done)
+
+- [ ] `docker compose up` starts postgres + backend + frontend.
+- [ ] `GET /health` returns `200`.
+- [ ] Frontend builds and every route renders.
+- [ ] No TODO/placeholder-comment stubs pretending to be features.
+- [ ] Lint passes for both apps.
+
+## Future testing strategy
+
+| Layer | Approach (later) |
+|-------|------------------|
+| domain | pure unit tests, no I/O |
+| application | use-case tests with fake repositories |
+| infrastructure | integration tests against a test Postgres |
+| api | TestClient contract tests |
+| frontend | Vitest + Testing Library, Playwright e2e |

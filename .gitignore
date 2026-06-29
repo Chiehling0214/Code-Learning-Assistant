@@ -1,0 +1,44 @@
+# ---- General ----
+.DS_Store
+*.log
+*.pid
+*.seed
+*.swp
+.idea/
+.vscode/
+*.local
+
+# ---- Environment ----
+.env
+.env.*
+!.env.example
+
+# ---- Node / Frontend ----
+node_modules/
+dist/
+dist-ssr/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# ---- Python / Backend ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+htmlcov/
+.coverage
+.coverage.*
+
+# ---- Secrets / Credentials ----
+firebase-service-account.json
+*.pem
+*.key
+
+# ---- Docker ----
+postgres-data/

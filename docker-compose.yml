@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codepath}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codepath}
+      POSTGRES_DB: ${POSTGRES_DB:-codepath}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-codepath} -d ${POSTGRES_DB:-codepath}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-codepath}:${POSTGRES_PASSWORD:-codepath}@postgres:5432/${POSTGRES_DB:-codepath}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-}
+      AUTH_STUB_ENABLED: ${AUTH_STUB_ENABLED:-true}
+      BACKEND_PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+      VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+      VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+      VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+      VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:
