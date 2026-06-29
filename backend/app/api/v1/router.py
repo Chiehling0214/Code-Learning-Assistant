@@ -2,9 +2,13 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import health, me, profile
+from app.api.v1.routes import admin_content, courses, health, languages, lessons, me, profile
 
 api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(me.router)
 api_router.include_router(profile.router)
+api_router.include_router(languages.router)
+api_router.include_router(courses.router)
+api_router.include_router(lessons.router)
+api_router.include_router(admin_content.router)

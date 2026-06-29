@@ -24,6 +24,13 @@
 | GET | `/api/v1/me` | bearer | 1 | DB-backed current user (provisions on first login). |
 | GET | `/api/v1/me/profile` | bearer | 1 | Current user's profile. |
 | PUT | `/api/v1/me/profile` | bearer | 1 | Update display name / skill level. |
+| GET | `/api/v1/languages` | none | 2 | List programming languages. |
+| GET | `/api/v1/courses` | none | 2 | List courses. |
+| GET | `/api/v1/courses/{slug}` | none | 2 | Course detail with ordered lessons. |
+| GET | `/api/v1/lessons/{id}` | none | 2 | Single lesson (markdown content). |
+| POST/PUT/DELETE | `/api/v1/admin/languages[/{id}]` | admin | 2 | Manage languages. |
+| POST/PUT/DELETE | `/api/v1/admin/courses[/{id}]` | admin | 2 | Manage courses. |
+| POST/PUT/DELETE | `/api/v1/admin/lessons[/{id}]` | admin | 2 | Manage lessons. |
 
 ### `GET /health`
 
@@ -69,16 +76,37 @@ Body (both fields optional; only provided fields change):
 
 Returns the updated `ProfileResponse` (same shape as the `GET`).
 
+### Content (Sprint 2)
+
+Reads are public; writes require an **admin** user (`is_admin = true`) and
+return `403` otherwise. Duplicate slugs return `409`.
+
+```jsonc
+// GET /api/v1/courses/python-basics
+{
+  "id": "…", "language_id": "…", "title": "Python Basics",
+  "slug": "python-basics", "description": "…",
+  "lessons": [
+    { "id": "…", "title": "Variables & Types", "slug": "variables-and-types", "order_index": 1 }
+  ]
+}
+```
+
+```jsonc
+// POST /api/v1/admin/lessons   (admin)
+{ "course_id": "…", "title": "Functions", "slug": "functions", "order_index": 3, "content": "# Functions\n…" }
+```
+
+Promote a user to admin with `python -m scripts.set_admin <email>` in the
+backend container.
+
 ## Planned endpoints (later sprints — not implemented)
 
 These are documented for design alignment only. Sprint numbers follow the
-[Sprint_02…08](Sprint_02.md) plan.
+[Sprint_03…08](Sprint_03.md) plan.
 
 | Sprint | Resource | Endpoints (sketch) |
 |--------|----------|--------------------|
-| 2 | Languages | `GET /languages` |
-| 2 | Courses | `GET /courses`, `GET /courses/{slug}` |
-| 2 | Lessons | `GET /lessons/{id}` |
 | 3 | Exercises | `GET /exercises/{id}`, `POST /exercises/{id}/submit` |
 | 4 | Execution | `POST /exercises/{id}/run`, `GET /submissions/{id}` |
 | 5 | Quizzes | `GET /quizzes/{id}`, `POST /quizzes/{id}/submit` |

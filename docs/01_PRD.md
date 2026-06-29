@@ -37,7 +37,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | Firebase auth (real verification) | 1 | ✅ done |
 | User / StudentProfile + provisioning | 1 | ✅ done |
 | Profile view/edit | 1 | ✅ done |
-| Courses & Lessons | 2 | ⬜ entity placeholder |
+| Languages, Courses & Lessons + admin CRUD | 2 | ✅ done |
 | Coding exercises (model & submissions) | 3 | ⬜ |
 | Judge0 execution & grading | 4 | ⬜ |
 | Quizzes | 5 | ⬜ |

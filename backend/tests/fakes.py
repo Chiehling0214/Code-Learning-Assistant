@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from app.domain.entities import StudentProfile, User
+from app.domain.entities import Course, Lesson, ProgrammingLanguage, StudentProfile, User
 
 
 def _now() -> datetime:
@@ -88,3 +88,153 @@ class FakeStudentProfileRepository:
         )
         self._by_user[user_id] = updated
         return updated
+
+
+class FakeLanguageRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, ProgrammingLanguage] = {}
+
+    def list_all(self) -> list[ProgrammingLanguage]:
+        return sorted(self._items.values(), key=lambda x: x.name)
+
+    def get_by_id(self, language_id: uuid.UUID) -> ProgrammingLanguage | None:
+        return self._items.get(language_id)
+
+    def get_by_slug(self, slug: str) -> ProgrammingLanguage | None:
+        return next((x for x in self._items.values() if x.slug == slug), None)
+
+    def create(self, *, name: str, slug: str) -> ProgrammingLanguage:
+        lang = ProgrammingLanguage(id=uuid.uuid4(), name=name, slug=slug, created_at=_now())
+        self._items[lang.id] = lang
+        return lang
+
+    def update(
+        self, language_id: uuid.UUID, *, name: str | None, slug: str | None
+    ) -> ProgrammingLanguage:
+        existing = self._items[language_id]
+        updated = ProgrammingLanguage(
+            id=existing.id,
+            name=name if name is not None else existing.name,
+            slug=slug if slug is not None else existing.slug,
+            created_at=existing.created_at,
+        )
+        self._items[language_id] = updated
+        return updated
+
+    def delete(self, language_id: uuid.UUID) -> None:
+        if language_id not in self._items:
+            raise LookupError(f"Language {language_id} not found")
+        del self._items[language_id]
+
+
+class FakeCourseRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, Course] = {}
+
+    def list_all(self) -> list[Course]:
+        return sorted(self._items.values(), key=lambda x: x.title)
+
+    def get_by_id(self, course_id: uuid.UUID) -> Course | None:
+        return self._items.get(course_id)
+
+    def get_by_slug(self, slug: str) -> Course | None:
+        return next((x for x in self._items.values() if x.slug == slug), None)
+
+    def create(
+        self, *, language_id: uuid.UUID, title: str, slug: str, description: str | None
+    ) -> Course:
+        now = _now()
+        course = Course(
+            id=uuid.uuid4(),
+            language_id=language_id,
+            title=title,
+            slug=slug,
+            description=description,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[course.id] = course
+        return course
+
+    def update(
+        self,
+        course_id: uuid.UUID,
+        *,
+        title: str | None,
+        slug: str | None,
+        description: str | None,
+    ) -> Course:
+        e = self._items[course_id]
+        updated = Course(
+            id=e.id,
+            language_id=e.language_id,
+            title=title if title is not None else e.title,
+            slug=slug if slug is not None else e.slug,
+            description=description if description is not None else e.description,
+            created_at=e.created_at,
+            updated_at=_now(),
+        )
+        self._items[course_id] = updated
+        return updated
+
+    def delete(self, course_id: uuid.UUID) -> None:
+        if course_id not in self._items:
+            raise LookupError(f"Course {course_id} not found")
+        del self._items[course_id]
+
+
+class FakeLessonRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, Lesson] = {}
+
+    def get_by_id(self, lesson_id: uuid.UUID) -> Lesson | None:
+        return self._items.get(lesson_id)
+
+    def list_by_course(self, course_id: uuid.UUID) -> list[Lesson]:
+        items = [x for x in self._items.values() if x.course_id == course_id]
+        return sorted(items, key=lambda x: (x.order_index, x.title))
+
+    def create(
+        self, *, course_id: uuid.UUID, title: str, slug: str, order_index: int, content: str
+    ) -> Lesson:
+        now = _now()
+        lesson = Lesson(
+            id=uuid.uuid4(),
+            course_id=course_id,
+            title=title,
+            slug=slug,
+            order_index=order_index,
+            content=content,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[lesson.id] = lesson
+        return lesson
+
+    def update(
+        self,
+        lesson_id: uuid.UUID,
+        *,
+        title: str | None,
+        slug: str | None,
+        order_index: int | None,
+        content: str | None,
+    ) -> Lesson:
+        e = self._items[lesson_id]
+        updated = Lesson(
+            id=e.id,
+            course_id=e.course_id,
+            title=title if title is not None else e.title,
+            slug=slug if slug is not None else e.slug,
+            order_index=order_index if order_index is not None else e.order_index,
+            content=content if content is not None else e.content,
+            created_at=e.created_at,
+            updated_at=_now(),
+        )
+        self._items[lesson_id] = updated
+        return updated
+
+    def delete(self, lesson_id: uuid.UUID) -> None:
+        if lesson_id not in self._items:
+            raise LookupError(f"Lesson {lesson_id} not found")
+        del self._items[lesson_id]

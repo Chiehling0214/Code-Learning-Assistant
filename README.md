@@ -6,11 +6,12 @@ CodePath AI guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
 sandbox.
 
-**Status — through Sprint 1:** production-quality scaffold (Sprint 0) plus
-authentication & user profiles (Sprint 1): real Firebase token verification,
-automatic user provisioning on first sign-in, and profile view/edit. The
-remaining business features (content CRUD, Judge0, quizzes, AI Teacher/Tutor,
-recommendations, billing) are scheduled across Sprints 2–8.
+**Status — through Sprint 2:** production-quality scaffold (Sprint 0),
+authentication & user profiles (Sprint 1), and a content domain (Sprint 2) —
+languages, courses, and lessons with public read APIs, admin CRUD, markdown
+lesson rendering, and a seed script. The remaining business features (Judge0,
+quizzes, AI Teacher/Tutor, recommendations, billing) are scheduled across
+Sprints 3–8.
 
 See [`docs/`](docs/) for full design documentation — start with
 [00_PROJECT.md](docs/00_PROJECT.md) and the per-sprint plans
@@ -107,6 +108,8 @@ npm run dev
 | `uvicorn app.main:app --reload` | backend | Run API |
 | `alembic upgrade head` | backend | Apply migrations |
 | `alembic revision --autogenerate -m "..."` | backend | New migration |
+| `python -m scripts.seed` | backend | Seed sample content |
+| `python -m scripts.set_admin <email>` | backend | Promote a user to admin |
 | `ruff check .` | backend | Lint |
 | `pytest -q` | backend | Tests |
 

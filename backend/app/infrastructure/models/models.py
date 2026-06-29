@@ -9,7 +9,16 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -87,3 +96,24 @@ class Course(TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     language: Mapped[ProgrammingLanguage] = relationship(back_populates="courses")
+    lessons: Mapped[list[Lesson]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+        order_by="Lesson.order_index",
+    )
+
+
+class Lesson(TimestampMixin, Base):
+    __tablename__ = "lessons"
+    __table_args__ = (UniqueConstraint("course_id", "slug", name="uq_lessons_course_slug"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    course_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    slug: Mapped[str] = mapped_column(String(255))
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    content: Mapped[str] = mapped_column(Text, default="", nullable=False)
+
+    course: Mapped[Course] = relationship(back_populates="lessons")

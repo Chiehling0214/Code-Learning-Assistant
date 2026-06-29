@@ -24,7 +24,11 @@ backend/
 │   │       └── routes/
 │   │           ├── health.py
 │   │           ├── me.py
-│   │           └── profile.py
+│   │           ├── profile.py
+│   │           ├── languages.py     # content reads (Sprint 2)
+│   │           ├── courses.py
+│   │           ├── lessons.py
+│   │           └── admin_content.py # admin CRUD (Sprint 2)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -35,7 +39,8 @@ backend/
 │   ├── application/             # use cases / services
 │   │   └── services/
 │   │       ├── health_service.py
-│   │       └── user_service.py  # provisioning + profile (Sprint 1)
+│   │       ├── user_service.py     # provisioning + profile (Sprint 1)
+│   │       └── content_service.py  # languages/courses/lessons (Sprint 2)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base
@@ -43,14 +48,16 @@ backend/
 │   │   ├── models/             # SQLAlchemy ORM models
 │   │   │   └── models.py
 │   │   └── repositories/        # concrete repo implementations
-│   │       └── sqlalchemy_repositories.py  # User + StudentProfile repos
+│   │       └── sqlalchemy_repositories.py  # User, Profile, Language, Course, Lesson
 │   └── schemas/                 # Pydantic DTOs
 │       ├── health.py
-│       └── user.py             # current user + profile schemas
+│       ├── user.py             # current user + profile schemas
+│       └── content.py          # language/course/lesson schemas
 ├── alembic/
 │   ├── env.py
 │   ├── script.py.mako
-│   └── versions/0001_initial.py
+│   └── versions/{0001_initial,0002_lessons}.py
+├── scripts/                     # seed.py, set_admin.py
 ├── alembic.ini
 ├── pyproject.toml
 ├── requirements.txt
@@ -113,9 +120,17 @@ uvicorn app.main:app --reload --port 8000
 docker compose up backend
 ```
 
+## Seeding & admin
+
+- `python -m scripts.seed` inserts a sample language, course, and lessons
+  (idempotent).
+- `python -m scripts.set_admin <email>` promotes a user to admin (users are
+  provisioned non-admin on first sign-in).
+
 ## Testing
 
 See [09_TESTING.md](09_TESTING.md). `pytest` with FastAPI `TestClient`. Tests use
 in-memory fake repositories (`tests/fakes.py`) so the suite needs no database:
-`/health` smoke test, `UserService` unit tests, and `/me` + `/me/profile` API
-tests (including the `401` path when stub auth is disabled).
+`/health` smoke test, `UserService` unit tests, `/me` + `/me/profile` API tests
+(including the `401` path when stub auth is disabled), and content read/admin-guard
+tests.

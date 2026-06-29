@@ -63,14 +63,64 @@ frontend/
 
 ## Acceptance Criteria
 
-- [ ] Migration `0002` creates the `lessons` table; `alembic upgrade head` is
-      clean.
-- [ ] Seed script populates ≥1 language, ≥1 course, ≥3 lessons.
-- [ ] `GET /courses/{slug}` returns the course with its ordered lessons.
-- [ ] Admin CRUD persists; non-admin write attempts return `403`.
-- [ ] Course/Lesson/Admin pages render live data (no placeholders).
-- [ ] `ruff`, `pytest`, frontend `lint` + `build` pass.
+- [x] Migration `0002` creates the `lessons` table; `alembic upgrade head` is
+      clean (applied live by the backend container on startup).
+- [x] Seed script populates ≥1 language, ≥1 course, ≥3 lessons (verified:
+      "Seeded language 'python', course 'python-basics', 3 new lesson(s)").
+- [x] `GET /courses/{slug}` returns the course with its ordered lessons
+      (verified: lessons returned in order 1, 2, 3).
+- [x] Admin CRUD persists; non-admin write attempts return `403`
+      (`test_content.py`; live admin write without token → `401`).
+- [x] Course/Lesson/Admin pages render live data (no placeholders).
+- [x] `ruff`, `pytest` (16 tests), frontend `lint` + `build` pass.
 
 ## Dependency
 
 - **Sprint 1** (auth + `is_admin` flag for admin guard).
+
+## Status — ✅ Complete
+
+**Date:** 2026-06-29
+
+### Delivered
+
+**Backend**
+- `Lesson` ORM model + relationship on `Course`; migration `0002_lessons`
+  (unique slug per course, `order_index`, markdown `content`).
+- Domain `Lesson` entity; `Language`/`Course`/`Lesson` repository interfaces and
+  SQLAlchemy implementations (full CRUD).
+- `ContentService` (`application/services/content_service.py`) for reads + admin
+  writes; `require_admin` dependency in `api/deps.py`.
+- Public reads: `GET /languages`, `/courses`, `/courses/{slug}` (with ordered
+  lessons), `/lessons/{id}`. Admin CRUD under `/admin/*` (languages, courses,
+  lessons), guarded by `is_admin`.
+- `IntegrityError` handler → `409` on duplicate slugs.
+- Scripts: `scripts/seed.py` (sample content, idempotent),
+  `scripts/set_admin.py` (promote a user to admin).
+- Tests: `tests/test_content.py` + content fakes (16 tests total, DB-free).
+
+**Frontend**
+- `features/content/hooks.ts` (TanStack Query hooks + admin mutations).
+- `lib/markdown.ts` (`marked` + `DOMPurify`) for safe lesson rendering.
+- Wired pages: `Course` (header + ordered lessons), `Lesson` (rendered
+  markdown), `Admin` (languages/courses/lessons CRUD with non-admin banner),
+  `Dashboard` (live course list).
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 16/16 pass.
+- Frontend: `lint` clean, `build` succeeds.
+- Live (Docker stack): migration `0002` applied automatically; `seed`
+  inserted Python / python-basics / 3 lessons; `GET /courses/python-basics`
+  returned lessons in order; admin write without token → `401`; missing
+  course/lesson → `404`.
+
+### Notes / follow-ups
+
+- Users are provisioned non-admin; promote with `python -m scripts.set_admin
+  <email>` then sign out/in. The Admin page shows a banner with this hint for
+  non-admins.
+- Admin UI covers create + delete + list (and full update via the API); richer
+  inline editing/reordering can be added later if needed.
+- The production JS bundle now exceeds Vite's 500 kB hint (Monaco + Firebase);
+  code-splitting is a future optimization, not a Sprint 2 blocker.

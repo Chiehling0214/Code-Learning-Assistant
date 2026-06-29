@@ -23,7 +23,9 @@ frontend/
 │   ├── main.tsx              # app entry, providers
 │   ├── App.tsx              # router + layout
 │   ├── index.css            # tailwind layers + theme tokens
-│   ├── pages/               # one file per route (Profile is live; others placeholder)
+│   ├── pages/               # one file per route (Dashboard/Course/Lesson/Admin/Profile live)
+│   ├── features/
+│   │   └── content/        # content query/mutation hooks (Sprint 2)
 │   ├── components/
 │   │   ├── ui/              # shadcn primitives (button, card, ...)
 │   │   ├── layout/         # AppLayout (nav + sign out)
@@ -33,6 +35,7 @@ frontend/
 │   │   ├── api.ts          # fetch wrapper -> backend
 │   │   ├── query-client.ts # TanStack Query client
 │   │   ├── firebase.ts     # Firebase init (guarded if unconfigured)
+│   │   ├── markdown.ts     # markdown -> sanitized HTML (marked + DOMPurify)
 │   │   └── auth.tsx        # AuthProvider + useAuth (sign in/out, session sync)
 │   ├── store/
 │   │   └── session.ts      # Zustand session store (current user)
@@ -48,22 +51,31 @@ frontend/
 
 `/` and `/login` are public. Everything below is wrapped in `ProtectedRoute`
 (redirects to `/login` when unauthenticated) and rendered inside `AppLayout`.
-Profile is fully implemented; the remaining private pages are placeholders.
+Dashboard, Course, Lesson, Admin, and Profile are live; the remaining private
+pages are placeholders.
 
 | Path | Page | Access |
 |------|------|--------|
 | `/` | Landing | public |
 | `/login` | Login (Google / email, or dev mode) | public |
-| `/dashboard` | Dashboard | private |
+| `/dashboard` | Dashboard (lists courses) | private |
 | `/today` | Today | private |
-| `/courses/:slug` | Course | private |
-| `/lessons/:id` | Lesson | private |
+| `/courses/:slug` | Course (header + ordered lessons) | private |
+| `/lessons/:id` | Lesson (rendered markdown) | private |
 | `/exercises/:id` | Coding Exercise (Monaco editor mounted) | private |
 | `/quizzes/:id` | Quiz | private |
 | `/progress` | Progress | private |
 | `/subscription` | Subscription | private |
-| `/admin` | Admin | private |
+| `/admin` | Admin (languages/courses/lessons CRUD) | private (admin) |
 | `/profile` | Profile (view/edit display name & skill level) | private |
+
+## Content (Sprint 2)
+
+- `features/content/hooks.ts` holds the TanStack Query hooks: `useLanguages`,
+  `useCourses`, `useCourse`, `useLesson`, plus admin create/delete mutations.
+- Lesson markdown is rendered via `lib/markdown.ts` (`marked` + `DOMPurify`).
+- The Admin page calls the admin endpoints; non-admin users get `403` and a
+  banner explaining how to be promoted (`scripts.set_admin`).
 
 ## Authentication (Sprint 1)
 

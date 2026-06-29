@@ -7,6 +7,7 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from app import __version__
 from app.api.v1.router import api_router
@@ -42,6 +43,15 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(request: Request, exc: IntegrityError):
+        # e.g. a duplicate slug or unique-constraint violation on a write.
+        logger.warning("Integrity error on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "Resource conflict (duplicate or constraint violation)"},
+        )
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):

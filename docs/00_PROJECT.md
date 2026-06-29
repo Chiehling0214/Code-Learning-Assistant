@@ -47,7 +47,7 @@ Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
 |--------|-------|--------|
 | **0** | Project bootstrap — scaffold, docs, infra. | ✅ done |
 | **1** | Authentication & user/profile (provisioning, profile edit). | ✅ done |
-| 2 | Content: languages, courses & lessons + admin CRUD. | ⬜ |
+| **2** | Content: languages, courses & lessons + admin CRUD. | ✅ done |
 | 3 | Coding exercises (model & submissions). | ⬜ |
 | 4 | Judge0 code execution & grading. | ⬜ |
 | 5 | Quizzes & auto-grading. | ⬜ |

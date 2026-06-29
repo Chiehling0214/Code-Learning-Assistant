@@ -9,15 +9,19 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.application.services.content_service import ContentService
 from app.application.services.user_service import UserService
 from app.core.config import Settings, get_settings
 from app.core.security import Identity, verify_token
 from app.domain.entities import User
 from app.infrastructure.db.session import get_session
 from app.infrastructure.repositories.sqlalchemy_repositories import (
+    SqlAlchemyCourseRepository,
+    SqlAlchemyLanguageRepository,
+    SqlAlchemyLessonRepository,
     SqlAlchemyStudentProfileRepository,
     SqlAlchemyUserRepository,
 )
@@ -72,3 +76,24 @@ def get_current_db_user(current_user: CurrentUser, service: UserServiceDep) -> U
 
 
 CurrentDbUser = Annotated[User, Depends(get_current_db_user)]
+
+
+def require_admin(current_user: CurrentDbUser) -> User:
+    """Guard for admin-only endpoints; returns ``403`` for non-admin users."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+
+AdminUser = Annotated[User, Depends(require_admin)]
+
+
+def get_content_service(session: DbSession) -> ContentService:
+    return ContentService(
+        SqlAlchemyLanguageRepository(session),
+        SqlAlchemyCourseRepository(session),
+        SqlAlchemyLessonRepository(session),
+    )
+
+
+ContentServiceDep = Annotated[ContentService, Depends(get_content_service)]

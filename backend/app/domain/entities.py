@@ -49,3 +49,15 @@ class Course:
     description: str | None
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class Lesson:
+    id: uuid.UUID
+    course_id: uuid.UUID
+    title: str
+    slug: str
+    order_index: int
+    content: str
+    created_at: datetime
+    updated_at: datetime

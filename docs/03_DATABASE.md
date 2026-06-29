@@ -61,17 +61,32 @@ implemented yet** — fields will be expanded in later sprints.
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
-## ER (Sprint 0)
+### `lessons` (Sprint 2)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| course_id | UUID (FK → courses.id) | cascade delete |
+| title | str | |
+| slug | str | unique per course (`uq_lessons_course_slug`) |
+| order_index | int | ordering within the course |
+| content | text | markdown |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+## ER
 
 ```text
 users 1───1 student_profiles
-programming_languages 1───* courses
+programming_languages 1───* courses 1───* lessons
 ```
 
 ## Migrations
 
-Alembic is initialized under `backend/alembic/`. The initial migration creates
-the four tables above.
+Alembic lives under `backend/alembic/`. Migrations to date:
+
+- `0001_initial` — users, student_profiles, programming_languages, courses.
+- `0002_lessons` — lessons table.
 
 ```bash
 # create/upgrade to latest
@@ -88,5 +103,10 @@ The compose stack runs `alembic upgrade head` automatically on backend start.
 - Primary keys are UUIDs.
 - Timestamps are `timestamptz`, UTC.
 - Table names are snake_case plural.
-- Future relationships (enrollments, lessons, attempts, etc.) are deferred to
-  later sprints; see [01_PRD.md](01_PRD.md) for the schedule.
+- Further entities (exercises, submissions, quizzes, attempts, etc.) are deferred
+  to later sprints; see [01_PRD.md](01_PRD.md) for the schedule.
+
+## Seeding
+
+`python -m scripts.seed` (from `backend/`, or in the backend container) inserts a
+sample language, course, and lessons. It is idempotent (rows keyed by slug).

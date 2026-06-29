@@ -32,6 +32,8 @@ Included tests:
 - `tests/test_user_service.py` — user/profile provisioning + profile updates.
 - `tests/test_me_api.py` — `/me` and `/me/profile` behaviour, plus the `401`
   path when stub auth is disabled.
+- `tests/test_content.py` — content reads (ordered lessons, `404`s) and the
+  admin guard (`403` for non-admins, create/delete for admins).
 
 ## Frontend
 
