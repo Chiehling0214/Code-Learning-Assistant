@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.application.services.content_service import ContentService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
+from app.application.services.quiz_service import QuizService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.user_service import UserService
 from app.core.config import Settings, get_settings
@@ -27,6 +28,8 @@ from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyExerciseRepository,
     SqlAlchemyLanguageRepository,
     SqlAlchemyLessonRepository,
+    SqlAlchemyQuizAttemptRepository,
+    SqlAlchemyQuizRepository,
     SqlAlchemyStudentProfileRepository,
     SqlAlchemySubmissionRepository,
     SqlAlchemyUserRepository,
@@ -130,3 +133,14 @@ def get_execution_service(settings: SettingsDep) -> ExecutionService:
 
 
 ExecutionServiceDep = Annotated[ExecutionService, Depends(get_execution_service)]
+
+
+def get_quiz_service(session: DbSession) -> QuizService:
+    return QuizService(
+        SqlAlchemyQuizRepository(session),
+        SqlAlchemyQuizAttemptRepository(session),
+        SqlAlchemyLessonRepository(session),
+    )
+
+
+QuizServiceDep = Annotated[QuizService, Depends(get_quiz_service)]

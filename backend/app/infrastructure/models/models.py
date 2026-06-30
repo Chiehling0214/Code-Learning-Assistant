@@ -158,3 +158,78 @@ class Submission(TimestampMixin, Base):
     # pending | passed | failed | error — graded in Sprint 4; starts "pending".
     status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+
+# --------------------------------------------------------------------------- #
+# Quizzes (Sprint 5)
+# --------------------------------------------------------------------------- #
+
+
+class Quiz(TimestampMixin, Base):
+    __tablename__ = "quizzes"
+    __table_args__ = (UniqueConstraint("lesson_id", "slug", name="uq_quizzes_lesson_slug"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lessons.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    slug: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    questions: Mapped[list[Question]] = relationship(
+        back_populates="quiz",
+        cascade="all, delete-orphan",
+        order_by="Question.order_index",
+    )
+
+
+class Question(Base):
+    __tablename__ = "questions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    quiz_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quizzes.id", ondelete="CASCADE"), index=True
+    )
+    prompt: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # "single" — single correct choice. Extensible to other types later.
+    type: Mapped[str] = mapped_column(String(16), default="single", nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    quiz: Mapped[Quiz] = relationship(back_populates="questions")
+    choices: Mapped[list[Choice]] = relationship(
+        back_populates="question",
+        cascade="all, delete-orphan",
+        order_by="Choice.order_index",
+    )
+
+
+class Choice(Base):
+    __tablename__ = "choices"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("questions.id", ondelete="CASCADE"), index=True
+    )
+    text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # The answer key. Never serialized to learners (see schemas/quiz.py).
+    is_correct: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    question: Mapped[Question] = relationship(back_populates="choices")
+
+
+class QuizAttempt(TimestampMixin, Base):
+    __tablename__ = "quiz_attempts"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    quiz_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quizzes.id", ondelete="CASCADE"), index=True
+    )
+    # Number of questions answered correctly.
+    score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Graded detail: {"selected": {qid: cid}, "total": int, "results": [...]}.
+    answers: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)

@@ -11,17 +11,25 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.entities import Choice as ChoiceEntity
 from app.domain.entities import Course as CourseEntity
 from app.domain.entities import Exercise as ExerciseEntity
 from app.domain.entities import Lesson as LessonEntity
 from app.domain.entities import ProgrammingLanguage as LanguageEntity
+from app.domain.entities import Question as QuestionEntity
+from app.domain.entities import Quiz as QuizEntity
+from app.domain.entities import QuizAttempt as QuizAttemptEntity
 from app.domain.entities import StudentProfile as ProfileEntity
 from app.domain.entities import Submission as SubmissionEntity
 from app.domain.entities import User as UserEntity
+from app.infrastructure.models.models import Choice as ChoiceModel
 from app.infrastructure.models.models import Course as CourseModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
 from app.infrastructure.models.models import Lesson as LessonModel
 from app.infrastructure.models.models import ProgrammingLanguage as LanguageModel
+from app.infrastructure.models.models import Question as QuestionModel
+from app.infrastructure.models.models import Quiz as QuizModel
+from app.infrastructure.models.models import QuizAttempt as QuizAttemptModel
 from app.infrastructure.models.models import StudentProfile as ProfileModel
 from app.infrastructure.models.models import Submission as SubmissionModel
 from app.infrastructure.models.models import User as UserModel
@@ -463,3 +471,145 @@ class SqlAlchemySubmissionRepository:
         self._session.flush()
         self._session.refresh(model)
         return _to_submission(model)
+
+
+# --------------------------------------------------------------------------- #
+# Quizzes
+# --------------------------------------------------------------------------- #
+
+
+def _to_choice(model: ChoiceModel) -> ChoiceEntity:
+    return ChoiceEntity(
+        id=model.id,
+        question_id=model.question_id,
+        text=model.text,
+        is_correct=model.is_correct,
+        order_index=model.order_index,
+    )
+
+
+def _to_question(model: QuestionModel) -> QuestionEntity:
+    return QuestionEntity(
+        id=model.id,
+        quiz_id=model.quiz_id,
+        prompt=model.prompt,
+        type=model.type,
+        order_index=model.order_index,
+        choices=[_to_choice(c) for c in model.choices],
+    )
+
+
+def _to_quiz(model: QuizModel) -> QuizEntity:
+    return QuizEntity(
+        id=model.id,
+        lesson_id=model.lesson_id,
+        title=model.title,
+        slug=model.slug,
+        description=model.description,
+        questions=[_to_question(q) for q in model.questions],
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+def _to_attempt(model: QuizAttemptModel) -> QuizAttemptEntity:
+    return QuizAttemptEntity(
+        id=model.id,
+        user_id=model.user_id,
+        quiz_id=model.quiz_id,
+        score=model.score,
+        answers=model.answers or {},
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyQuizRepository:
+    """Concrete :class:`~app.domain.repositories.QuizRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_id(self, quiz_id: uuid.UUID) -> QuizEntity | None:
+        model = self._session.get(QuizModel, quiz_id)
+        return _to_quiz(model) if model else None
+
+    def list_by_lesson(self, lesson_id: uuid.UUID) -> list[QuizEntity]:
+        stmt = (
+            select(QuizModel)
+            .where(QuizModel.lesson_id == lesson_id)
+            .order_by(QuizModel.title)
+        )
+        return [_to_quiz(m) for m in self._session.scalars(stmt).all()]
+
+    def create(
+        self, *, lesson_id: uuid.UUID, title: str, slug: str, description: str | None
+    ) -> QuizEntity:
+        model = QuizModel(lesson_id=lesson_id, title=title, slug=slug, description=description)
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_quiz(model)
+
+    def add_question(
+        self,
+        *,
+        quiz_id: uuid.UUID,
+        prompt: str,
+        type: str,
+        order_index: int,
+        choices: list[dict],
+    ) -> QuestionEntity:
+        question = QuestionModel(
+            quiz_id=quiz_id, prompt=prompt, type=type, order_index=order_index
+        )
+        for idx, choice in enumerate(choices):
+            question.choices.append(
+                ChoiceModel(
+                    text=choice["text"],
+                    is_correct=bool(choice.get("is_correct", False)),
+                    order_index=choice.get("order_index", idx),
+                )
+            )
+        self._session.add(question)
+        self._session.flush()
+        self._session.refresh(question)
+        return _to_question(question)
+
+    def delete(self, quiz_id: uuid.UUID) -> None:
+        model = self._session.get(QuizModel, quiz_id)
+        if model is None:
+            raise LookupError(f"Quiz {quiz_id} not found")
+        self._session.delete(model)
+        self._session.flush()
+
+
+class SqlAlchemyQuizAttemptRepository:
+    """Concrete :class:`~app.domain.repositories.QuizAttemptRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def create(
+        self, *, user_id: uuid.UUID, quiz_id: uuid.UUID, score: int, answers: dict
+    ) -> QuizAttemptEntity:
+        model = QuizAttemptModel(
+            user_id=user_id, quiz_id=quiz_id, score=score, answers=answers
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_attempt(model)
+
+    def list_for_user_and_quiz(
+        self, user_id: uuid.UUID, quiz_id: uuid.UUID
+    ) -> list[QuizAttemptEntity]:
+        stmt = (
+            select(QuizAttemptModel)
+            .where(
+                QuizAttemptModel.user_id == user_id,
+                QuizAttemptModel.quiz_id == quiz_id,
+            )
+            .order_by(QuizAttemptModel.created_at.desc())
+        )
+        return [_to_attempt(m) for m in self._session.scalars(stmt).all()]

@@ -39,6 +39,13 @@
 | DELETE | `/api/v1/admin/exercises/{id}` | admin | 3 | Delete an exercise. |
 | POST | `/api/v1/exercises/{id}/run` | bearer | 4 | Run code once against stdin (no grading). |
 | GET | `/api/v1/submissions/{id}` | bearer | 4 | Poll a submission's verdict (own only). |
+| GET | `/api/v1/lessons/{id}/quizzes` | none | 5 | List a lesson's quizzes. |
+| GET | `/api/v1/quizzes/{id}` | none | 5 | Quiz with questions/choices (no answer key). |
+| POST | `/api/v1/quizzes/{id}/submit` | bearer | 5 | Auto-grade answers; returns score + per-question result. |
+| GET | `/api/v1/quizzes/{id}/attempts` | bearer | 5 | Current user's attempts for the quiz. |
+| POST | `/api/v1/admin/quizzes` | admin | 5 | Create a quiz. |
+| POST | `/api/v1/admin/quizzes/{id}/questions` | admin | 5 | Add a question (with choices). |
+| DELETE | `/api/v1/admin/quizzes/{id}` | admin | 5 | Delete a quiz. |
 
 ### `GET /health`
 
@@ -136,14 +143,33 @@ unreachable, run/submit degrade gracefully (an `error` result, not a `500`).
 
 Judge0 is opt-in: `docker compose --profile judge0 up`.
 
+### Quizzes (Sprint 5)
+
+`GET /quizzes/{id}` returns the quiz with its questions and choices but **never**
+the `is_correct` answer key. `POST /quizzes/{id}/submit` takes a map of
+`question_id → choice_id`, auto-grades it, stores a `QuizAttempt`, and returns
+the score plus per-question correctness (revealing the correct choice for
+feedback). Admins author quizzes via the admin endpoints.
+
+```jsonc
+// GET /api/v1/quizzes/{id}
+{ "id": "…", "title": "Basics", "questions": [
+  { "id": "q1", "prompt": "2 + 2 = ?", "type": "single",
+    "choices": [ { "id": "c1", "text": "4" }, { "id": "c2", "text": "5" } ] } ] }
+
+// POST /api/v1/quizzes/{id}/submit   { "answers": { "q1": "c1" } }
+{ "attempt_id": "…", "score": 1, "total": 1,
+  "results": [ { "question_id": "q1", "correct": true,
+                 "selected_choice_id": "c1", "correct_choice_id": "c1" } ] }
+```
+
 ## Planned endpoints (later sprints — not implemented)
 
 These are documented for design alignment only. Sprint numbers follow the
-[Sprint_05…08](Sprint_05.md) plan.
+[Sprint_06…08](Sprint_06.md) plan.
 
 | Sprint | Resource | Endpoints (sketch) |
 |--------|----------|--------------------|
-| 5 | Quizzes | `GET /quizzes/{id}`, `POST /quizzes/{id}/submit` |
 | 6 | AI | `POST /ai/teacher`, `POST /ai/tutor` |
 | 7 | Today | `GET /today` |
 | 7 | Progress | `GET /progress` |

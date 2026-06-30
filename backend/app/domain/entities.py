@@ -87,3 +87,45 @@ class Submission:
     result: dict | None
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class Choice:
+    id: uuid.UUID
+    question_id: uuid.UUID
+    text: str
+    is_correct: bool
+    order_index: int
+
+
+@dataclass(frozen=True)
+class Question:
+    id: uuid.UUID
+    quiz_id: uuid.UUID
+    prompt: str
+    type: str
+    order_index: int
+    choices: list[Choice]
+
+
+@dataclass(frozen=True)
+class Quiz:
+    id: uuid.UUID
+    lesson_id: uuid.UUID
+    title: str
+    slug: str
+    description: str | None
+    questions: list[Question]
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class QuizAttempt:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    quiz_id: uuid.UUID
+    score: int
+    answers: dict
+    created_at: datetime
+    updated_at: datetime

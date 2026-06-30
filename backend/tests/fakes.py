@@ -6,10 +6,14 @@ import uuid
 from datetime import UTC, datetime
 
 from app.domain.entities import (
+    Choice,
     Course,
     Exercise,
     Lesson,
     ProgrammingLanguage,
+    Question,
+    Quiz,
+    QuizAttempt,
     StudentProfile,
     Submission,
     User,
@@ -370,3 +374,109 @@ class FakeSubmissionRepository:
         )
         self._items[submission_id] = updated
         return updated
+
+
+class FakeQuizRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, Quiz] = {}
+
+    def get_by_id(self, quiz_id: uuid.UUID) -> Quiz | None:
+        return self._items.get(quiz_id)
+
+    def list_by_lesson(self, lesson_id: uuid.UUID) -> list[Quiz]:
+        items = [q for q in self._items.values() if q.lesson_id == lesson_id]
+        return sorted(items, key=lambda q: q.title)
+
+    def create(
+        self, *, lesson_id: uuid.UUID, title: str, slug: str, description: str | None
+    ) -> Quiz:
+        now = _now()
+        quiz = Quiz(
+            id=uuid.uuid4(),
+            lesson_id=lesson_id,
+            title=title,
+            slug=slug,
+            description=description,
+            questions=[],
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[quiz.id] = quiz
+        return quiz
+
+    def add_question(
+        self,
+        *,
+        quiz_id: uuid.UUID,
+        prompt: str,
+        type: str,
+        order_index: int,
+        choices: list[dict],
+    ) -> Question:
+        quiz = self._items[quiz_id]
+        question_id = uuid.uuid4()
+        question = Question(
+            id=question_id,
+            quiz_id=quiz_id,
+            prompt=prompt,
+            type=type,
+            order_index=order_index,
+            choices=[
+                Choice(
+                    id=uuid.uuid4(),
+                    question_id=question_id,
+                    text=c["text"],
+                    is_correct=bool(c.get("is_correct", False)),
+                    order_index=c.get("order_index", idx),
+                )
+                for idx, c in enumerate(choices)
+            ],
+        )
+        # Quiz is frozen; rebuild it with the appended question.
+        self._items[quiz_id] = Quiz(
+            id=quiz.id,
+            lesson_id=quiz.lesson_id,
+            title=quiz.title,
+            slug=quiz.slug,
+            description=quiz.description,
+            questions=[*quiz.questions, question],
+            created_at=quiz.created_at,
+            updated_at=_now(),
+        )
+        return question
+
+    def delete(self, quiz_id: uuid.UUID) -> None:
+        if quiz_id not in self._items:
+            raise LookupError(f"Quiz {quiz_id} not found")
+        del self._items[quiz_id]
+
+
+class FakeQuizAttemptRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, QuizAttempt] = {}
+
+    def create(
+        self, *, user_id: uuid.UUID, quiz_id: uuid.UUID, score: int, answers: dict
+    ) -> QuizAttempt:
+        now = _now()
+        attempt = QuizAttempt(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            quiz_id=quiz_id,
+            score=score,
+            answers=answers,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[attempt.id] = attempt
+        return attempt
+
+    def list_for_user_and_quiz(
+        self, user_id: uuid.UUID, quiz_id: uuid.UUID
+    ) -> list[QuizAttempt]:
+        items = [
+            a
+            for a in self._items.values()
+            if a.user_id == user_id and a.quiz_id == quiz_id
+        ]
+        return sorted(items, key=lambda a: a.created_at, reverse=True)

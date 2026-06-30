@@ -39,6 +39,10 @@ Included tests:
 - `tests/test_execution.py` — grading (`passed`/`failed`/`error`, runtime/compile
   errors, hidden-case I/O), the `/run` endpoint, graceful degradation when Judge0
   is unavailable, and `GET /submissions/{id}` ownership.
+- `tests/test_quiz.py` — quiz reads never leak the `is_correct` answer key,
+  auto-grading correctness (full/partial score), attempt persistence, and the
+  admin authoring guard (`403` for non-admins, `400` for a question with no
+  correct choice).
 
 ## Frontend
 

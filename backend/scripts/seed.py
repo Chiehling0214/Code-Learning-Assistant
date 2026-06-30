@@ -8,7 +8,15 @@ Idempotent: safe to run repeatedly (rows are keyed by slug). Run with:
 from __future__ import annotations
 
 from app.infrastructure.db.session import SessionLocal
-from app.infrastructure.models.models import Course, Exercise, Lesson, ProgrammingLanguage
+from app.infrastructure.models.models import (
+    Choice,
+    Course,
+    Exercise,
+    Lesson,
+    ProgrammingLanguage,
+    Question,
+    Quiz,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -95,6 +103,64 @@ def _seed_lessons(session: Session, course: Course) -> int:
     return created
 
 
+QUIZ = {
+    "lesson_slug": "control-flow",
+    "slug": "control-flow-check",
+    "title": "Control Flow Check",
+    "description": "A quick check on Python control flow.",
+    "questions": [
+        {
+            "prompt": "Which keyword starts a conditional branch in Python?",
+            "choices": [
+                {"text": "if", "is_correct": True},
+                {"text": "when", "is_correct": False},
+                {"text": "switch", "is_correct": False},
+            ],
+        },
+        {
+            "prompt": "What does `else` do?",
+            "choices": [
+                {"text": "Runs when no preceding condition matched", "is_correct": True},
+                {"text": "Repeats the loop", "is_correct": False},
+                {"text": "Defines a function", "is_correct": False},
+            ],
+        },
+    ],
+}
+
+
+def _seed_quiz(session: Session, course: Course) -> int:
+    lesson = session.scalars(
+        select(Lesson).where(
+            Lesson.course_id == course.id, Lesson.slug == QUIZ["lesson_slug"]
+        )
+    ).first()
+    if lesson is None:
+        return 0
+    exists = session.scalars(
+        select(Quiz).where(Quiz.lesson_id == lesson.id, Quiz.slug == QUIZ["slug"])
+    ).first()
+    if exists is not None:
+        return 0
+    quiz = Quiz(
+        lesson_id=lesson.id,
+        slug=QUIZ["slug"],
+        title=QUIZ["title"],
+        description=QUIZ["description"],
+    )
+    for order, q in enumerate(QUIZ["questions"]):
+        question = Question(prompt=q["prompt"], type="single", order_index=order)
+        for choice_order, c in enumerate(q["choices"]):
+            question.choices.append(
+                Choice(
+                    text=c["text"], is_correct=c["is_correct"], order_index=choice_order
+                )
+            )
+        quiz.questions.append(question)
+    session.add(quiz)
+    return 1
+
+
 def _seed_exercise(session: Session, course: Course) -> int:
     lesson = session.scalars(
         select(Lesson).where(
@@ -130,12 +196,14 @@ def seed() -> None:
         language = _get_or_create_language(session)
         course = _get_or_create_course(session, language)
         created = _seed_lessons(session, course)
-        session.flush()  # ensure lessons have ids before attaching an exercise
+        session.flush()  # ensure lessons have ids before attaching content
         exercises = _seed_exercise(session, course)
+        quizzes = _seed_quiz(session, course)
         session.commit()
         print(
             f"Seeded language '{language.slug}', course '{course.slug}', "
-            f"{created} new lesson(s), {exercises} new exercise(s)."
+            f"{created} new lesson(s), {exercises} new exercise(s), "
+            f"{quizzes} new quiz(zes)."
         )
     except Exception:
         session.rollback()

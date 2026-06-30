@@ -40,7 +40,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | Languages, Courses & Lessons + admin CRUD | 2 | ✅ done |
 | Coding exercises (model & submissions) | 3 | ✅ done |
 | Judge0 execution & grading | 4 | ✅ done |
-| Quizzes | 5 | ⬜ |
+| Quizzes & auto-grading | 5 | ✅ done |
 | AI Teacher / AI Tutor | 6 | ⬜ |
 | Recommendation ("Today") + progress | 7 | ⬜ |
 | Subscriptions & hardening | 8 | ⬜ |

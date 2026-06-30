@@ -29,7 +29,8 @@ backend/
 │   │           ├── courses.py
 │   │           ├── lessons.py
 │   │           ├── admin_content.py # admin CRUD (Sprint 2)
-│   │           └── exercises.py     # exercises + submissions (Sprint 3)
+│   │           ├── exercises.py     # exercises + submissions (Sprint 3)
+│   │           └── quizzes.py       # quizzes + grading + authoring (Sprint 5)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -44,7 +45,8 @@ backend/
 │   │       ├── content_service.py     # languages/courses/lessons (Sprint 2)
 │   │       ├── exercise_service.py    # exercises (Sprint 3)
 │   │       ├── submission_service.py  # submissions (Sprint 3)
-│   │       └── execution_service.py   # run + grade against tests (Sprint 4)
+│   │       ├── execution_service.py   # run + grade against tests (Sprint 4)
+│   │       └── quiz_service.py        # quizzes + auto-grading (Sprint 5)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base

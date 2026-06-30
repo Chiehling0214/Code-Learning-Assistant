@@ -50,7 +50,7 @@ Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
 | **2** | Content: languages, courses & lessons + admin CRUD. | ✅ done |
 | **3** | Coding exercises (model & submissions). | ✅ done |
 | **4** | Judge0 code execution & grading. | ✅ done |
-| 5 | Quizzes & auto-grading. | ⬜ |
+| **5** | Quizzes & auto-grading. | ✅ done |
 | 6 | AI Teacher & AI Tutor (Gemini). | ⬜ |
 | 7 | Recommendation ("Today") & progress analytics. | ⬜ |
 | 8 | Subscriptions, billing & hardening. | ⬜ |

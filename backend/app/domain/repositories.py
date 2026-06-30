@@ -15,6 +15,9 @@ from app.domain.entities import (
     Exercise,
     Lesson,
     ProgrammingLanguage,
+    Question,
+    Quiz,
+    QuizAttempt,
     StudentProfile,
     Submission,
     User,
@@ -166,3 +169,39 @@ class SubmissionRepository(Protocol):
     def update_result(
         self, submission_id: uuid.UUID, *, status: str, result: dict | None
     ) -> Submission: ...
+
+
+class QuizRepository(Protocol):
+    """Persistence operations for quizzes (with nested questions/choices)."""
+
+    def get_by_id(self, quiz_id: uuid.UUID) -> Quiz | None: ...
+
+    def list_by_lesson(self, lesson_id: uuid.UUID) -> list[Quiz]: ...
+
+    def create(
+        self, *, lesson_id: uuid.UUID, title: str, slug: str, description: str | None
+    ) -> Quiz: ...
+
+    def add_question(
+        self,
+        *,
+        quiz_id: uuid.UUID,
+        prompt: str,
+        type: str,
+        order_index: int,
+        choices: list[dict],
+    ) -> Question: ...
+
+    def delete(self, quiz_id: uuid.UUID) -> None: ...
+
+
+class QuizAttemptRepository(Protocol):
+    """Persistence operations for :class:`~app.domain.entities.QuizAttempt`."""
+
+    def create(
+        self, *, user_id: uuid.UUID, quiz_id: uuid.UUID, score: int, answers: dict
+    ) -> QuizAttempt: ...
+
+    def list_for_user_and_quiz(
+        self, user_id: uuid.UUID, quiz_id: uuid.UUID
+    ) -> list[QuizAttempt]: ...

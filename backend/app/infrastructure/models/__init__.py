@@ -5,10 +5,14 @@ Alembic relies on for autogeneration.
 """
 
 from app.infrastructure.models.models import (
+    Choice,
     Course,
     Exercise,
     Lesson,
     ProgrammingLanguage,
+    Question,
+    Quiz,
+    QuizAttempt,
     StudentProfile,
     Submission,
     User,
@@ -22,4 +26,8 @@ __all__ = [
     "Lesson",
     "Exercise",
     "Submission",
+    "Quiz",
+    "Question",
+    "Choice",
+    "QuizAttempt",
 ]

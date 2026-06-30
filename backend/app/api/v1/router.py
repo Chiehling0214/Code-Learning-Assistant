@@ -11,6 +11,7 @@ from app.api.v1.routes import (
     lessons,
     me,
     profile,
+    quizzes,
 )
 
 api_router = APIRouter()
@@ -23,3 +24,5 @@ api_router.include_router(lessons.router)
 api_router.include_router(admin_content.router)
 api_router.include_router(exercises.router)
 api_router.include_router(exercises.admin_router)
+api_router.include_router(quizzes.router)
+api_router.include_router(quizzes.admin_router)

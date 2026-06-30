@@ -16,12 +16,14 @@ from app.api.deps import (
     get_current_db_user,
     get_execution_service,
     get_exercise_service,
+    get_quiz_service,
     get_submission_service,
     get_user_service,
 )
 from app.application.services.content_service import ContentService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
+from app.application.services.quiz_service import QuizService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.user_service import UserService
 from app.domain.entities import User
@@ -34,6 +36,8 @@ from tests.fakes import (
     FakeExerciseRepository,
     FakeLanguageRepository,
     FakeLessonRepository,
+    FakeQuizAttemptRepository,
+    FakeQuizRepository,
     FakeStudentProfileRepository,
     FakeSubmissionRepository,
     FakeUserRepository,
@@ -52,6 +56,8 @@ def fakes() -> SimpleNamespace:
         exercises=FakeExerciseRepository(),
         submissions=FakeSubmissionRepository(),
         runner=FakeCodeRunner(),
+        quizzes=FakeQuizRepository(),
+        attempts=FakeQuizAttemptRepository(),
     )
 
 
@@ -70,6 +76,9 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         fakes.submissions, fakes.exercises
     )
     app.dependency_overrides[get_execution_service] = lambda: ExecutionService(fakes.runner)
+    app.dependency_overrides[get_quiz_service] = lambda: QuizService(
+        fakes.quizzes, fakes.attempts, fakes.lessons
+    )
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

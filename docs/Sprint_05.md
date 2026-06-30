@@ -69,3 +69,55 @@ frontend/
 
 - **Sprint 2** (courses/lessons to attach quizzes to).
 - **Sprint 1** (user owning the attempt).
+
+## Status — ✅ Complete
+
+Quizzes attach to lessons; learners take them without the answer key leaking and
+are graded instantly; admins author them.
+
+**Backend**
+- Models `Quiz`, `Question`, `Choice`, `QuizAttempt` + migration `0004_quizzes`
+  (note: numbered 0004 — Sprint 4 added no table, reusing `submissions`).
+- Domain entities (nested `Quiz → Question → Choice`) + `QuizRepository` /
+  `QuizAttemptRepository` interfaces and SQLAlchemy implementations.
+- `QuizService`: `get_quiz` (full entity; API strips the answer key), `grade`
+  (compares answers, computes score, persists a `QuizAttempt`), `list_attempts`,
+  and authoring (`create_quiz`, `add_question` with validation, `delete_quiz`).
+- Schemas: learner-facing `QuizResponse`/`QuestionResponse`/`ChoiceResponse`
+  **omit `is_correct`**; submit/grade and admin authoring schemas.
+- Endpoints: `GET /lessons/{id}/quizzes`, `GET /quizzes/{id}` (sanitized),
+  `POST /quizzes/{id}/submit`, `GET /quizzes/{id}/attempts`; admin
+  `POST /admin/quizzes`, `POST /admin/quizzes/{id}/questions`,
+  `DELETE /admin/quizzes/{id}`.
+- `tests/test_quiz.py` + `FakeQuizRepository`/`FakeQuizAttemptRepository`
+  (44 tests total, DB-free).
+
+**Frontend**
+- `features/quizzes/hooks.ts` (quiz read, lesson quizzes, submit, attempts; admin
+  create/add-question/delete).
+- Quiz page: renders questions + choices, collects answers, submits, shows the
+  score and per-question correctness (correct choice highlighted, wrong pick
+  flagged).
+- Lesson page lists a lesson's quizzes; Admin page gains a quiz-authoring section
+  (create quiz under a course→lesson, add questions with choices + correct flag).
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 44/44 pass (answer-key never leaked, grading
+  full/partial score, attempt persisted, admin guard `403`, invalid question
+  `400`).
+- Frontend: `lint` clean, `build` succeeds.
+- Live (Docker stack): migration `0003_exercises → 0004_quizzes` applied to
+  Postgres on backend start; all seven quiz endpoints registered in the OpenAPI
+  schema; `GET /quizzes/{id}` on a real seeded row returned questions/choices with
+  **no `is_correct`**; unknown id → `404`. Auth-stub is disabled in this
+  deployment, so `submit`/`attempts` correctly require a token (`401` without
+  one); the grading path itself is covered by the unit suite.
+
+### Notes / follow-ups
+
+- Quizzes attach to a **lesson** (mirroring exercises); a lesson belongs to a
+  course, so they are reachable from a course too. Attaching directly to a course
+  was not needed for the acceptance criteria.
+- Questions use a single-correct-choice model (`type = "single"`); the column is
+  in place to extend to other question types later.

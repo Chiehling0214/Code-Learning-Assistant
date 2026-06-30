@@ -4,12 +4,14 @@ import { Link, useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLesson } from "@/features/content/hooks";
 import { useLessonExercises } from "@/features/exercises/hooks";
+import { useLessonQuizzes } from "@/features/quizzes/hooks";
 import { renderMarkdown } from "@/lib/markdown";
 
 export function LessonPage() {
   const { id } = useParams<{ id: string }>();
   const { data: lesson, isLoading, isError } = useLesson(id);
   const { data: exercises = [] } = useLessonExercises(id);
+  const { data: quizzes = [] } = useLessonQuizzes(id);
 
   const html = useMemo(() => (lesson ? renderMarkdown(lesson.content) : ""), [lesson]);
 
@@ -43,6 +45,22 @@ export function LessonPage() {
                   <span className="font-mono text-xs text-muted-foreground">
                     {exercise.language}
                   </span>
+                </CardContent>
+              </Link>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {quizzes.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">Quizzes</h2>
+          {quizzes.map((quiz) => (
+            <Card key={quiz.id} className="transition-colors hover:bg-accent">
+              <Link to={`/quizzes/${quiz.id}`}>
+                <CardContent className="flex items-center justify-between py-4">
+                  <span className="font-medium">{quiz.title}</span>
+                  <span className="text-xs text-muted-foreground">Quiz</span>
                 </CardContent>
               </Link>
             </Card>
