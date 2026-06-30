@@ -21,13 +21,40 @@ export interface ExerciseSummary {
 
 export type SubmissionStatus = "pending" | "passed" | "failed" | "error";
 
+export interface TestResult {
+  index: number;
+  passed: boolean;
+  status: string | null;
+  input?: string;
+  expected?: string;
+  actual?: string;
+  stderr?: string;
+}
+
+export interface GradingResult {
+  verdict?: SubmissionStatus;
+  passed?: number;
+  total?: number;
+  error?: string;
+  compile_output?: string | null;
+  tests?: TestResult[];
+}
+
 export interface Submission {
   id: string;
   exercise_id: string;
   code: string;
   status: SubmissionStatus;
-  result: Record<string, unknown> | null;
+  result: GradingResult | null;
   created_at: string;
+}
+
+export interface RunResult {
+  stdout: string;
+  stderr: string;
+  status: string | null;
+  compile_output: string | null;
+  error: string | null;
 }
 
 export function useExercise(id: string | undefined) {
@@ -64,5 +91,37 @@ export function useSubmit(exerciseId: string | undefined) {
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["submissions", exerciseId] }),
+  });
+}
+
+export function useRun(exerciseId: string | undefined) {
+  return useMutation({
+    mutationFn: (vars: { code: string; stdin?: string }) =>
+      apiFetch<RunResult>(`/exercises/${exerciseId}/run`, {
+        method: "POST",
+        body: JSON.stringify({ code: vars.code, stdin: vars.stdin ?? "" }),
+      }),
+  });
+}
+
+/**
+ * Poll a single submission until it reaches a terminal status, so the UI can
+ * show the verdict once background grading finishes.
+ */
+export function useSubmission(submissionId: string | undefined, exerciseId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: ["submission", submissionId],
+    queryFn: async () => {
+      const submission = await apiFetch<Submission>(`/submissions/${submissionId}`);
+      if (submission.status !== "pending") {
+        // Verdict is in — refresh the history list too.
+        queryClient.invalidateQueries({ queryKey: ["submissions", exerciseId] });
+      }
+      return submission;
+    },
+    enabled: Boolean(submissionId),
+    refetchInterval: (query) =>
+      query.state.data && query.state.data.status === "pending" ? 1500 : false,
   });
 }

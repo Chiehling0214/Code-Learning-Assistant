@@ -36,6 +36,9 @@ Included tests:
   admin guard (`403` for non-admins, create/delete for admins).
 - `tests/test_submissions.py` — exercise reads (no `test_spec` leak), submitting
   (`pending`), submission history, and the admin create guard.
+- `tests/test_execution.py` — grading (`passed`/`failed`/`error`, runtime/compile
+  errors, hidden-case I/O), the `/run` endpoint, graceful degradation when Judge0
+  is unavailable, and `GET /submissions/{id}` ownership.
 
 ## Frontend
 

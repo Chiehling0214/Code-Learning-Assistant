@@ -27,6 +27,13 @@ services:
       # Path INSIDE the container; the host key is mounted there via volumes below.
       FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-/run/secrets/firebase-key.json}
       AUTH_STUB_ENABLED: ${AUTH_STUB_ENABLED:-true}
+      # Judge0 code execution. Set JUDGE0_RAPIDAPI_KEY to use the hosted RapidAPI
+      # endpoint (no local containers); otherwise the backend uses JUDGE0_URL
+      # (start it with `--profile judge0`) and degrades gracefully if unreachable.
+      JUDGE0_RAPIDAPI_KEY: ${JUDGE0_RAPIDAPI_KEY:-}
+      JUDGE0_RAPIDAPI_HOST: ${JUDGE0_RAPIDAPI_HOST:-judge0-ce.p.rapidapi.com}
+      JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
+      JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-}
       BACKEND_PORT: 8000
     ports:
       - "8000:8000"
@@ -54,5 +61,53 @@ services:
     depends_on:
       - backend
 
+  # --- Judge0 code execution (opt-in) ---------------------------------------
+  # Start with:  docker compose --profile judge0 up
+  # Heavy + requires a privileged container; on Docker Desktop / cgroup v2 it may
+  # need extra host config. The core stack runs fine without it (execution
+  # degrades gracefully), which is why it is behind a profile.
+  judge0:
+    image: judge0/judge0:1.13.1
+    profiles: ["judge0"]
+    volumes:
+      - ./docker/judge0.conf:/judge0.conf:ro
+    privileged: true
+    ports:
+      - "2358:2358"
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    restart: unless-stopped
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    profiles: ["judge0"]
+    command: ["./scripts/workers"]
+    volumes:
+      - ./docker/judge0.conf:/judge0.conf:ro
+    privileged: true
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    restart: unless-stopped
+
+  judge0-db:
+    image: postgres:16-alpine
+    profiles: ["judge0"]
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  judge0-redis:
+    image: redis:7-alpine
+    profiles: ["judge0"]
+    command: ["redis-server", "--appendonly", "no"]
+    restart: unless-stopped
+
 volumes:
   postgres-data:
+  judge0-data:

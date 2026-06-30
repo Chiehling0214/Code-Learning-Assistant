@@ -1,12 +1,13 @@
-# Sprint 06 — AI Teacher & AI Tutor (Claude)
+# Sprint 06 — AI Teacher & AI Tutor (Gemini)
 
 **Duration:** ~4 days
 **Theme:** Bring the AI features online behind a provider interface, powered by
-Claude. See [05_AI.md](05_AI.md) for the design this sprint implements.
+**Google Gemini (free tier)**. See [05_AI.md](05_AI.md) for the design this
+sprint implements.
 
 ## Goal
 
-Implement the `AIProvider` port and a concrete `ClaudeAIProvider`, exposing an
+Implement the `AIProvider` port and a concrete `GeminiAIProvider`, exposing an
 **AI Teacher** (explains/expands lesson content for the learner's level) and an
 **AI Tutor** (reviews submitted code, gives hints/feedback, answers questions).
 The AI Teacher can also **generate lessons/exercises that are written back into
@@ -20,7 +21,8 @@ Sprint 2–4 machinery.
   depth or in simpler terms.
 - As a learner stuck on an exercise, I can ask the AI Tutor for a hint or
   feedback on my current code without being given the full answer.
-- As the platform, I control which Claude model is used and cap usage per user.
+- As the platform, I control which Gemini model is used and cap usage per user
+  (the free tier has hard request limits).
 - As an admin, I can have the AI Teacher generate a lesson or exercise for a
   topic/level; it is saved as a (reviewable) row in the normal content tables.
 
@@ -29,9 +31,11 @@ Sprint 2–4 machinery.
 ### Backend
 1. Define `AIProvider` protocol (`application/ports/ai_provider.py`) with
    `teach()` and `tutor()` (per [05_AI.md](05_AI.md)).
-2. `ClaudeAIProvider` (`infrastructure/ai/claude_provider.py`) using the
-   Anthropic SDK; model ids from config (default `claude-opus-4-8` for teaching,
-   `claude-sonnet-4-6` for tutoring). Add `ANTHROPIC_API_KEY`, model settings.
+2. `GeminiAIProvider` (`infrastructure/ai/gemini_provider.py`) using the Google
+   Gen AI SDK (`google-genai`); model ids from config (default
+   `gemini-2.5-flash`; `gemini-2.5-pro` optionally for teaching). Add
+   `GEMINI_API_KEY` (from Google AI Studio) + model settings. Handle `429`
+   quota errors from the free tier gracefully.
 3. Server-side prompt construction; never pass raw client prompts through.
 4. `AITeacherService` / `AITutorService` orchestrating the provider; persist an
    `AIInteraction` record (FK → user, type, tokens) + migration `0005`.
@@ -64,9 +68,9 @@ Sprint 2–4 machinery.
 
 ```text
 backend/
-  app/core/config.py                          # + ANTHROPIC_API_KEY, model ids, budgets
+  app/core/config.py                          # + GEMINI_API_KEY, model ids, budgets
   app/application/ports/ai_provider.py        (new)
-  app/infrastructure/ai/claude_provider.py    (new)
+  app/infrastructure/ai/gemini_provider.py    (new)
   app/application/services/{ai_teacher_service,ai_tutor_service}.py  (new)
   app/application/services/generate_content_service.py  (new — AI -> lessons/exercises)
   app/infrastructure/models/models.py          # + AIInteraction, + source columns
@@ -87,9 +91,10 @@ frontend/
 - [ ] `POST /ai/teacher` returns a relevant explanation for a lesson concept.
 - [ ] `POST /ai/tutor` returns feedback that references the submitted code and
       gives hints rather than a full solution.
-- [ ] Model selection is configuration-driven; swapping the model id requires no
-      code change.
-- [ ] Token usage is logged; per-user rate limit is enforced.
+- [ ] Model selection is configuration-driven; swapping the model id (or provider)
+      requires no code change.
+- [ ] Usage is logged; per-user rate limiting respects the Gemini free-tier limits
+      and `429` quota errors are handled gracefully.
 - [ ] All AI calls go through `AIProvider` — no provider SDK calls leak into the
       api/application layers.
 - [ ] AI-generated lessons/exercises are written via `ContentService` into the

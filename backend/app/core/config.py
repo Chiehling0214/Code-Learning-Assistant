@@ -37,6 +37,20 @@ class Settings(BaseSettings):
     firebase_credentials_file: str | None = None
     auth_stub_enabled: bool = True
 
+    # --- Judge0 (code execution, Sprint 4) ---
+    # Base URL of the Judge0 instance. For self-hosted use the in-cluster URL;
+    # for RapidAPI leave this and set judge0_rapidapi_key (the client then targets
+    # the RapidAPI host below automatically).
+    judge0_url: str = "http://judge0:2358"
+    # Self-hosted auth token (sent as X-Auth-Token). Ignored in RapidAPI mode.
+    judge0_auth_token: str | None = None
+    # RapidAPI mode: when a key is set the client switches to the hosted Judge0 CE
+    # endpoint and RapidAPI headers — no local Judge0 containers needed.
+    judge0_rapidapi_key: str | None = None
+    judge0_rapidapi_host: str = "judge0-ce.p.rapidapi.com"
+    # Seconds to wait for a single Judge0 execution before giving up.
+    judge0_timeout: float = 20.0
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, value: object) -> object:

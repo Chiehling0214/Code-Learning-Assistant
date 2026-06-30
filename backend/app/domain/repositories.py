@@ -162,3 +162,7 @@ class SubmissionRepository(Protocol):
         code: str,
         status: str = "pending",
     ) -> Submission: ...
+
+    def update_result(
+        self, submission_id: uuid.UUID, *, status: str, result: dict | None
+    ) -> Submission: ...

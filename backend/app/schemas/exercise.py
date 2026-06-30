@@ -50,6 +50,19 @@ class SubmitRequest(BaseModel):
     code: str = Field(min_length=1)
 
 
+class RunRequest(BaseModel):
+    code: str = Field(min_length=1)
+    stdin: str = ""
+
+
+class RunResponse(BaseModel):
+    stdout: str = ""
+    stderr: str = ""
+    status: str | None = None
+    compile_output: str | None = None
+    error: str | None = None
+
+
 class ExerciseCreate(BaseModel):
     lesson_id: uuid.UUID
     language: str = Field(default="python", max_length=32)

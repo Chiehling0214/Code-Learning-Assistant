@@ -43,15 +43,19 @@ backend/
 │   │       ├── user_service.py        # provisioning + profile (Sprint 1)
 │   │       ├── content_service.py     # languages/courses/lessons (Sprint 2)
 │   │       ├── exercise_service.py    # exercises (Sprint 3)
-│   │       └── submission_service.py  # submissions (Sprint 3)
+│   │       ├── submission_service.py  # submissions (Sprint 3)
+│   │       └── execution_service.py   # run + grade against tests (Sprint 4)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base
 │   │   │   └── session.py      # engine + per-request unit of work
 │   │   ├── models/             # SQLAlchemy ORM models
 │   │   │   └── models.py
+│   │   ├── judge0/             # Judge0 HTTP client (Sprint 4)
+│   │   │   └── client.py
+│   │   ├── grading.py         # background grading orchestrator (Sprint 4)
 │   │   └── repositories/        # concrete repo implementations
-│   │       └── sqlalchemy_repositories.py  # User, Profile, Language, Course, Lesson
+│   │       └── sqlalchemy_repositories.py  # User, Profile, Language, Course, Lesson, ...
 │   └── schemas/                 # Pydantic DTOs
 │       ├── health.py
 │       ├── user.py             # current user + profile schemas
@@ -73,7 +77,17 @@ backend/
 `app/core/config.py` defines a `Settings` model read from environment variables
 (and `.env`). Access via the cached `get_settings()` accessor. Key vars:
 `DATABASE_URL`, `ENVIRONMENT`, `LOG_LEVEL`, `CORS_ORIGINS`,
-`FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_FILE`, `AUTH_STUB_ENABLED`.
+`FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_FILE`, `AUTH_STUB_ENABLED`,
+`JUDGE0_URL`, `JUDGE0_AUTH_TOKEN`, `JUDGE0_TIMEOUT`.
+
+## Code Execution (Sprint 4)
+
+Submitting an exercise stores the submission `pending` and schedules background
+grading (`infrastructure/grading.py`) which runs the code against the exercise's
+`test_spec` via the Judge0 client and persists a `passed` / `failed` / `error`
+verdict. The Run button uses `POST /exercises/{id}/run` (no grading). Judge0 is
+**opt-in** (`docker compose --profile judge0 up`); when it is unreachable,
+run/submit degrade gracefully to an `error` result instead of failing.
 
 ## Dependency Injection
 
@@ -137,4 +151,6 @@ See [09_TESTING.md](09_TESTING.md). `pytest` with FastAPI `TestClient`. Tests us
 in-memory fake repositories (`tests/fakes.py`, shared via a `fakes` fixture) so
 the suite needs no database: `/health` smoke test, `UserService` unit tests,
 `/me` + `/me/profile` API tests (including the `401` path when stub auth is
-disabled), content read/admin-guard tests, and exercise/submission tests.
+disabled), content read/admin-guard tests, exercise/submission tests, and
+execution/grading tests (mocked Judge0 runner — pass/fail/error paths and the
+graceful-degradation path).

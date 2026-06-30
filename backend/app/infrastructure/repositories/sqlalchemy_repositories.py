@@ -451,3 +451,15 @@ class SqlAlchemySubmissionRepository:
         self._session.flush()
         self._session.refresh(model)
         return _to_submission(model)
+
+    def update_result(
+        self, submission_id: uuid.UUID, *, status: str, result: dict | None
+    ) -> SubmissionEntity:
+        model = self._session.get(SubmissionModel, submission_id)
+        if model is None:
+            raise LookupError(f"Submission {submission_id} not found")
+        model.status = status
+        model.result = result
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_submission(model)

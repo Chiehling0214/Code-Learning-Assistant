@@ -17,7 +17,7 @@
             └──────┬───────────────┬───────────────┬───────┘
                    │               │               │
         ┌──────────▼───┐   ┌───────▼──────┐  ┌─────▼─────────┐
-        │ PostgreSQL   │   │ Judge0 (L2)  │  │ Claude / AI   │
+        │ PostgreSQL   │   │ Judge0 (L2)  │  │ Gemini / AI   │
         │ (SQLAlchemy  │   │ code runner  │  │ (L4)          │
         │  + Alembic)  │   │ (later)      │  │ (later)       │
         └──────────────┘   └──────────────┘  └───────────────┘
@@ -38,7 +38,7 @@ application     (use cases)      services / orchestration, no framework code
 domain          (enterprise)     entities + repository interfaces, pure Python
   ▲  implemented by
 infrastructure  (details)        SQLAlchemy models, repo impls, db session,
-                                 external clients (Firebase, Judge0, Claude)
+                                 external clients (Firebase, Judge0, Gemini)
 ```
 
 - **domain** is pure: dataclasses/entities and abstract repository protocols.

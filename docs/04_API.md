@@ -33,10 +33,12 @@
 | POST/PUT/DELETE | `/api/v1/admin/lessons[/{id}]` | admin | 2 | Manage lessons. |
 | GET | `/api/v1/lessons/{id}/exercises` | none | 3 | List a lesson's exercises. |
 | GET | `/api/v1/exercises/{id}` | none | 3 | Exercise (prompt + starter code; no test spec). |
-| POST | `/api/v1/exercises/{id}/submit` | bearer | 3 | Store a submission (`pending`). |
+| POST | `/api/v1/exercises/{id}/submit` | bearer | 3 | Store a submission, graded in the background. |
 | GET | `/api/v1/exercises/{id}/submissions` | bearer | 3 | Current user's submissions for the exercise. |
 | POST | `/api/v1/admin/exercises` | admin | 3 | Create an exercise. |
 | DELETE | `/api/v1/admin/exercises/{id}` | admin | 3 | Delete an exercise. |
+| POST | `/api/v1/exercises/{id}/run` | bearer | 4 | Run code once against stdin (no grading). |
+| GET | `/api/v1/submissions/{id}` | bearer | 4 | Poll a submission's verdict (own only). |
 
 ### `GET /health`
 
@@ -113,18 +115,34 @@ stored with `status: "pending"` — execution and grading arrive in Sprint 4.
 The exercise read never includes `test_spec` (hidden test cases).
 
 ```jsonc
-// POST /api/v1/exercises/{id}/submit   { "code": "print('hi')" }  -> 201
+// POST /api/v1/exercises/{id}/submit   { "code": "print('hi')" }  -> 201 (pending)
 { "id": "…", "exercise_id": "…", "code": "print('hi')", "status": "pending", "result": null, "created_at": "…" }
 ```
+
+### Execution & grading (Sprint 4)
+
+`POST /exercises/{id}/run` runs the code once (no grading) and returns
+stdout/stderr. `POST …/submit` now schedules **background grading** via Judge0;
+the client polls `GET /submissions/{id}` until `status` leaves `pending`
+(`passed` | `failed` | `error`). Verdicts and per-test results are persisted on
+the submission; hidden test cases never reveal their I/O. If Judge0 is
+unreachable, run/submit degrade gracefully (an `error` result, not a `500`).
+
+```jsonc
+// GET /api/v1/submissions/{id}  (after grading)
+{ "id": "…", "status": "passed",
+  "result": { "verdict": "passed", "passed": 1, "total": 1, "tests": [ { "index": 0, "passed": true } ] } }
+```
+
+Judge0 is opt-in: `docker compose --profile judge0 up`.
 
 ## Planned endpoints (later sprints — not implemented)
 
 These are documented for design alignment only. Sprint numbers follow the
-[Sprint_04…08](Sprint_04.md) plan.
+[Sprint_05…08](Sprint_05.md) plan.
 
 | Sprint | Resource | Endpoints (sketch) |
 |--------|----------|--------------------|
-| 4 | Execution | `POST /exercises/{id}/run`, `GET /submissions/{id}` |
 | 5 | Quizzes | `GET /quizzes/{id}`, `POST /quizzes/{id}/submit` |
 | 6 | AI | `POST /ai/teacher`, `POST /ai/tutor` |
 | 7 | Today | `GET /today` |

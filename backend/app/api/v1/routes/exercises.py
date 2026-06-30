@@ -1,26 +1,29 @@
 """Coding-exercise endpoints.
 
 - Public: read an exercise, list a lesson's exercises.
-- Authenticated learner: submit code (stored ``pending``), list own submissions.
+- Authenticated learner: run code, submit code (graded in the background via
+  Judge0), poll a submission, list own submissions.
 - Admin: create / delete exercises.
-
-Code execution and grading arrive in Sprint 4; submissions start as ``pending``.
 """
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from app.api.deps import (
     CurrentDbUser,
+    ExecutionServiceDep,
     ExerciseServiceDep,
     SubmissionServiceDep,
     require_admin,
 )
+from app.infrastructure.grading import grade_submission
 from app.schemas.exercise import (
     ExerciseCreate,
     ExerciseResponse,
     ExerciseSummary,
+    RunRequest,
+    RunResponse,
     SubmissionResponse,
     SubmitRequest,
 )
@@ -71,6 +74,29 @@ def get_exercise(exercise_id: uuid.UUID, service: ExerciseServiceDep) -> Exercis
     return _exercise_response(exercise)
 
 
+@router.post("/exercises/{exercise_id}/run", response_model=RunResponse)
+def run_exercise(
+    exercise_id: uuid.UUID,
+    payload: RunRequest,
+    current_user: CurrentDbUser,
+    exercises: ExerciseServiceDep,
+    execution: ExecutionServiceDep,
+) -> RunResponse:
+    """Run code once against optional stdin (no grading) for the Run button."""
+    try:
+        exercise = exercises.get_exercise(exercise_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    result = execution.run(code=payload.code, language=exercise.language, stdin=payload.stdin)
+    return RunResponse(
+        stdout=result.get("stdout", ""),
+        stderr=result.get("stderr", ""),
+        status=result.get("status"),
+        compile_output=result.get("compile_output"),
+        error=result.get("error"),
+    )
+
+
 @router.post(
     "/exercises/{exercise_id}/submit",
     response_model=SubmissionResponse,
@@ -81,6 +107,7 @@ def submit_exercise(
     payload: SubmitRequest,
     current_user: CurrentDbUser,
     service: SubmissionServiceDep,
+    background: BackgroundTasks,
 ) -> SubmissionResponse:
     try:
         submission = service.create_submission(
@@ -88,6 +115,8 @@ def submit_exercise(
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    # Grade in the background; the client polls GET /submissions/{id}.
+    background.add_task(grade_submission, submission.id)
     return _submission_response(submission)
 
 
@@ -99,6 +128,21 @@ def list_submissions(
 ) -> list[SubmissionResponse]:
     submissions = service.list_submissions(user_id=current_user.id, exercise_id=exercise_id)
     return [_submission_response(s) for s in submissions]
+
+
+@router.get("/submissions/{submission_id}", response_model=SubmissionResponse)
+def get_submission(
+    submission_id: uuid.UUID,
+    current_user: CurrentDbUser,
+    service: SubmissionServiceDep,
+) -> SubmissionResponse:
+    try:
+        submission = service.get_submission(
+            user_id=current_user.id, submission_id=submission_id
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _submission_response(submission)
 
 
 # ----- admin -----

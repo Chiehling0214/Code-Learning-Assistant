@@ -14,11 +14,13 @@ import pytest
 from app.api.deps import (
     get_content_service,
     get_current_db_user,
+    get_execution_service,
     get_exercise_service,
     get_submission_service,
     get_user_service,
 )
 from app.application.services.content_service import ContentService
+from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.user_service import UserService
@@ -27,6 +29,7 @@ from app.main import app
 from fastapi.testclient import TestClient
 
 from tests.fakes import (
+    FakeCodeRunner,
     FakeCourseRepository,
     FakeExerciseRepository,
     FakeLanguageRepository,
@@ -48,6 +51,7 @@ def fakes() -> SimpleNamespace:
         lessons=FakeLessonRepository(),
         exercises=FakeExerciseRepository(),
         submissions=FakeSubmissionRepository(),
+        runner=FakeCodeRunner(),
     )
 
 
@@ -65,6 +69,7 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
     app.dependency_overrides[get_submission_service] = lambda: SubmissionService(
         fakes.submissions, fakes.exercises
     )
+    app.dependency_overrides[get_execution_service] = lambda: ExecutionService(fakes.runner)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

@@ -13,6 +13,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.application.services.content_service import ContentService
+from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.user_service import UserService
@@ -20,6 +21,7 @@ from app.core.config import Settings, get_settings
 from app.core.security import Identity, verify_token
 from app.domain.entities import User
 from app.infrastructure.db.session import get_session
+from app.infrastructure.judge0.client import Judge0Client
 from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyCourseRepository,
     SqlAlchemyExerciseRepository,
@@ -121,3 +123,10 @@ def get_submission_service(session: DbSession) -> SubmissionService:
 
 
 SubmissionServiceDep = Annotated[SubmissionService, Depends(get_submission_service)]
+
+
+def get_execution_service(settings: SettingsDep) -> ExecutionService:
+    return ExecutionService(Judge0Client(settings))
+
+
+ExecutionServiceDep = Annotated[ExecutionService, Depends(get_execution_service)]

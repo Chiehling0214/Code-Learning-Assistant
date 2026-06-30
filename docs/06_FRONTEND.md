@@ -78,14 +78,16 @@ pages are placeholders.
 - The Admin page calls the admin endpoints; non-admin users get `403` and a
   banner explaining how to be promoted (`scripts.set_admin`).
 
-## Exercises (Sprint 3)
+## Exercises (Sprint 3–4)
 
 - `features/exercises/hooks.ts`: `useExercise`, `useLessonExercises`,
-  `useSubmissions`, `useSubmit`.
+  `useSubmissions`, `useSubmit`, `useRun`, and `useSubmission` (polls a single
+  submission until grading finishes).
 - The Coding Exercise page loads the exercise, seeds Monaco with its starter
-  code and language, submits code (stored `pending`), and shows a submission
-  history (`components/SubmissionList.tsx`). The "Run" button stays disabled
-  until Judge0 lands in Sprint 4.
+  code and language, and offers **Run** (one-off execution, shows stdout/stderr)
+  and **Submit** (graded in the background; the page polls for the verdict and
+  shows a per-test breakdown via `components/ResultPanel.tsx`). A submission
+  history is shown via `components/SubmissionList.tsx`.
 - The Lesson page links to its exercises.
 
 ## Authentication (Sprint 1)

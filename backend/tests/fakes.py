@@ -14,10 +14,33 @@ from app.domain.entities import (
     Submission,
     User,
 )
+from app.infrastructure.judge0.client import Judge0Error
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+class FakeCodeRunner:
+    """Configurable stand-in for the Judge0 client used in execution tests."""
+
+    def __init__(self) -> None:
+        self.result: dict = {
+            "stdout": "",
+            "stderr": "",
+            "status_id": 3,
+            "status": "Accepted",
+            "compile_output": None,
+        }
+        self.raise_error = False
+
+    def set(self, **kwargs) -> None:
+        self.result.update(kwargs)
+
+    def execute(self, source_code: str, language: str, stdin: str = "") -> dict:
+        if self.raise_error:
+            raise Judge0Error("Judge0 unavailable")
+        return dict(self.result)
 
 
 class FakeUserRepository:
@@ -330,3 +353,20 @@ class FakeSubmissionRepository:
         )
         self._items[submission.id] = submission
         return submission
+
+    def update_result(
+        self, submission_id: uuid.UUID, *, status: str, result: dict | None
+    ) -> Submission:
+        e = self._items[submission_id]
+        updated = Submission(
+            id=e.id,
+            user_id=e.user_id,
+            exercise_id=e.exercise_id,
+            code=e.code,
+            status=status,
+            result=result,
+            created_at=e.created_at,
+            updated_at=_now(),
+        )
+        self._items[submission_id] = updated
+        return updated

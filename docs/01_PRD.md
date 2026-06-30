@@ -39,7 +39,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | Profile view/edit | 1 | ✅ done |
 | Languages, Courses & Lessons + admin CRUD | 2 | ✅ done |
 | Coding exercises (model & submissions) | 3 | ✅ done |
-| Judge0 execution & grading | 4 | ⬜ |
+| Judge0 execution & grading | 4 | ✅ done |
 | Quizzes | 5 | ⬜ |
 | AI Teacher / AI Tutor | 6 | ⬜ |
 | Recommendation ("Today") + progress | 7 | ⬜ |
@@ -50,7 +50,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 1. Authentication via Firebase; backend verifies ID tokens.
 2. Persistent learner profile and progress in PostgreSQL.
 3. Code execution sandboxed via Judge0 (later sprint).
-4. AI features powered by Claude models (later sprint).
+4. AI features powered by Google Gemini (free tier; later sprint).
 
 ## Non-Functional Requirements
 

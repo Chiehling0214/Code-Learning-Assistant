@@ -32,3 +32,10 @@ class SubmissionService:
         self, *, user_id: uuid.UUID, exercise_id: uuid.UUID
     ) -> list[Submission]:
         return self._submissions.list_for_user_and_exercise(user_id, exercise_id)
+
+    def get_submission(self, *, user_id: uuid.UUID, submission_id: uuid.UUID) -> Submission:
+        """Return a submission owned by ``user_id`` (for polling its verdict)."""
+        submission = self._submissions.get_by_id(submission_id)
+        if submission is None or submission.user_id != user_id:
+            raise LookupError(f"Submission {submission_id} not found")
+        return submission
