@@ -95,6 +95,7 @@ class ContentService:
         slug: str,
         order_index: int,
         content: str,
+        source: str = "human",
     ) -> Lesson:
         if self._courses.get_by_id(course_id) is None:
             raise LookupError(f"Course {course_id} not found")
@@ -104,6 +105,7 @@ class ContentService:
             slug=slug,
             order_index=order_index,
             content=content,
+            source=source,
         )
 
     def update_lesson(

@@ -34,6 +34,12 @@ services:
       JUDGE0_RAPIDAPI_HOST: ${JUDGE0_RAPIDAPI_HOST:-judge0-ce.p.rapidapi.com}
       JUDGE0_URL: ${JUDGE0_URL:-http://judge0:2358}
       JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN:-}
+      # AI (Gemini, Sprint 6). Empty key disables AI (endpoints return 503).
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_TEACHER_MODEL: ${GEMINI_TEACHER_MODEL:-gemini-2.5-flash}
+      AI_RATE_LIMIT_PER_MINUTE: ${AI_RATE_LIMIT_PER_MINUTE:-8}
+      AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-200}
       BACKEND_PORT: 8000
     ports:
       - "8000:8000"

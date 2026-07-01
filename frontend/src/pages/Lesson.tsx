@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { AiTeacherPanel } from "@/components/AiTeacherPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLesson } from "@/features/content/hooks";
 import { useLessonExercises } from "@/features/exercises/hooks";
@@ -33,6 +34,8 @@ export function LessonPage() {
           />
         </CardContent>
       </Card>
+
+      <AiTeacherPanel lessonId={id} />
 
       {exercises.length > 0 && (
         <div className="space-y-3">

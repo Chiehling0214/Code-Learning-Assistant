@@ -43,6 +43,10 @@ Included tests:
   auto-grading correctness (full/partial score), attempt persistence, and the
   admin authoring guard (`403` for non-admins, `400` for a question with no
   correct choice).
+- `tests/test_ai.py` — Teacher/Tutor responses (with a mocked provider, no
+  network), per-user rate limiting (`429`), the admin generation guard, AI
+  content landing in the normal tables with `source="ai"` (and served by the
+  existing endpoints), and the self-verification gate on generated exercises.
 
 ## Frontend
 

@@ -37,6 +37,7 @@ class ExerciseService:
         prompt: str,
         starter_code: str,
         test_spec: dict,
+        source: str = "human",
     ) -> Exercise:
         if self._lessons.get_by_id(lesson_id) is None:
             raise LookupError(f"Lesson {lesson_id} not found")
@@ -48,6 +49,7 @@ class ExerciseService:
             prompt=prompt,
             starter_code=starter_code,
             test_spec=test_spec,
+            source=source,
         )
 
     def delete_exercise(self, exercise_id: uuid.UUID) -> None:

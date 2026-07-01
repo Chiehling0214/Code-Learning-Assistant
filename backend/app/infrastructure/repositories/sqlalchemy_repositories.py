@@ -7,10 +7,12 @@ Write methods ``add``/``flush``/``refresh`` only — the request-scoped session
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.domain.entities import AIInteraction as AIInteractionEntity
 from app.domain.entities import Choice as ChoiceEntity
 from app.domain.entities import Course as CourseEntity
 from app.domain.entities import Exercise as ExerciseEntity
@@ -22,6 +24,7 @@ from app.domain.entities import QuizAttempt as QuizAttemptEntity
 from app.domain.entities import StudentProfile as ProfileEntity
 from app.domain.entities import Submission as SubmissionEntity
 from app.domain.entities import User as UserEntity
+from app.infrastructure.models.models import AIInteraction as AIInteractionModel
 from app.infrastructure.models.models import Choice as ChoiceModel
 from app.infrastructure.models.models import Course as CourseModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
@@ -158,6 +161,7 @@ def _to_lesson(model: LessonModel) -> LessonEntity:
         content=model.content,
         created_at=model.created_at,
         updated_at=model.updated_at,
+        source=model.source,
     )
 
 
@@ -294,6 +298,7 @@ class SqlAlchemyLessonRepository:
         slug: str,
         order_index: int,
         content: str,
+        source: str = "human",
     ) -> LessonEntity:
         model = LessonModel(
             course_id=course_id,
@@ -301,6 +306,7 @@ class SqlAlchemyLessonRepository:
             slug=slug,
             order_index=order_index,
             content=content,
+            source=source,
         )
         self._session.add(model)
         self._session.flush()
@@ -351,6 +357,7 @@ def _to_exercise(model: ExerciseModel) -> ExerciseEntity:
         test_spec=model.test_spec or {},
         created_at=model.created_at,
         updated_at=model.updated_at,
+        source=model.source,
     )
 
 
@@ -395,6 +402,7 @@ class SqlAlchemyExerciseRepository:
         prompt: str,
         starter_code: str,
         test_spec: dict,
+        source: str = "human",
     ) -> ExerciseEntity:
         model = ExerciseModel(
             lesson_id=lesson_id,
@@ -404,6 +412,7 @@ class SqlAlchemyExerciseRepository:
             prompt=prompt,
             starter_code=starter_code,
             test_spec=test_spec,
+            source=source,
         )
         self._session.add(model)
         self._session.flush()
@@ -613,3 +622,39 @@ class SqlAlchemyQuizAttemptRepository:
             .order_by(QuizAttemptModel.created_at.desc())
         )
         return [_to_attempt(m) for m in self._session.scalars(stmt).all()]
+
+
+def _to_interaction(model: AIInteractionModel) -> AIInteractionEntity:
+    return AIInteractionEntity(
+        id=model.id,
+        user_id=model.user_id,
+        kind=model.kind,
+        model=model.model,
+        total_tokens=model.total_tokens,
+        created_at=model.created_at,
+    )
+
+
+class SqlAlchemyAIInteractionRepository:
+    """Concrete :class:`~app.domain.repositories.AIInteractionRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def create(
+        self, *, user_id: uuid.UUID, kind: str, model: str, total_tokens: int
+    ) -> AIInteractionEntity:
+        record = AIInteractionModel(
+            user_id=user_id, kind=kind, model=model, total_tokens=total_tokens
+        )
+        self._session.add(record)
+        self._session.flush()
+        self._session.refresh(record)
+        return _to_interaction(record)
+
+    def count_since(self, user_id: uuid.UUID, since: datetime) -> int:
+        stmt = select(func.count()).where(
+            AIInteractionModel.user_id == user_id,
+            AIInteractionModel.created_at >= since,
+        )
+        return int(self._session.scalar(stmt) or 0)

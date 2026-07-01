@@ -30,7 +30,8 @@ backend/
 │   │           ├── lessons.py
 │   │           ├── admin_content.py # admin CRUD (Sprint 2)
 │   │           ├── exercises.py     # exercises + submissions (Sprint 3)
-│   │           └── quizzes.py       # quizzes + grading + authoring (Sprint 5)
+│   │           ├── quizzes.py       # quizzes + grading + authoring (Sprint 5)
+│   │           └── ai.py            # AI teacher/tutor + generation (Sprint 6)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -39,6 +40,8 @@ backend/
 │   │   ├── entities.py
 │   │   └── repositories.py
 │   ├── application/             # use cases / services
+│   │   ├── ports/              # provider-agnostic ports
+│   │   │   └── ai_provider.py  # AIProvider protocol + DTOs (Sprint 6)
 │   │   └── services/
 │   │       ├── health_service.py
 │   │       ├── user_service.py        # provisioning + profile (Sprint 1)
@@ -46,7 +49,11 @@ backend/
 │   │       ├── exercise_service.py    # exercises (Sprint 3)
 │   │       ├── submission_service.py  # submissions (Sprint 3)
 │   │       ├── execution_service.py   # run + grade against tests (Sprint 4)
-│   │       └── quiz_service.py        # quizzes + auto-grading (Sprint 5)
+│   │       ├── quiz_service.py        # quizzes + auto-grading (Sprint 5)
+│   │       ├── ai_teacher_service.py  # AI teacher (Sprint 6)
+│   │       ├── ai_tutor_service.py    # AI tutor (Sprint 6)
+│   │       ├── ai_usage.py            # per-user rate limit + usage log (Sprint 6)
+│   │       └── generate_content_service.py  # AI -> lessons/exercises (Sprint 6)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base
@@ -55,6 +62,8 @@ backend/
 │   │   │   └── models.py
 │   │   ├── judge0/             # Judge0 HTTP client (Sprint 4)
 │   │   │   └── client.py
+│   │   ├── ai/                 # AIProvider implementation (Sprint 6)
+│   │   │   └── gemini_provider.py
 │   │   ├── grading.py         # background grading orchestrator (Sprint 4)
 │   │   └── repositories/        # concrete repo implementations
 │   │       └── sqlalchemy_repositories.py  # User, Profile, Language, Course, Lesson, ...

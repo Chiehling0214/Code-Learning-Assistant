@@ -51,6 +51,23 @@ class Settings(BaseSettings):
     # Seconds to wait for a single Judge0 execution before giving up.
     judge0_timeout: float = 20.0
 
+    # --- AI (Gemini, Sprint 6) ---
+    # API key from Google AI Studio. When empty the AI features are disabled and
+    # the endpoints return a friendly "not configured" error (503).
+    gemini_api_key: str | None = None
+    # Default model for tutoring/feedback and most generation (generous free tier).
+    gemini_model: str = "gemini-2.5-flash"
+    # Optional higher-quality model for long-form teaching content; defaults to
+    # the same model so a single key/quota works out of the box.
+    gemini_teacher_model: str = "gemini-2.5-flash"
+    # Per-user free-tier guards: requests allowed per rolling minute and per day.
+    ai_rate_limit_per_minute: int = 8
+    ai_daily_limit: int = 200
+
+    @property
+    def ai_enabled(self) -> bool:
+        return bool(self.gemini_api_key)
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, value: object) -> object:

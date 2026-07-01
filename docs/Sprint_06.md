@@ -109,3 +109,57 @@ frontend/
 
 - **Sprint 2** (lessons for the Teacher).
 - **Sprint 3 / 4** (exercises + submitted code for the Tutor).
+
+## Status — ✅ Complete
+
+AI Teacher and Tutor are live behind a provider port, and the Teacher can
+generate lessons/exercises that land in the existing content tables.
+
+**Backend**
+- `AIProvider` port + DTOs (`application/ports/ai_provider.py`); concrete
+  `GeminiAIProvider` (`infrastructure/ai/gemini_provider.py`) using `google-genai`
+  (lazy-imported), prompts built server-side with learner text fenced, `429`/
+  quota mapped to `AIQuotaError`, missing key → `AINotConfiguredError`.
+- Services: `AITeacherService`, `AITutorService`, `GenerateContentService`
+  (writes via `ContentService`/`ExerciseService`, `source="ai"`; self-verifies a
+  generated exercise's reference solution against its `test_spec` via the Sprint 4
+  Judge0 path before persisting), and `AIUsageGuard` (per-user per-minute/daily
+  limits + usage logging).
+- Models: `AIInteraction` + migration `0005_ai_interactions`; `source` column on
+  `lessons`/`exercises` + migration `0006_content_source`.
+- Endpoints: `POST /ai/teacher`, `POST /ai/tutor`, admin `POST /admin/ai/generate`.
+  Config: `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TEACHER_MODEL`,
+  `AI_RATE_LIMIT_PER_MINUTE`, `AI_DAILY_LIMIT`.
+- `tests/test_ai.py` + `FakeAIProvider`/`FakeAIInteractionRepository`
+  (53 tests total, DB-free, no network).
+
+**Frontend**
+- `features/ai/hooks.ts` (`useAskTeacher`, `useAskTutor`); `AiTeacherPanel`
+  mounted on the Lesson page; `AiTutorPanel` on the Coding Exercise page (sends
+  the current editor code). Loading + error states; answers rendered as Markdown.
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 53/53 pass (Teacher/Tutor with a mocked
+  provider, rate-limit `429`, admin generation guard `403`, AI content written
+  with `source="ai"` and served by the existing endpoints, exercise
+  self-verification rejects a failing reference solution).
+- Frontend: `lint` clean, `build` succeeds.
+- Live (Docker stack): migrations `0004 → 0005 → 0006` applied to Postgres on
+  start; `/ai/teacher`, `/ai/tutor`, `/admin/ai/generate` registered in the
+  OpenAPI schema; the `source` column is present (`human` on existing rows); with
+  auth-stub disabled, `/ai/*` correctly require a token (`401`). With no
+  `GEMINI_API_KEY`, AI calls return `503` "not configured" — the rest of the app
+  is unaffected.
+
+### Notes / follow-ups
+
+- The provider port is **synchronous**, matching the rest of the codebase
+  (FastAPI runs sync handlers in a worker thread). Streaming responses, listed as
+  optional in the plan, were deferred.
+- A live AI smoke test needs a real `GEMINI_API_KEY` (and, with auth-stub off, a
+  Firebase token); the teach/tutor/generate logic is otherwise fully covered by
+  the mocked-provider unit suite.
+- Generation supports the **generate-and-persist** strategy from
+  [05_AI.md](05_AI.md); on-the-fly and recommendation-driven generation arrive
+  with Sprint 7.

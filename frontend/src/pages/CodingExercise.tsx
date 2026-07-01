@@ -2,6 +2,7 @@ import Editor from "@monaco-editor/react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
+import { AiTutorPanel } from "@/components/AiTutorPanel";
 import { GradingPanel, RunOutput } from "@/components/ResultPanel";
 import { SubmissionList } from "@/components/SubmissionList";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,8 @@ export function CodingExercisePage() {
           </div>
         </CardContent>
       </Card>
+
+      <AiTutorPanel exerciseId={id} code={code} />
 
       {run.data && (
         <Card>

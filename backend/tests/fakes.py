@@ -5,7 +5,13 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+from app.application.ports.ai_provider import (
+    AIResponse,
+    GeneratedExercise,
+    GeneratedLesson,
+)
 from app.domain.entities import (
+    AIInteraction,
     Choice,
     Course,
     Exercise,
@@ -230,7 +236,14 @@ class FakeLessonRepository:
         return sorted(items, key=lambda x: (x.order_index, x.title))
 
     def create(
-        self, *, course_id: uuid.UUID, title: str, slug: str, order_index: int, content: str
+        self,
+        *,
+        course_id: uuid.UUID,
+        title: str,
+        slug: str,
+        order_index: int,
+        content: str,
+        source: str = "human",
     ) -> Lesson:
         now = _now()
         lesson = Lesson(
@@ -242,6 +255,7 @@ class FakeLessonRepository:
             content=content,
             created_at=now,
             updated_at=now,
+            source=source,
         )
         self._items[lesson.id] = lesson
         return lesson
@@ -296,6 +310,7 @@ class FakeExerciseRepository:
         prompt: str,
         starter_code: str,
         test_spec: dict,
+        source: str = "human",
     ) -> Exercise:
         now = _now()
         exercise = Exercise(
@@ -309,6 +324,7 @@ class FakeExerciseRepository:
             test_spec=test_spec,
             created_at=now,
             updated_at=now,
+            source=source,
         )
         self._items[exercise.id] = exercise
         return exercise
@@ -480,3 +496,72 @@ class FakeQuizAttemptRepository:
             if a.user_id == user_id and a.quiz_id == quiz_id
         ]
         return sorted(items, key=lambda a: a.created_at, reverse=True)
+
+
+class FakeAIProvider:
+    """Deterministic stand-in for the Gemini provider (no network).
+
+    Echoes request fields into the text so tests can assert the explanation /
+    feedback reflects the input. Generated exercises ship a trivial test case
+    (``expected=""``) that the default ``FakeCodeRunner`` passes, so the
+    self-verification path succeeds unless the runner is configured to fail.
+    """
+
+    model = "fake-model"
+
+    def teach(self, request) -> AIResponse:
+        return AIResponse(
+            text=f"Explanation of {request.topic}. {request.question}".strip(),
+            model=self.model,
+            total_tokens=5,
+        )
+
+    def tutor(self, request) -> AIResponse:
+        return AIResponse(
+            text=f"Hint for your {request.language} code: {request.code}",
+            model=self.model,
+            total_tokens=5,
+        )
+
+    def generate_lesson(self, request) -> GeneratedLesson:
+        return GeneratedLesson(
+            title=f"Lesson: {request.topic}",
+            content=f"# {request.topic}\n\nGenerated content.",
+            model=self.model,
+            total_tokens=7,
+        )
+
+    def generate_exercise(self, request) -> GeneratedExercise:
+        return GeneratedExercise(
+            title=f"Exercise: {request.topic}",
+            prompt=f"Solve: {request.topic}",
+            starter_code="# your code here\n",
+            reference_solution="pass\n",
+            test_spec={"cases": [{"input": "", "expected": ""}]},
+            model=self.model,
+            total_tokens=9,
+        )
+
+
+class FakeAIInteractionRepository:
+    def __init__(self) -> None:
+        self._items: list[AIInteraction] = []
+
+    def create(
+        self, *, user_id: uuid.UUID, kind: str, model: str, total_tokens: int
+    ) -> AIInteraction:
+        record = AIInteraction(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            kind=kind,
+            model=model,
+            total_tokens=total_tokens,
+            created_at=_now(),
+        )
+        self._items.append(record)
+        return record
+
+    def count_since(self, user_id: uuid.UUID, since: datetime) -> int:
+        return sum(
+            1 for r in self._items if r.user_id == user_id and r.created_at >= since
+        )

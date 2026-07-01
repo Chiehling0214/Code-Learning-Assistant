@@ -12,18 +12,25 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.application.ports.ai_provider import AIProvider
+from app.application.services.ai_teacher_service import AITeacherService
+from app.application.services.ai_tutor_service import AITutorService
+from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
+from app.application.services.generate_content_service import GenerateContentService
 from app.application.services.quiz_service import QuizService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.user_service import UserService
 from app.core.config import Settings, get_settings
 from app.core.security import Identity, verify_token
 from app.domain.entities import User
+from app.infrastructure.ai.gemini_provider import GeminiAIProvider
 from app.infrastructure.db.session import get_session
 from app.infrastructure.judge0.client import Judge0Client
 from app.infrastructure.repositories.sqlalchemy_repositories import (
+    SqlAlchemyAIInteractionRepository,
     SqlAlchemyCourseRepository,
     SqlAlchemyExerciseRepository,
     SqlAlchemyLanguageRepository,
@@ -144,3 +151,59 @@ def get_quiz_service(session: DbSession) -> QuizService:
 
 
 QuizServiceDep = Annotated[QuizService, Depends(get_quiz_service)]
+
+
+# ----- AI (Sprint 6) -----
+
+
+def get_ai_provider(settings: SettingsDep) -> AIProvider:
+    return GeminiAIProvider(settings)
+
+
+AIProviderDep = Annotated[AIProvider, Depends(get_ai_provider)]
+
+
+def get_ai_usage_guard(session: DbSession, settings: SettingsDep) -> AIUsageGuard:
+    return AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings)
+
+
+AIUsageGuardDep = Annotated[AIUsageGuard, Depends(get_ai_usage_guard)]
+
+
+def get_ai_teacher_service(
+    provider: AIProviderDep, session: DbSession, usage: AIUsageGuardDep
+) -> AITeacherService:
+    return AITeacherService(provider, SqlAlchemyLessonRepository(session), usage)
+
+
+AITeacherServiceDep = Annotated[AITeacherService, Depends(get_ai_teacher_service)]
+
+
+def get_ai_tutor_service(
+    provider: AIProviderDep, session: DbSession, usage: AIUsageGuardDep
+) -> AITutorService:
+    return AITutorService(provider, SqlAlchemyExerciseRepository(session), usage)
+
+
+AITutorServiceDep = Annotated[AITutorService, Depends(get_ai_tutor_service)]
+
+
+def get_generate_content_service(
+    provider: AIProviderDep, session: DbSession, settings: SettingsDep, usage: AIUsageGuardDep
+) -> GenerateContentService:
+    content = ContentService(
+        SqlAlchemyLanguageRepository(session),
+        SqlAlchemyCourseRepository(session),
+        SqlAlchemyLessonRepository(session),
+    )
+    exercises = ExerciseService(
+        SqlAlchemyExerciseRepository(session),
+        SqlAlchemyLessonRepository(session),
+    )
+    execution = ExecutionService(Judge0Client(settings))
+    return GenerateContentService(provider, content, exercises, execution, usage)
+
+
+GenerateContentServiceDep = Annotated[
+    GenerateContentService, Depends(get_generate_content_service)
+]

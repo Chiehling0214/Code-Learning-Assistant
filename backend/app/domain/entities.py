@@ -61,6 +61,7 @@ class Lesson:
     content: str
     created_at: datetime
     updated_at: datetime
+    source: str = "human"
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,7 @@ class Exercise:
     test_spec: dict
     created_at: datetime
     updated_at: datetime
+    source: str = "human"
 
 
 @dataclass(frozen=True)
@@ -129,3 +131,13 @@ class QuizAttempt:
     answers: dict
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class AIInteraction:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    kind: str
+    model: str
+    total_tokens: int
+    created_at: datetime

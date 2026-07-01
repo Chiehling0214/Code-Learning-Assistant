@@ -142,6 +142,20 @@ implemented yet** — fields will be expanded in later sprints.
 | answers | jsonb | `{selected: {qid: cid}, total, results[]}` |
 | created_at / updated_at | timestamptz | |
 
+### `ai_interactions` (Sprint 6)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| user_id | UUID (FK → users.id) | cascade delete |
+| kind | str | `teacher` \| `tutor` \| `generate` |
+| model | str | model id used |
+| total_tokens | int | usage logged for observability |
+| created_at | timestamptz | indexed; backs per-user rate limiting |
+
+> **Sprint 6 also adds** a `source` column (`human` \| `ai`, default `human`) to
+> both `lessons` and `exercises` so AI-authored rows are reviewable.
+
 ## ER
 
 ```text
@@ -160,6 +174,8 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 - `0002_lessons` — lessons table.
 - `0003_exercises` — exercises and submissions tables.
 - `0004_quizzes` — quizzes, questions, choices, quiz_attempts tables.
+- `0005_ai_interactions` — ai_interactions table (AI usage log / rate limiting).
+- `0006_content_source` — `source` column on lessons and exercises.
 
 ```bash
 # create/upgrade to latest

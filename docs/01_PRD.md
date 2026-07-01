@@ -41,7 +41,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | Coding exercises (model & submissions) | 3 | ✅ done |
 | Judge0 execution & grading | 4 | ✅ done |
 | Quizzes & auto-grading | 5 | ✅ done |
-| AI Teacher / AI Tutor | 6 | ⬜ |
+| AI Teacher / AI Tutor + content generation | 6 | ✅ done |
 | Recommendation ("Today") + progress | 7 | ⬜ |
 | Subscriptions & hardening | 8 | ⬜ |
 

@@ -8,9 +8,11 @@ of the inner layers (dependency-inversion principle).
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Protocol
 
 from app.domain.entities import (
+    AIInteraction,
     Course,
     Exercise,
     Lesson,
@@ -111,6 +113,7 @@ class LessonRepository(Protocol):
         slug: str,
         order_index: int,
         content: str,
+        source: str = "human",
     ) -> Lesson: ...
 
     def update(
@@ -143,6 +146,7 @@ class ExerciseRepository(Protocol):
         prompt: str,
         starter_code: str,
         test_spec: dict,
+        source: str = "human",
     ) -> Exercise: ...
 
     def delete(self, exercise_id: uuid.UUID) -> None: ...
@@ -205,3 +209,13 @@ class QuizAttemptRepository(Protocol):
     def list_for_user_and_quiz(
         self, user_id: uuid.UUID, quiz_id: uuid.UUID
     ) -> list[QuizAttempt]: ...
+
+
+class AIInteractionRepository(Protocol):
+    """Records of AI calls, used for usage logging and per-user rate limiting."""
+
+    def create(
+        self, *, user_id: uuid.UUID, kind: str, model: str, total_tokens: int
+    ) -> AIInteraction: ...
+
+    def count_since(self, user_id: uuid.UUID, since: datetime) -> int: ...

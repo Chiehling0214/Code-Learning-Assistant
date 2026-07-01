@@ -46,6 +46,9 @@
 | POST | `/api/v1/admin/quizzes` | admin | 5 | Create a quiz. |
 | POST | `/api/v1/admin/quizzes/{id}/questions` | admin | 5 | Add a question (with choices). |
 | DELETE | `/api/v1/admin/quizzes/{id}` | admin | 5 | Delete a quiz. |
+| POST | `/api/v1/ai/teacher` | bearer | 6 | AI explanation for a lesson/topic/question. |
+| POST | `/api/v1/ai/tutor` | bearer | 6 | AI hint on the submitted code (not the answer). |
+| POST | `/api/v1/admin/ai/generate` | admin | 6 | Generate a lesson/exercise into the content tables. |
 
 ### `GET /health`
 
@@ -163,14 +166,37 @@ feedback). Admins author quizzes via the admin endpoints.
                  "selected_choice_id": "c1", "correct_choice_id": "c1" } ] }
 ```
 
+### AI (Sprint 6)
+
+All model access is behind the `AIProvider` port (Gemini), so swapping the model
+or provider is a config change. Requests are built server-side; learner text is
+fenced against prompt injection. Per-user rate limiting guards the Gemini free
+tier; when AI is unconfigured or out of quota the endpoints return `503`, and
+exceeding the per-user budget returns `429`.
+
+`POST /ai/teacher` explains a lesson/topic/question for the learner's level.
+`POST /ai/tutor` reviews the submitted code and returns a hint, not the full
+solution. `POST /admin/ai/generate` (admin) generates a lesson or exercise and
+writes it through `ContentService`/`ExerciseService` into the normal tables,
+marked `source="ai"`; a generated exercise is self-verified (its reference
+solution must pass its own `test_spec` via Judge0) before it is persisted.
+
+```jsonc
+// POST /api/v1/ai/tutor   { "exercise_id": "…", "code": "...", "question": "why is it wrong?" }
+{ "answer": "Check your loop bound — …", "model": "gemini-2.5-flash", "total_tokens": 312 }
+
+// POST /api/v1/admin/ai/generate   { "kind": "exercise", "lesson_id": "…", "topic": "loops" }
+{ "kind": "exercise", "id": "…", "lesson_id": "…", "title": "…", "slug": "…",
+  "language": "python", "source": "ai" }
+```
+
 ## Planned endpoints (later sprints — not implemented)
 
 These are documented for design alignment only. Sprint numbers follow the
-[Sprint_06…08](Sprint_06.md) plan.
+[Sprint_07…08](Sprint_07.md) plan.
 
 | Sprint | Resource | Endpoints (sketch) |
 |--------|----------|--------------------|
-| 6 | AI | `POST /ai/teacher`, `POST /ai/tutor` |
 | 7 | Today | `GET /today` |
 | 7 | Progress | `GET /progress` |
 | 8 | Subscription | `GET /subscription`, `POST /subscription/checkout` |

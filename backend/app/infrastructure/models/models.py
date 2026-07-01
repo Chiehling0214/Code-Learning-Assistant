@@ -116,6 +116,8 @@ class Lesson(TimestampMixin, Base):
     slug: Mapped[str] = mapped_column(String(255))
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     content: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # "human" | "ai" — provenance for reviewing AI-authored content (Sprint 6).
+    source: Mapped[str] = mapped_column(String(16), default="human", nullable=False)
 
     course: Mapped[Course] = relationship(back_populates="lessons")
     exercises: Mapped[list[Exercise]] = relationship(
@@ -140,6 +142,8 @@ class Exercise(TimestampMixin, Base):
     starter_code: Mapped[str] = mapped_column(Text, default="", nullable=False)
     # Hidden test specification used by the Judge0 grader in Sprint 4.
     test_spec: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    # "human" | "ai" — provenance for reviewing AI-authored content (Sprint 6).
+    source: Mapped[str] = mapped_column(String(16), default="human", nullable=False)
 
     lesson: Mapped[Lesson] = relationship(back_populates="exercises")
 
@@ -233,3 +237,24 @@ class QuizAttempt(TimestampMixin, Base):
     score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # Graded detail: {"selected": {qid: cid}, "total": int, "results": [...]}.
     answers: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+
+
+# --------------------------------------------------------------------------- #
+# AI interactions (Sprint 6)
+# --------------------------------------------------------------------------- #
+
+
+class AIInteraction(Base):
+    __tablename__ = "ai_interactions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # "teacher" | "tutor" | "generate"
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    model: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    total_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
