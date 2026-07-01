@@ -43,7 +43,18 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | Quizzes & auto-grading | 5 | ✅ done |
 | AI Teacher / AI Tutor + content generation | 6 | ✅ done |
 | Recommendation ("Today") + progress | 7 | ✅ done |
-| Subscriptions & hardening | 8 | ⬜ |
+| Subscriptions & hardening | 8 | ✅ done |
+| Onboarding & language tracks | 9 | ✅ done |
+| Placement test → assessed level | 10 | ✅ done |
+| AI curriculum generation (full courses) | 11 | ⬜ planned |
+| Continuous learning: extend + in-course chat | 12 | ⬜ planned |
+| Entitlements (plan limits) & admin AI review | 13 | ⬜ planned |
+
+> **Direction change (Sprint 9+):** content becomes AI-generated and personalized
+> per learner. First login → pick a language → placement test → the AI builds a
+> full course for the assessed level. Manual authoring is deprecated; admin is
+> repurposed to review AI content. Plan limits: free users get **2 languages** and
+> bounded AI Tutor / generation usage; subscribers get more.
 
 ## Functional Requirements
 

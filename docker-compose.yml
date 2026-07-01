@@ -40,6 +40,15 @@ services:
       GEMINI_TEACHER_MODEL: ${GEMINI_TEACHER_MODEL:-gemini-2.5-flash}
       AI_RATE_LIMIT_PER_MINUTE: ${AI_RATE_LIMIT_PER_MINUTE:-8}
       AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-200}
+      # Billing + hardening (Sprint 8). Off by default; enable for real billing.
+      BILLING_ENABLED: ${BILLING_ENABLED:-false}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      CHECKOUT_SUCCESS_URL: ${CHECKOUT_SUCCESS_URL:-http://localhost:5173/subscription?status=success}
+      CHECKOUT_CANCEL_URL: ${CHECKOUT_CANCEL_URL:-http://localhost:5173/subscription?status=cancel}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
       BACKEND_PORT: 8000
     ports:
       - "8000:8000"

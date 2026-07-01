@@ -15,6 +15,8 @@ class CurrentUserResponse(BaseModel):
     email: str | None = None
     display_name: str | None = None
     is_admin: bool = False
+    # True once the learner has chosen at least one language track (Sprint 9).
+    onboarded: bool = False
 
 
 class ProfileResponse(BaseModel):

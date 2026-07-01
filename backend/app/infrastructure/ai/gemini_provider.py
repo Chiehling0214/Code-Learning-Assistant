@@ -18,8 +18,10 @@ from app.application.ports.ai_provider import (
     AIResponse,
     GeneratedExercise,
     GeneratedLesson,
+    GeneratedPlacement,
     GenerateExerciseRequest,
     GenerateLessonRequest,
+    GeneratePlacementRequest,
     TeachRequest,
     TutorRequest,
 )
@@ -64,11 +66,22 @@ class GeminiAIProvider:
             self._client = genai.Client(api_key=self._api_key)
         return self._client
 
-    def _generate(self, *, model: str, prompt: str) -> tuple[str, int]:
-        """Call the model once; return ``(text, total_tokens)``."""
+    def _generate(self, *, model: str, prompt: str, json_mode: bool = False) -> tuple[str, int]:
+        """Call the model once; return ``(text, total_tokens)``.
+
+        ``json_mode`` asks the model for a raw JSON response (``application/json``
+        mime type), which avoids Markdown fences / prose around the JSON.
+        """
         client = self._ensure_client()
+        config = (
+            {"response_mime_type": "application/json", "max_output_tokens": 8192}
+            if json_mode
+            else None
+        )
         try:
-            response = client.models.generate_content(model=model, contents=prompt)
+            response = client.models.generate_content(
+                model=model, contents=prompt, config=config
+            )
         except Exception as exc:  # noqa: BLE001 - normalize SDK errors
             message = str(exc)
             lowered = message.lower()
@@ -113,9 +126,9 @@ class GeminiAIProvider:
     # ----- content generation -----
 
     def _generate_json(self, *, model: str, prompt: str) -> tuple[dict, int]:
-        text, tokens = self._generate(model=model, prompt=prompt)
+        text, tokens = self._generate(model=model, prompt=prompt, json_mode=True)
         cleaned = text.strip()
-        # Models often wrap JSON in ```json fences; strip them.
+        # Defensive: strip a ```json fence if the model still adds one.
         if cleaned.startswith("```"):
             cleaned = cleaned.split("```", 2)[1]
             if cleaned.startswith("json"):
@@ -123,8 +136,16 @@ class GeminiAIProvider:
             cleaned = cleaned.strip().rstrip("`").strip()
         try:
             return json.loads(cleaned), tokens
-        except json.JSONDecodeError as exc:
-            raise AIProviderError("AI returned malformed JSON") from exc
+        except json.JSONDecodeError:
+            pass
+        # Fallback: extract the outermost JSON object from any surrounding prose.
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start != -1 and end > start:
+            try:
+                return json.loads(cleaned[start : end + 1]), tokens
+            except json.JSONDecodeError as exc:
+                raise AIProviderError("AI returned malformed JSON") from exc
+        raise AIProviderError("AI returned malformed JSON")
 
     def generate_lesson(self, request: GenerateLessonRequest) -> GeneratedLesson:
         prompt = (
@@ -164,4 +185,33 @@ class GeminiAIProvider:
             test_spec=test_spec,
             model=self._model,
             total_tokens=tokens,
+        )
+
+    def generate_placement(self, request: GeneratePlacementRequest) -> GeneratedPlacement:
+        prompt = (
+            "Generate a placement test as JSON with two keys. "
+            f'"mcqs": a list of {request.mcq_count} multiple-choice questions, each '
+            '{"prompt": string, "choices": [{"text": string, "is_correct": boolean}]} '
+            "with exactly one correct choice, ranging from easy to hard. "
+            '"coding": a list of exactly 2 short coding tasks, each '
+            '{"prompt": string, "starter_code": string, "reference_solution": string, '
+            '"test_spec": {"cases": [{"input": string, "expected": string}]}} where the '
+            f"reference_solution is a correct {request.language} program that reads any "
+            "input from stdin and prints the answer to stdout. "
+            "Formatting rules: in every prompt, put ALL code inside fenced Markdown "
+            f"code blocks (```{request.language} ... ```) — never inline multi-line code "
+            "in prose. Keep tasks simple and self-contained, and make sure each "
+            "reference_solution actually produces the expected output for every test "
+            "case (expected is the exact stdout, no trailing spaces). "
+            f"Language: {request.language}. Return ONLY the JSON object."
+        )
+        data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
+        mcqs = data.get("mcqs") if isinstance(data.get("mcqs"), list) else []
+        coding = data.get("coding") if isinstance(data.get("coding"), list) else []
+        # Stamp the language onto each coding task for the grader.
+        for task in coding:
+            if isinstance(task, dict):
+                task.setdefault("language", request.language)
+        return GeneratedPlacement(
+            mcqs=mcqs, coding=coding, model=self._teacher_model, total_tokens=tokens
         )

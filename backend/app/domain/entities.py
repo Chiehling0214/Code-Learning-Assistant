@@ -152,3 +152,41 @@ class ProgressEvent:
     status: str
     score: int | None
     completed_at: datetime
+
+
+@dataclass(frozen=True)
+class Subscription:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    plan: str
+    status: str
+    stripe_customer_id: str | None
+    stripe_subscription_id: str | None
+    current_period_end: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class LanguageTrack:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    language_id: uuid.UUID
+    level: str | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class PlacementAssessment:
+    id: uuid.UUID
+    track_id: uuid.UUID
+    user_id: uuid.UUID
+    status: str
+    items: dict
+    result: dict | None
+    score: int | None
+    level: str | None
+    created_at: datetime
+    updated_at: datetime

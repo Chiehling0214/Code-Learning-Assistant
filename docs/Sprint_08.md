@@ -82,3 +82,71 @@ frontend/
 - **Sprint 1** (users to attach subscriptions to).
 - **Sprint 6** (AI Tutor) and **Sprint 2** (premium courses) as gating targets.
 - Builds on **all prior sprints** for the e2e/hardening pass.
+
+## Status — ✅ Complete
+
+Subscriptions with Stripe checkout + signature-verified webhooks; the AI Tutor is
+gated behind an active subscription; the stack is hardened for production.
+
+> **Migration numbering:** the plan called this `0007`, but `0007_progress` was
+> taken in Sprint 7, so the subscriptions migration is **`0008_subscriptions`**.
+
+**Backend — billing**
+- `Subscription` model + migration `0008_subscriptions`; domain entity +
+  `SubscriptionRepository` + SQLAlchemy impl (one row per user, upsert).
+- `StripeClient` (`infrastructure/billing/stripe_client.py`, lazy `stripe` import):
+  create checkout session (with `client_reference_id`), `construct_event`
+  (signature verification). Errors → `StripeError` / `StripeNotConfiguredError`.
+- `SubscriptionService`: status, `is_active`, `start_checkout`, and
+  `handle_webhook` (activate on `checkout.session.completed` /
+  `customer.subscription.updated`, cancel on `...deleted`).
+- Entitlement dep `require_active_subscription` — no-op when `BILLING_ENABLED`
+  is false, else `402` for non-subscribers; gates `POST /ai/tutor`.
+- Endpoints: `GET /subscription`, `POST /subscription/checkout`,
+  `POST /webhooks/stripe`. Config `STRIPE_*`, `BILLING_ENABLED`, checkout URLs.
+
+**Backend — hardening**
+- Optional in-process per-client rate-limit middleware (`RATE_LIMIT_ENABLED`,
+  `RATE_LIMIT_PER_MINUTE`; off in dev, on in prod compose).
+- CORS already env-driven; consistent `{"detail": …}` error envelopes and auth on
+  every protected route (audited); `409` handler for integrity violations.
+
+**Infra**
+- `docker-compose.prod.yml`: Nginx-served frontend (`prod` stage), gunicorn +
+  uvicorn workers, `AUTH_STUB_ENABLED=false`, billing + rate limiting on,
+  Postgres not published. `gunicorn` added to requirements.
+- `e2e/` Playwright smoke test (sign in → dashboard → open a course), opt-in.
+
+**Frontend**
+- `features/billing/hooks.ts` (`useSubscription`, `useCheckout`); wired
+  `Subscription` page (plan/status + Stripe checkout redirect); `UpgradePrompt`
+  shown when the AI Tutor returns `402`.
+
+**Tests**
+- `tests/test_subscription.py` — checkout, webhook transitions, bad-signature
+  `400`, premium gating `402`/`200`. Full suite: `pytest` **66/66** pass.
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 66/66 (Stripe mocked, no network).
+- Frontend: `lint` clean, `build` succeeds.
+- `docker compose -f docker-compose.prod.yml config` validates.
+- Live (dev Docker stack): migration `0007 → 0008` applied; `/subscription`,
+  `/subscription/checkout`, `/webhooks/stripe` registered; `subscriptions` table
+  present; protected endpoints require a token (`401`).
+
+### Notes / follow-ups
+
+- **Billing is off by default** (`BILLING_ENABLED=false`) so dev/tests are
+  unaffected; enable it with the `STRIPE_*` secrets. Stripe/webhook logic is
+  covered by the mocked-provider suite — a real end-to-end charge needs live
+  Stripe keys + a webhook tunnel.
+- **Security review:** a manual pass was done — webhook signatures verified,
+  secrets kept server-side and out of VCS (`.env` gitignored), premium routes
+  gated, auth enforced on protected routes, error envelopes consistent. A formal
+  scanner run is recommended before a real launch.
+- **Playwright e2e** is provided as an opt-in scaffold; it needs a running stack
+  and a browser, so it is not part of the default CI (documented in
+  [e2e/README.md](../e2e/README.md)).
+- The prod frontend build bakes `VITE_*` at build time — pass build args (or
+  deploy via Firebase Hosting) to target your real API/Firebase.

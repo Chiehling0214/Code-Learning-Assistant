@@ -19,10 +19,13 @@ from app.api.deps import (
     get_execution_service,
     get_exercise_service,
     get_generate_content_service,
+    get_placement_service,
     get_progress_service,
     get_quiz_service,
     get_recommendation_service,
     get_submission_service,
+    get_subscription_service,
+    get_track_service,
     get_user_service,
 )
 from app.application.services.ai_teacher_service import AITeacherService
@@ -32,10 +35,13 @@ from app.application.services.content_service import ContentService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
+from app.application.services.placement_service import PlacementService
 from app.application.services.progress_service import ProgressService
 from app.application.services.quiz_service import QuizService
 from app.application.services.recommendation_service import RecommendationService
 from app.application.services.submission_service import SubmissionService
+from app.application.services.subscription_service import SubscriptionService
+from app.application.services.track_service import TrackService
 from app.application.services.user_service import UserService
 from app.core.config import Settings
 from app.domain.entities import User
@@ -49,12 +55,16 @@ from tests.fakes import (
     FakeCourseRepository,
     FakeExerciseRepository,
     FakeLanguageRepository,
+    FakeLanguageTrackRepository,
     FakeLessonRepository,
+    FakePlacementRepository,
     FakeProgressRepository,
     FakeQuizAttemptRepository,
     FakeQuizRepository,
+    FakeStripeClient,
     FakeStudentProfileRepository,
     FakeSubmissionRepository,
+    FakeSubscriptionRepository,
     FakeUserRepository,
 )
 
@@ -79,6 +89,10 @@ def fakes() -> SimpleNamespace:
         ai=FakeAIProvider(),
         interactions=FakeAIInteractionRepository(),
         progress=FakeProgressRepository(),
+        subscriptions=FakeSubscriptionRepository(),
+        stripe=FakeStripeClient(),
+        tracks=FakeLanguageTrackRepository(),
+        placements=FakePlacementRepository(),
     )
 
 
@@ -122,6 +136,25 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         ExerciseService(fakes.exercises, fakes.lessons),
         ExecutionService(fakes.runner),
         _guard(),
+    )
+    app.dependency_overrides[get_subscription_service] = lambda: SubscriptionService(
+        fakes.subscriptions, fakes.stripe
+    )
+    app.dependency_overrides[get_track_service] = lambda: TrackService(
+        fakes.tracks,
+        fakes.languages,
+        SubscriptionService(fakes.subscriptions, fakes.stripe),
+        _AI_SETTINGS,
+    )
+    app.dependency_overrides[get_placement_service] = lambda: PlacementService(
+        fakes.ai,
+        fakes.placements,
+        fakes.tracks,
+        fakes.languages,
+        fakes.profiles,
+        ExecutionService(fakes.runner),
+        AIUsageGuard(fakes.interactions, _AI_SETTINGS),
+        _AI_SETTINGS,
     )
     with TestClient(app) as test_client:
         yield test_client

@@ -12,6 +12,7 @@ from app.api.deps import (
     CurrentDbUser,
     GenerateContentServiceDep,
     UserServiceDep,
+    require_active_subscription,
     require_admin,
 )
 from app.application.ports.ai_provider import (
@@ -80,7 +81,11 @@ def ask_teacher(
     )
 
 
-@router.post("/tutor", response_model=AIAnswerResponse)
+@router.post(
+    "/tutor",
+    response_model=AIAnswerResponse,
+    dependencies=[Depends(require_active_subscription)],
+)
 def ask_tutor(
     payload: TutorRequest,
     current_user: CurrentDbUser,

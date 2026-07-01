@@ -86,15 +86,46 @@ Free-tier-friendly deployment for the hackathon:
 - **Gemini → external API** called by the backend (`GEMINI_API_KEY`, free tier).
 - **Firebase Auth → external**, verified server-side (`AUTH_STUB_ENABLED=false`).
 
+### Production compose (`docker-compose.prod.yml`)
+
+Sprint 8 ships a production stack:
+
+```bash
+cp .env.example .env   # fill POSTGRES_PASSWORD, CORS_ORIGINS, STRIPE_*, etc.
+docker compose -f docker-compose.prod.yml up --build
+```
+
+Differences from the dev compose:
+
+- **frontend** is built and served as static assets by Nginx (the `prod` Docker
+  stage), not the Vite dev server (host `:8080`);
+- **backend** runs under **gunicorn with uvicorn workers** (`-w 4`), applying
+  migrations on start;
+- **hardening on**: `RATE_LIMIT_ENABLED=true`, `AUTH_STUB_ENABLED=false`, CORS
+  restricted to `CORS_ORIGINS`;
+- **billing on**: `BILLING_ENABLED=true` with the `STRIPE_*` secrets;
+- Postgres is **not** published to the host.
+
+> The frontend build bakes `VITE_*` at build time. Pass them as build args (or
+> build via Firebase Hosting) to point the static bundle at your real API/Firebase.
+
+### Billing (Stripe)
+
+- Set `STRIPE_API_KEY`, `STRIPE_PRICE_ID`, and `STRIPE_WEBHOOK_SECRET`.
+- Point a Stripe webhook at `POST /api/v1/webhooks/stripe`; it is
+  **signature-verified** and drives subscription state.
+- Premium endpoints (e.g. AI Tutor) return `402` for non-subscribers when
+  `BILLING_ENABLED=true`.
+
 Hardening checklist (Sprint 8):
 
 - Set `CORS_ORIGINS` to the Firebase Hosting domain(s).
 - VM firewall: open only `443` (backend); keep `5432`/`2358` internal.
-- Put the backend behind Caddy/Nginx (or a GCP load balancer) for TLS; run
-  uvicorn with gunicorn workers.
+- Put the backend behind Caddy/Nginx (or a GCP load balancer) for TLS (the prod
+  compose already runs gunicorn/uvicorn workers).
+- Enable the in-process rate limiter (`RATE_LIMIT_ENABLED`), or front with a
+  shared limiter (Redis) for multi-instance deployments.
 - Secrets via the VM's `.env` / a secret manager — never commit them.
-- A `docker-compose.prod.yml` overlay pins the frontend `prod` target only if you
-  ever serve it from the VM instead of Firebase Hosting.
 
 ## Health & readiness
 

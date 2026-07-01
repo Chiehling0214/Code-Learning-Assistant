@@ -81,7 +81,9 @@ def verify_token(token: str | None, settings: Settings) -> Identity:
 
     try:
         _ensure_firebase(settings)
-        decoded = firebase_auth.verify_id_token(token)
+        # Tolerate small clock skew between this host and Firebase (a token can
+        # otherwise be rejected as "used too early" right after sign-in).
+        decoded = firebase_auth.verify_id_token(token, clock_skew_seconds=10)
     except Exception as exc:  # noqa: BLE001 - surface any verification failure as 401
         logger.warning("Token verification failed: %s", exc)
         raise HTTPException(

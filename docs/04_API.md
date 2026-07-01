@@ -52,6 +52,15 @@
 | GET | `/api/v1/today` | bearer | 7 | Personalized ordered plan of next items. |
 | GET | `/api/v1/progress` | bearer | 7 | Per-course completion, totals, and streak. |
 | POST | `/api/v1/lessons/{id}/complete` | bearer | 7 | Mark a lesson complete. |
+| GET | `/api/v1/subscription` | bearer | 8 | Current subscription status. |
+| POST | `/api/v1/subscription/checkout` | bearer | 8 | Start a Stripe checkout session. |
+| POST | `/api/v1/webhooks/stripe` | signature | 8 | Stripe webhook (verified). |
+| GET | `/api/v1/me/tracks` | bearer | 9 | The learner's language tracks. |
+| POST | `/api/v1/me/tracks` | bearer | 9 | Add a language track (plan-capped). |
+| DELETE | `/api/v1/me/tracks/{id}` | bearer | 9 | Remove a language track. |
+| POST | `/api/v1/me/tracks/{id}/placement` | bearer | 10 | Generate the placement test (idempotent). |
+| GET | `/api/v1/me/tracks/{id}/placement` | bearer | 10 | Read the placement (no answer keys). |
+| POST | `/api/v1/me/tracks/{id}/placement/submit` | bearer | 10 | Grade → level. |
 
 ### `GET /health`
 
@@ -212,14 +221,57 @@ returns per-course completion, overall totals, and a day streak.
   "total": 3, "completed": 2, "percent": 67, "streak": 4 }
 ```
 
-## Planned endpoints (later sprints — not implemented)
+### Subscriptions & billing (Sprint 8)
 
-These are documented for design alignment only. Sprint numbers follow the
-[Sprint_08](Sprint_08.md) plan.
+`GET /subscription` reports the caller's plan/status. `POST /subscription/checkout`
+returns a hosted Stripe Checkout URL (the app never trusts the client to confirm
+payment). `POST /webhooks/stripe` is **signature-verified** and drives all state
+transitions (active on `checkout.session.completed` / `customer.subscription.updated`,
+canceled on `customer.subscription.deleted`). Premium endpoints (e.g. the AI
+Tutor) are gated by `require_active_subscription`: when `BILLING_ENABLED` is on,
+non-subscribers get `402 Payment Required`; when off (dev default) the gate is a
+no-op.
 
-| Sprint | Resource | Endpoints (sketch) |
-|--------|----------|--------------------|
-| 8 | Subscription | `GET /subscription`, `POST /subscription/checkout` |
+```jsonc
+// POST /api/v1/subscription/checkout
+{ "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_…" }
+
+// GET /api/v1/subscription
+{ "plan": "pro", "status": "active", "active": true,
+  "current_period_end": "2026-08-01T00:00:00Z" }
+```
+
+### Language tracks & onboarding (Sprint 9)
+
+A **track** is a language the learner has chosen to study. `GET /me` gains an
+`onboarded` flag (true once ≥1 track exists) so the frontend routes first-login
+users to onboarding instead of the dashboard. The number of tracks is
+plan-capped: free users get `FREE_MAX_LANGUAGES` (2); an active subscriber gets
+`PAID_MAX_LANGUAGES`. Adding beyond the cap returns `402`; a duplicate returns
+`409`.
+
+```jsonc
+// POST /api/v1/me/tracks   { "language_id": "…" }
+{ "id": "…", "language_id": "…", "language_name": "Python",
+  "language_slug": "python", "level": null, "status": "active" }
+```
+
+### Placement test (Sprint 10)
+
+For a track, `POST …/placement` generates (idempotently) a set of multiple-choice
+questions plus two short coding tasks via the AI provider; the coding tasks are
+**self-verified** (reference solution must pass its own tests via Judge0) before
+being stored. `GET …/placement` returns the test **without** answer keys or
+reference solutions. `POST …/placement/submit` grades it (coding weighted higher),
+maps the weighted percent to a level (`<40` beginner, `40–75` intermediate, `>75`
+advanced), and stores the level on the track and profile.
+
+```jsonc
+// POST /api/v1/me/tracks/{id}/placement/submit
+//   { "mcq_answers": { "<mcq_id>": "<choice_id>" }, "code": { "<task_id>": "..." } }
+{ "level": "intermediate", "percent": 60,
+  "breakdown": { "correct_mcqs": 3, "total_mcqs": 5, "passed_coding": 1, "total_coding": 2 } }
+```
 
 ## Versioning
 

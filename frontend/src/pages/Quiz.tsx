@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
+import { Markdown } from "@/components/Markdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -53,9 +54,8 @@ export function QuizPage() {
           return (
             <Card key={question.id}>
               <CardHeader>
-                <CardTitle className="text-base">
-                  {qi + 1}. {question.prompt}
-                </CardTitle>
+                <CardTitle className="text-base">Question {qi + 1}</CardTitle>
+                <Markdown content={question.prompt} />
               </CardHeader>
               <CardContent className="space-y-2">
                 {question.choices.map((choice) => {

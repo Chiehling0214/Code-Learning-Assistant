@@ -20,15 +20,19 @@ from app.application.services.content_service import ContentService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
+from app.application.services.placement_service import PlacementService
 from app.application.services.progress_service import ProgressService
 from app.application.services.quiz_service import QuizService
 from app.application.services.recommendation_service import RecommendationService
 from app.application.services.submission_service import SubmissionService
+from app.application.services.subscription_service import SubscriptionService
+from app.application.services.track_service import TrackService
 from app.application.services.user_service import UserService
 from app.core.config import Settings, get_settings
 from app.core.security import Identity, verify_token
 from app.domain.entities import User
 from app.infrastructure.ai.gemini_provider import GeminiAIProvider
+from app.infrastructure.billing.stripe_client import StripeClient
 from app.infrastructure.db.session import get_session
 from app.infrastructure.judge0.client import Judge0Client
 from app.infrastructure.repositories.sqlalchemy_repositories import (
@@ -36,12 +40,15 @@ from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyCourseRepository,
     SqlAlchemyExerciseRepository,
     SqlAlchemyLanguageRepository,
+    SqlAlchemyLanguageTrackRepository,
     SqlAlchemyLessonRepository,
+    SqlAlchemyPlacementRepository,
     SqlAlchemyProgressRepository,
     SqlAlchemyQuizAttemptRepository,
     SqlAlchemyQuizRepository,
     SqlAlchemyStudentProfileRepository,
     SqlAlchemySubmissionRepository,
+    SqlAlchemySubscriptionRepository,
     SqlAlchemyUserRepository,
 )
 
@@ -183,6 +190,67 @@ def get_recommendation_service(session: DbSession) -> RecommendationService:
 RecommendationServiceDep = Annotated[
     RecommendationService, Depends(get_recommendation_service)
 ]
+
+
+# ----- Billing (Sprint 8) -----
+
+
+def get_subscription_service(session: DbSession, settings: SettingsDep) -> SubscriptionService:
+    return SubscriptionService(SqlAlchemySubscriptionRepository(session), StripeClient(settings))
+
+
+SubscriptionServiceDep = Annotated[SubscriptionService, Depends(get_subscription_service)]
+
+
+def get_track_service(session: DbSession, settings: SettingsDep) -> TrackService:
+    return TrackService(
+        SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyLanguageRepository(session),
+        SubscriptionService(SqlAlchemySubscriptionRepository(session), StripeClient(settings)),
+        settings,
+    )
+
+
+TrackServiceDep = Annotated[TrackService, Depends(get_track_service)]
+
+
+def get_placement_service(session: DbSession, settings: SettingsDep) -> PlacementService:
+    return PlacementService(
+        GeminiAIProvider(settings),
+        SqlAlchemyPlacementRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyLanguageRepository(session),
+        SqlAlchemyStudentProfileRepository(session),
+        ExecutionService(Judge0Client(settings)),
+        AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
+        settings,
+    )
+
+
+PlacementServiceDep = Annotated[PlacementService, Depends(get_placement_service)]
+
+
+def require_active_subscription(
+    current_user: CurrentDbUser,
+    settings: SettingsDep,
+    subscriptions: SubscriptionServiceDep,
+) -> User:
+    """Guard for premium endpoints.
+
+    A no-op while ``billing_enabled`` is false (dev default). When billing is on,
+    non-subscribers get ``402 Payment Required``.
+    """
+    if not settings.billing_enabled:
+        return current_user
+    if not subscriptions.is_active(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="This feature requires an active subscription",
+        )
+    return current_user
+
+
+PremiumUser = Annotated[User, Depends(require_active_subscription)]
 
 
 # ----- AI (Sprint 6) -----

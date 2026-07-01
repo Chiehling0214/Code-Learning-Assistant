@@ -67,6 +67,12 @@ class GenerateExerciseRequest:
 
 
 @dataclass(frozen=True)
+class GeneratePlacementRequest:
+    language: str
+    mcq_count: int = 5
+
+
+@dataclass(frozen=True)
 class AIResponse:
     """Free-form text answer (teacher explanation / tutor feedback)."""
 
@@ -94,6 +100,21 @@ class GeneratedExercise:
     total_tokens: int = 0
 
 
+@dataclass(frozen=True)
+class GeneratedPlacement:
+    """A placement assessment: multiple-choice questions + coding tasks.
+
+    ``mcqs`` items: ``{"prompt", "choices": [{"text", "is_correct"}]}``.
+    ``coding`` items: ``{"prompt", "language", "starter_code", "test_spec",
+    "reference_solution"}``.
+    """
+
+    mcqs: list[dict[str, Any]] = field(default_factory=list)
+    coding: list[dict[str, Any]] = field(default_factory=list)
+    model: str = ""
+    total_tokens: int = 0
+
+
 # --------------------------------------------------------------------------- #
 # Port
 # --------------------------------------------------------------------------- #
@@ -107,3 +128,5 @@ class AIProvider(Protocol):
     def generate_lesson(self, request: GenerateLessonRequest) -> GeneratedLesson: ...
 
     def generate_exercise(self, request: GenerateExerciseRequest) -> GeneratedExercise: ...
+
+    def generate_placement(self, request: GeneratePlacementRequest) -> GeneratedPlacement: ...

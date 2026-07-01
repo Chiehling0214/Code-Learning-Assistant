@@ -15,7 +15,9 @@ from app.domain.entities import (
     AIInteraction,
     Course,
     Exercise,
+    LanguageTrack,
     Lesson,
+    PlacementAssessment,
     ProgrammingLanguage,
     ProgressEvent,
     Question,
@@ -23,6 +25,7 @@ from app.domain.entities import (
     QuizAttempt,
     StudentProfile,
     Submission,
+    Subscription,
     User,
 )
 
@@ -236,3 +239,61 @@ class ProgressRepository(Protocol):
     ) -> ProgressEvent: ...
 
     def list_for_user(self, user_id: uuid.UUID) -> list[ProgressEvent]: ...
+
+
+class SubscriptionRepository(Protocol):
+    """Persistence operations for :class:`~app.domain.entities.Subscription`."""
+
+    def get_by_user_id(self, user_id: uuid.UUID) -> Subscription | None: ...
+
+    def upsert(
+        self,
+        *,
+        user_id: uuid.UUID,
+        plan: str,
+        status: str,
+        stripe_customer_id: str | None = None,
+        stripe_subscription_id: str | None = None,
+        current_period_end: datetime | None = None,
+    ) -> Subscription: ...
+
+
+class LanguageTrackRepository(Protocol):
+    """A learner's chosen language tracks (Sprint 9)."""
+
+    def get_by_id(self, track_id: uuid.UUID) -> LanguageTrack | None: ...
+
+    def list_by_user(self, user_id: uuid.UUID) -> list[LanguageTrack]: ...
+
+    def get_by_user_and_language(
+        self, user_id: uuid.UUID, language_id: uuid.UUID
+    ) -> LanguageTrack | None: ...
+
+    def count_by_user(self, user_id: uuid.UUID) -> int: ...
+
+    def create(
+        self, *, user_id: uuid.UUID, language_id: uuid.UUID, status: str = "active"
+    ) -> LanguageTrack: ...
+
+    def set_level(self, track_id: uuid.UUID, level: str) -> LanguageTrack: ...
+
+    def delete(self, track_id: uuid.UUID) -> None: ...
+
+
+class PlacementRepository(Protocol):
+    """Persistence for the placement assessment (one per track)."""
+
+    def get_by_track(self, track_id: uuid.UUID) -> PlacementAssessment | None: ...
+
+    def create(
+        self, *, track_id: uuid.UUID, user_id: uuid.UUID, items: dict
+    ) -> PlacementAssessment: ...
+
+    def save_result(
+        self,
+        assessment_id: uuid.UUID,
+        *,
+        result: dict,
+        score: int,
+        level: str,
+    ) -> PlacementAssessment: ...

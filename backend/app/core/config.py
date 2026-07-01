@@ -63,6 +63,31 @@ class Settings(BaseSettings):
     # Per-user free-tier guards: requests allowed per rolling minute and per day.
     ai_rate_limit_per_minute: int = 8
     ai_daily_limit: int = 200
+    # Number of multiple-choice questions in a placement test (Sprint 10).
+    placement_mcq_count: int = 5
+
+    # --- Billing (Stripe, Sprint 8) ---
+    # When billing is disabled (default), premium gating is a no-op — every
+    # authenticated user is entitled. Enable it in production once Stripe is set.
+    billing_enabled: bool = False
+    stripe_api_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_id: str | None = None
+    # Where Stripe redirects after checkout (frontend URLs).
+    checkout_success_url: str = "http://localhost:5173/subscription?status=success"
+    checkout_cancel_url: str = "http://localhost:5173/subscription?status=cancel"
+
+    # --- Language tracks / entitlements (Sprint 9) ---
+    # Max concurrent language tracks. Free users are capped; active subscribers
+    # get the higher limit.
+    free_max_languages: int = 2
+    paid_max_languages: int = 20
+
+    # --- Hardening (Sprint 8) ---
+    # Simple in-process per-client rate limit (off by default so dev/tests are
+    # unaffected; enabled in the production compose file).
+    rate_limit_enabled: bool = False
+    rate_limit_per_minute: int = 120
 
     @property
     def ai_enabled(self) -> bool:

@@ -1,0 +1,77 @@
+# Production-oriented stack (Sprint 8 hardening).
+#
+#   docker compose -f docker-compose.prod.yml up --build
+#
+# Differences from the dev compose:
+#   - frontend is built and served as static assets by Nginx (the `prod` stage),
+#     not the Vite dev server;
+#   - backend runs under gunicorn with uvicorn workers (multi-process);
+#   - rate limiting is enabled and CORS is restricted to CORS_ORIGINS;
+#   - billing is enabled (set the STRIPE_* secrets);
+#   - Postgres is not published to the host.
+#
+# Provide secrets via a real .env (never commit it). Code execution should point
+# at RapidAPI or a managed Judge0 (JUDGE0_RAPIDAPI_KEY) rather than the heavy
+# self-hosted profile.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codepath}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-codepath}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-codepath} -d ${POSTGRES_DB:-codepath}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    command:
+      - sh
+      - -c
+      - "alembic upgrade head && gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000"
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-codepath}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-codepath}
+      # Restrict CORS to your real frontend origin in production.
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+      AUTH_STUB_ENABLED: "false"
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-/run/secrets/firebase-key.json}
+      JUDGE0_RAPIDAPI_KEY: ${JUDGE0_RAPIDAPI_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # Billing + hardening on in production.
+      BILLING_ENABLED: "true"
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      CHECKOUT_SUCCESS_URL: ${CHECKOUT_SUCCESS_URL:-}
+      CHECKOUT_CANCEL_URL: ${CHECKOUT_CANCEL_URL:-}
+      RATE_LIMIT_ENABLED: "true"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+    volumes:
+      - ${FIREBASE_CREDENTIALS_HOST_FILE:-./backend/.env.example}:/run/secrets/firebase-key.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

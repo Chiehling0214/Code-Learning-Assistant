@@ -9,7 +9,9 @@ from app.infrastructure.models.models import (
     Choice,
     Course,
     Exercise,
+    LanguageTrack,
     Lesson,
+    PlacementAssessment,
     ProgrammingLanguage,
     ProgressEvent,
     Question,
@@ -17,6 +19,7 @@ from app.infrastructure.models.models import (
     QuizAttempt,
     StudentProfile,
     Submission,
+    Subscription,
     User,
 )
 
@@ -34,4 +37,7 @@ __all__ = [
     "QuizAttempt",
     "AIInteraction",
     "ProgressEvent",
+    "Subscription",
+    "LanguageTrack",
+    "PlacementAssessment",
 ]

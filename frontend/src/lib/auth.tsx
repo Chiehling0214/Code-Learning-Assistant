@@ -35,6 +35,21 @@ async function fetchSessionUser(): Promise<SessionUser> {
   };
 }
 
+/** Resolve the session, retrying a couple of times to ride out a transient
+ * failure right after sign-in (e.g. brief token/clock skew). */
+async function resolveSessionUser(attempts = 3): Promise<SessionUser> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await fetchSessionUser();
+    } catch (err) {
+      lastError = err;
+      await new Promise((resolve) => setTimeout(resolve, 700 * (i + 1)));
+    }
+  }
+  throw lastError;
+}
+
 interface AuthContextValue {
   loading: boolean;
   isConfigured: boolean;
@@ -59,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           try {
-            setUser(await fetchSessionUser());
+            setUser(await resolveSessionUser());
           } catch {
             clear();
           }

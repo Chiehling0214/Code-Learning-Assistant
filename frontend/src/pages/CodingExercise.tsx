@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { AiTutorPanel } from "@/components/AiTutorPanel";
+import { Markdown } from "@/components/Markdown";
 import { GradingPanel, RunOutput } from "@/components/ResultPanel";
 import { SubmissionList } from "@/components/SubmissionList";
 import { Button } from "@/components/ui/button";
@@ -41,9 +42,9 @@ export function CodingExercisePage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">{exercise.title}</h1>
-          <p className="text-muted-foreground">{exercise.prompt}</p>
+          <Markdown content={exercise.prompt} className="text-muted-foreground" />
         </div>
         <div className="flex shrink-0 gap-2">
           <Button

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 
 import { AppLayout } from "@/components/layout/AppLayout";
+import { OnboardingGate } from "@/components/OnboardingGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminPage } from "@/pages/Admin";
 import { CodingExercisePage } from "@/pages/CodingExercise";
@@ -10,6 +11,8 @@ import { LandingPage } from "@/pages/Landing";
 import { LessonPage } from "@/pages/Lesson";
 import { LoginPage } from "@/pages/Login";
 import { NotFoundPage } from "@/pages/NotFound";
+import { OnboardingPage } from "@/pages/Onboarding";
+import { PlacementPage } from "@/pages/Placement";
 import { ProfilePage } from "@/pages/Profile";
 import { ProgressPage } from "@/pages/Progress";
 import { QuizPage } from "@/pages/Quiz";
@@ -20,22 +23,32 @@ export const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> },
   { path: "/login", element: <LoginPage /> },
   {
-    // Private area: requires authentication, then renders the app shell.
+    // Private area: requires authentication.
     element: <ProtectedRoute />,
     children: [
+      // Onboarding and the placement test render standalone (no app shell) and
+      // are reachable while authenticated.
+      { path: "/onboarding", element: <OnboardingPage /> },
+      { path: "/tracks/:id/placement", element: <PlacementPage /> },
       {
-        element: <AppLayout />,
+        // First-login learners with no track are redirected to /onboarding.
+        element: <OnboardingGate />,
         children: [
-          { path: "/dashboard", element: <DashboardPage /> },
-          { path: "/today", element: <TodayPage /> },
-          { path: "/courses/:slug", element: <CoursePage /> },
-          { path: "/lessons/:id", element: <LessonPage /> },
-          { path: "/exercises/:id", element: <CodingExercisePage /> },
-          { path: "/quizzes/:id", element: <QuizPage /> },
-          { path: "/progress", element: <ProgressPage /> },
-          { path: "/subscription", element: <SubscriptionPage /> },
-          { path: "/admin", element: <AdminPage /> },
-          { path: "/profile", element: <ProfilePage /> },
+          {
+            element: <AppLayout />,
+            children: [
+              { path: "/dashboard", element: <DashboardPage /> },
+              { path: "/today", element: <TodayPage /> },
+              { path: "/courses/:slug", element: <CoursePage /> },
+              { path: "/lessons/:id", element: <LessonPage /> },
+              { path: "/exercises/:id", element: <CodingExercisePage /> },
+              { path: "/quizzes/:id", element: <QuizPage /> },
+              { path: "/progress", element: <ProgressPage /> },
+              { path: "/subscription", element: <SubscriptionPage /> },
+              { path: "/admin", element: <AdminPage /> },
+              { path: "/profile", element: <ProfilePage /> },
+            ],
+          },
         ],
       },
     ],

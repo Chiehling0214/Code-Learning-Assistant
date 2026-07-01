@@ -6,7 +6,11 @@ CodePath AI guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
 sandbox.
 
-**Status — through Sprint 7:** production-quality scaffold (Sprint 0),
+**Status — Sprints 0–10 complete.**
+The product is pivoting to AI-generated, personalized curricula (Sprints 9–13,
+see [docs/00_PROJECT.md](docs/00_PROJECT.md)): learners now pick a language on
+first login and hold plan-capped language "tracks". Foundation:
+production-quality scaffold (Sprint 0),
 authentication & user profiles (Sprint 1), a content domain (Sprint 2 —
 languages, courses, lessons + admin CRUD), coding exercises (Sprint 3 — model +
 Monaco editor + submissions), **code execution & grading via Judge0** (Sprint 4 —
@@ -18,7 +22,14 @@ behind an `AIProvider` port; explain lessons, hint on code, and generate
 self-verified lessons/exercises into the existing tables), and a **personalized
 "Today" plan + progress analytics** (Sprint 7 — completion tracking across
 lessons/exercises/quizzes, an ordered daily plan, and per-course completion +
-streak). Billing follows in Sprint 8.
+streak), **subscriptions + hardening** (Sprint 8 — Stripe checkout & signature-verified
+webhooks, premium gating of the AI Tutor, an in-process rate limiter, and a
+production `docker-compose.prod.yml`), and **onboarding & language tracks**
+(Sprint 9 — first-login language picker, per-user tracks, free-tier cap of 2
+languages), and a **placement test** (Sprint 10 — AI-generated MCQs + coding
+tasks, self-verified, graded into an assessed level on the track/profile). AI
+curriculum generation, continuous learning, and plan-limit refinement follow in
+Sprints 11–13.
 
 See [`docs/`](docs/) for full design documentation — start with
 [00_PROJECT.md](docs/00_PROJECT.md) and the per-sprint plans
@@ -145,6 +156,12 @@ sign-in — no Firebase needed for local work. To use real auth, set the
 **AI (Sprint 6):** set `GEMINI_API_KEY` (from [Google AI Studio](https://aistudio.google.com))
 to enable the AI Teacher/Tutor and content generation. Left empty, those
 endpoints return a friendly `503` and the rest of the app works unchanged.
+
+**Billing (Sprint 8):** billing is off by default (`BILLING_ENABLED=false`), so
+premium gating is a no-op in dev. To enable it, set `BILLING_ENABLED=true` and
+the `STRIPE_*` variables, and point a Stripe webhook at `/api/v1/webhooks/stripe`.
+For production use [docker-compose.prod.yml](docker-compose.prod.yml) (Nginx-served
+frontend, gunicorn workers, rate limiting on). See [docs/08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md).
 
 ## Documentation
 

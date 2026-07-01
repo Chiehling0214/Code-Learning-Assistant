@@ -33,7 +33,11 @@ backend/
 │   │           ├── quizzes.py       # quizzes + grading + authoring (Sprint 5)
 │   │           ├── ai.py            # AI teacher/tutor + generation (Sprint 6)
 │   │           ├── today.py         # personalized daily plan (Sprint 7)
-│   │           └── progress.py      # progress analytics + mark-complete (Sprint 7)
+│   │           ├── progress.py      # progress analytics + mark-complete (Sprint 7)
+│   │           ├── subscription.py  # subscription status + checkout (Sprint 8)
+│   │           ├── webhooks.py      # Stripe webhook receiver (Sprint 8)
+│   │           ├── tracks.py        # language tracks + onboarding (Sprint 9)
+│   │           └── placement.py     # placement test (Sprint 10)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -57,7 +61,10 @@ backend/
 │   │       ├── ai_usage.py            # per-user rate limit + usage log (Sprint 6)
 │   │       ├── generate_content_service.py  # AI -> lessons/exercises (Sprint 6)
 │   │       ├── progress_service.py    # completion aggregates + streak (Sprint 7)
-│   │       └── recommendation_service.py    # "Today" plan (Sprint 7)
+│   │       ├── recommendation_service.py    # "Today" plan (Sprint 7)
+│   │       ├── subscription_service.py      # billing + entitlement (Sprint 8)
+│   │       ├── track_service.py             # language tracks + caps (Sprint 9)
+│   │       └── placement_service.py         # placement generate/grade (Sprint 10)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base
@@ -68,6 +75,8 @@ backend/
 │   │   │   └── client.py
 │   │   ├── ai/                 # AIProvider implementation (Sprint 6)
 │   │   │   └── gemini_provider.py
+│   │   ├── billing/            # Stripe client (Sprint 8)
+│   │   │   └── stripe_client.py
 │   │   ├── grading.py         # background grading orchestrator (Sprint 4)
 │   │   └── repositories/        # concrete repo implementations
 │   │       └── sqlalchemy_repositories.py  # User, Profile, Language, Course, Lesson, ...

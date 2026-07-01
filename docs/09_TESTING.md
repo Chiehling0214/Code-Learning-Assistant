@@ -51,6 +51,22 @@ Included tests:
   them as they're completed (lesson mark-complete, quiz submission), per-user
   isolation, `GET /progress` aggregates + streak, and the grading→progress
   helper records terminal verdicts only.
+- `tests/test_subscription.py` — subscription status/checkout (Stripe mocked),
+  webhook state transitions (activate/cancel), bad-signature `400`, and premium
+  gating (`402` for non-subscribers, `200` once active) with billing enabled.
+- `tests/test_tracks.py` — onboarding flag flips on first track, add/list/remove
+  tracks, unknown language `404`, duplicate `409`, free-tier language cap (`402`
+  on the 3rd) and a subscriber exceeding the cap.
+- `tests/test_placement.py` — placement generation (mocked AI + Judge0) is
+  idempotent and never leaks answer keys; grading maps score→level
+  (all-correct → advanced, all-wrong → beginner) and persists the level on the
+  track and profile; `404` before generate / for an unknown track.
+
+### End-to-end (opt-in)
+
+`e2e/` holds a Playwright smoke test (sign in → dashboard → open a course). It
+runs against a live stack and is **not** part of the default CI job (no browser /
+running stack there). See [e2e/README.md](../e2e/README.md).
 
 ## Frontend
 

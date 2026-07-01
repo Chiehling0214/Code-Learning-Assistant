@@ -52,13 +52,18 @@ frontend/
 
 `/` and `/login` are public. Everything below is wrapped in `ProtectedRoute`
 (redirects to `/login` when unauthenticated) and rendered inside `AppLayout`.
-All private pages are live except **Subscription** (Sprint 8 placeholder).
+All private pages are live. On first login (no language track yet), an
+`OnboardingGate` redirects the learner to **`/onboarding`** ("What do you want to
+study?") instead of the dashboard (Sprint 9). Picking a language leads into a
+**placement test** (Sprint 10) that assesses the learner's level before the app.
 
 | Path | Page | Access |
 |------|------|--------|
 | `/` | Landing | public |
 | `/login` | Login (Google / email, or dev mode) | public |
-| `/dashboard` | Dashboard (lists courses) | private |
+| `/onboarding` | Onboarding — pick a language to study | private |
+| `/tracks/:id/placement` | Placement test (MCQ + coding) → assessed level | private |
+| `/dashboard` | Dashboard (your languages + courses) | private |
 | `/today` | Today (personalized daily plan) | private |
 | `/courses/:slug` | Course (header + ordered lessons) | private |
 | `/lessons/:id` | Lesson (markdown + exercises/quizzes + AI Teacher + mark-complete) | private |

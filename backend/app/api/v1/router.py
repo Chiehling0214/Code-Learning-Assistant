@@ -11,10 +11,14 @@ from app.api.v1.routes import (
     languages,
     lessons,
     me,
+    placement,
     profile,
     progress,
     quizzes,
+    subscription,
     today,
+    tracks,
+    webhooks,
 )
 
 api_router = APIRouter()
@@ -33,3 +37,7 @@ api_router.include_router(ai.router)
 api_router.include_router(ai.admin_router)
 api_router.include_router(today.router)
 api_router.include_router(progress.router)
+api_router.include_router(subscription.router)
+api_router.include_router(webhooks.router)
+api_router.include_router(tracks.router)
+api_router.include_router(placement.router)

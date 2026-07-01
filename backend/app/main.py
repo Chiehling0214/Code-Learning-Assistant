@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import time
 import uuid
+from collections import defaultdict, deque
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +45,26 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
+
+    if settings.rate_limit_enabled:
+        # Lightweight in-process per-client rate limit (production hardening).
+        # For multi-instance deployments, front with a shared limiter (e.g. Redis).
+        hits: dict[str, deque[float]] = defaultdict(deque)
+        limit = settings.rate_limit_per_minute
+
+        @app.middleware("http")
+        async def rate_limit(request: Request, call_next):
+            client = request.client.host if request.client else "unknown"
+            now = time.monotonic()
+            window = hits[client]
+            while window and now - window[0] > 60:
+                window.popleft()
+            if len(window) >= limit:
+                return JSONResponse(
+                    status_code=429, content={"detail": "Rate limit exceeded; slow down."}
+                )
+            window.append(now)
+            return await call_next(request)
 
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(request: Request, exc: IntegrityError):

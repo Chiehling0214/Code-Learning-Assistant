@@ -281,3 +281,75 @@ class ProgressEvent(Base):
     completed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+# --------------------------------------------------------------------------- #
+# Billing (Sprint 8)
+# --------------------------------------------------------------------------- #
+
+
+class Subscription(TimestampMixin, Base):
+    __tablename__ = "subscriptions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
+    )
+    plan: Mapped[str] = mapped_column(String(32), default="free", nullable=False)
+    # "inactive" | "active" | "canceled"
+    status: Mapped[str] = mapped_column(String(16), default="inactive", nullable=False)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Language tracks (Sprint 9)
+# --------------------------------------------------------------------------- #
+
+
+class LanguageTrack(TimestampMixin, Base):
+    __tablename__ = "language_tracks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "language_id", name="uq_language_tracks_user_language"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    language_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("programming_languages.id", ondelete="CASCADE")
+    )
+    # Assessed level (set by the placement test in Sprint 10).
+    level: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # "onboarding" (awaiting placement) | "active"
+    status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
+
+
+# --------------------------------------------------------------------------- #
+# Placement test (Sprint 10)
+# --------------------------------------------------------------------------- #
+
+
+class PlacementAssessment(TimestampMixin, Base):
+    __tablename__ = "placement_assessments"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    track_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("language_tracks.id", ondelete="CASCADE"), unique=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # "ready" (generated, awaiting submission) | "completed"
+    status: Mapped[str] = mapped_column(String(16), default="ready", nullable=False)
+    # Generated items WITH answer keys: {"mcqs": [...], "coding": [...]}.
+    # Sanitized before serving to the learner (see schemas/placement.py).
+    items: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    # Submitted answers + per-item breakdown (populated on submit).
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    level: Mapped[str | None] = mapped_column(String(16), nullable=True)

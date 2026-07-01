@@ -9,13 +9,16 @@ from app.application.ports.ai_provider import (
     AIResponse,
     GeneratedExercise,
     GeneratedLesson,
+    GeneratedPlacement,
 )
 from app.domain.entities import (
     AIInteraction,
     Choice,
     Course,
     Exercise,
+    LanguageTrack,
     Lesson,
+    PlacementAssessment,
     ProgrammingLanguage,
     ProgressEvent,
     Question,
@@ -23,8 +26,10 @@ from app.domain.entities import (
     QuizAttempt,
     StudentProfile,
     Submission,
+    Subscription,
     User,
 )
+from app.infrastructure.billing.stripe_client import CheckoutSession, StripeError
 from app.infrastructure.judge0.client import Judge0Error
 
 
@@ -543,6 +548,39 @@ class FakeAIProvider:
             total_tokens=9,
         )
 
+    def generate_placement(self, request) -> GeneratedPlacement:
+        # 2 MCQs (first choice correct) + 1 coding task whose reference passes the
+        # default FakeCodeRunner (stdout "" == expected "").
+        return GeneratedPlacement(
+            mcqs=[
+                {
+                    "prompt": "Q1",
+                    "choices": [
+                        {"text": "A", "is_correct": True},
+                        {"text": "B", "is_correct": False},
+                    ],
+                },
+                {
+                    "prompt": "Q2",
+                    "choices": [
+                        {"text": "C", "is_correct": True},
+                        {"text": "D", "is_correct": False},
+                    ],
+                },
+            ],
+            coding=[
+                {
+                    "prompt": "Print nothing",
+                    "language": request.language,
+                    "starter_code": "# start\n",
+                    "reference_solution": "pass\n",
+                    "test_spec": {"cases": [{"input": "", "expected": ""}]},
+                }
+            ],
+            model=self.model,
+            total_tokens=11,
+        )
+
 
 class FakeAIInteractionRepository:
     def __init__(self) -> None:
@@ -596,3 +634,168 @@ class FakeProgressRepository:
     def list_for_user(self, user_id: uuid.UUID) -> list[ProgressEvent]:
         items = [e for e in self._items if e.user_id == user_id]
         return sorted(items, key=lambda e: e.completed_at, reverse=True)
+
+
+class FakeSubscriptionRepository:
+    def __init__(self) -> None:
+        self._by_user: dict[uuid.UUID, Subscription] = {}
+
+    def get_by_user_id(self, user_id: uuid.UUID) -> Subscription | None:
+        return self._by_user.get(user_id)
+
+    def upsert(
+        self,
+        *,
+        user_id: uuid.UUID,
+        plan: str,
+        status: str,
+        stripe_customer_id: str | None = None,
+        stripe_subscription_id: str | None = None,
+        current_period_end: datetime | None = None,
+    ) -> Subscription:
+        existing = self._by_user.get(user_id)
+        now = _now()
+        sub = Subscription(
+            id=existing.id if existing else uuid.uuid4(),
+            user_id=user_id,
+            plan=plan,
+            status=status,
+            stripe_customer_id=stripe_customer_id
+            or (existing.stripe_customer_id if existing else None),
+            stripe_subscription_id=stripe_subscription_id
+            or (existing.stripe_subscription_id if existing else None),
+            current_period_end=current_period_end,
+            created_at=existing.created_at if existing else now,
+            updated_at=now,
+        )
+        self._by_user[user_id] = sub
+        return sub
+
+
+class FakeStripeClient:
+    """Deterministic Stripe stand-in: no network, no signature checking."""
+
+    def __init__(self) -> None:
+        self.checkout_url = "https://stripe.test/checkout/session_abc"
+        self.last_client_reference_id: str | None = None
+        self.next_event: dict | None = None
+        self.raise_on_construct = False
+
+    def create_checkout_session(
+        self, *, customer_email: str, client_reference_id: str
+    ) -> CheckoutSession:
+        self.last_client_reference_id = client_reference_id
+        return CheckoutSession(id="cs_test_123", url=self.checkout_url)
+
+    def construct_event(self, payload: bytes, signature: str) -> dict:
+        if self.raise_on_construct:
+            raise StripeError("Invalid webhook signature")
+        return self.next_event or {}
+
+
+class FakeLanguageTrackRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, LanguageTrack] = {}
+
+    def get_by_id(self, track_id: uuid.UUID) -> LanguageTrack | None:
+        return self._items.get(track_id)
+
+    def list_by_user(self, user_id: uuid.UUID) -> list[LanguageTrack]:
+        items = [t for t in self._items.values() if t.user_id == user_id]
+        return sorted(items, key=lambda t: t.created_at)
+
+    def get_by_user_and_language(
+        self, user_id: uuid.UUID, language_id: uuid.UUID
+    ) -> LanguageTrack | None:
+        return next(
+            (
+                t
+                for t in self._items.values()
+                if t.user_id == user_id and t.language_id == language_id
+            ),
+            None,
+        )
+
+    def count_by_user(self, user_id: uuid.UUID) -> int:
+        return sum(1 for t in self._items.values() if t.user_id == user_id)
+
+    def create(
+        self, *, user_id: uuid.UUID, language_id: uuid.UUID, status: str = "active"
+    ) -> LanguageTrack:
+        now = _now()
+        track = LanguageTrack(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            language_id=language_id,
+            level=None,
+            status=status,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[track.id] = track
+        return track
+
+    def set_level(self, track_id: uuid.UUID, level: str) -> LanguageTrack:
+        e = self._items[track_id]
+        updated = LanguageTrack(
+            id=e.id,
+            user_id=e.user_id,
+            language_id=e.language_id,
+            level=level,
+            status="active",
+            created_at=e.created_at,
+            updated_at=_now(),
+        )
+        self._items[track_id] = updated
+        return updated
+
+    def delete(self, track_id: uuid.UUID) -> None:
+        if track_id not in self._items:
+            raise LookupError(f"Track {track_id} not found")
+        del self._items[track_id]
+
+
+class FakePlacementRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, PlacementAssessment] = {}
+
+    def get_by_track(self, track_id: uuid.UUID) -> PlacementAssessment | None:
+        return next((p for p in self._items.values() if p.track_id == track_id), None)
+
+    def create(
+        self, *, track_id: uuid.UUID, user_id: uuid.UUID, items: dict
+    ) -> PlacementAssessment:
+        now = _now()
+        placement = PlacementAssessment(
+            id=uuid.uuid4(),
+            track_id=track_id,
+            user_id=user_id,
+            status="ready",
+            items=items,
+            result=None,
+            score=None,
+            level=None,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[placement.id] = placement
+        return placement
+
+    def save_result(
+        self, assessment_id: uuid.UUID, *, result: dict, score: int, level: str
+    ) -> PlacementAssessment:
+        e = self._items[assessment_id]
+        updated = PlacementAssessment(
+            id=e.id,
+            track_id=e.track_id,
+            user_id=e.user_id,
+            status="completed",
+            items=e.items,
+            result=result,
+            score=score,
+            level=level,
+            created_at=e.created_at,
+            updated_at=_now(),
+        )
+        self._items[assessment_id] = updated
+        return updated

@@ -168,6 +168,44 @@ implemented yet** — fields will be expanded in later sprints.
 | score | int, nullable | e.g. quiz score |
 | completed_at | timestamptz | indexed; backs the day streak |
 
+### `subscriptions` (Sprint 8)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| user_id | UUID (FK → users.id) | unique (one per user) |
+| plan | str | `free` \| `pro` |
+| status | str | `inactive` \| `active` \| `canceled` |
+| stripe_customer_id | str, nullable | |
+| stripe_subscription_id | str, nullable | |
+| current_period_end | timestamptz, nullable | set from Stripe events |
+| created_at / updated_at | timestamptz | |
+
+### `language_tracks` (Sprint 9)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| user_id | UUID (FK → users.id) | cascade delete |
+| language_id | UUID (FK → programming_languages.id) | cascade delete |
+| level | str, nullable | assessed by the placement test (Sprint 10) |
+| status | str | `onboarding` \| `active` |
+| created_at / updated_at | timestamptz | unique `(user_id, language_id)` |
+
+### `placement_assessments` (Sprint 10)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| track_id | UUID (FK → language_tracks.id) | unique (one per track) |
+| user_id | UUID (FK → users.id) | cascade delete |
+| status | str | `ready` \| `completed` |
+| items | jsonb | generated MCQs + coding tasks **with** answer keys (stripped on serve) |
+| result | jsonb, nullable | per-item breakdown on submit |
+| score | int, nullable | weighted percent |
+| level | str, nullable | `beginner` \| `intermediate` \| `advanced` |
+| created_at / updated_at | timestamptz | |
+
 ## ER
 
 ```text
@@ -176,6 +214,9 @@ users 1───* submissions *───1 exercises
 users 1───* quiz_attempts *───1 quizzes
 users 1───* ai_interactions
 users 1───* progress_events        (item_type/item_id → lesson|exercise|quiz)
+users 1───1 subscriptions
+users 1───* language_tracks *───1 programming_languages
+language_tracks 1───1 placement_assessments
 programming_languages 1───* courses 1───* lessons 1───* exercises
 lessons 1───* quizzes 1───* questions 1───* choices
 ```
@@ -191,6 +232,9 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 - `0005_ai_interactions` — ai_interactions table (AI usage log / rate limiting).
 - `0006_content_source` — `source` column on lessons and exercises.
 - `0007_progress` — progress_events table.
+- `0008_subscriptions` — subscriptions table.
+- `0009_language_tracks` — language_tracks table (a learner's chosen languages).
+- `0010_placement` — placement_assessments table.
 
 ```bash
 # create/upgrade to latest

@@ -16,7 +16,9 @@ from app.domain.entities import AIInteraction as AIInteractionEntity
 from app.domain.entities import Choice as ChoiceEntity
 from app.domain.entities import Course as CourseEntity
 from app.domain.entities import Exercise as ExerciseEntity
+from app.domain.entities import LanguageTrack as LanguageTrackEntity
 from app.domain.entities import Lesson as LessonEntity
+from app.domain.entities import PlacementAssessment as PlacementAssessmentEntity
 from app.domain.entities import ProgrammingLanguage as LanguageEntity
 from app.domain.entities import ProgressEvent as ProgressEventEntity
 from app.domain.entities import Question as QuestionEntity
@@ -24,12 +26,15 @@ from app.domain.entities import Quiz as QuizEntity
 from app.domain.entities import QuizAttempt as QuizAttemptEntity
 from app.domain.entities import StudentProfile as ProfileEntity
 from app.domain.entities import Submission as SubmissionEntity
+from app.domain.entities import Subscription as SubscriptionEntity
 from app.domain.entities import User as UserEntity
 from app.infrastructure.models.models import AIInteraction as AIInteractionModel
 from app.infrastructure.models.models import Choice as ChoiceModel
 from app.infrastructure.models.models import Course as CourseModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
+from app.infrastructure.models.models import LanguageTrack as LanguageTrackModel
 from app.infrastructure.models.models import Lesson as LessonModel
+from app.infrastructure.models.models import PlacementAssessment as PlacementAssessmentModel
 from app.infrastructure.models.models import ProgrammingLanguage as LanguageModel
 from app.infrastructure.models.models import ProgressEvent as ProgressEventModel
 from app.infrastructure.models.models import Question as QuestionModel
@@ -37,6 +42,7 @@ from app.infrastructure.models.models import Quiz as QuizModel
 from app.infrastructure.models.models import QuizAttempt as QuizAttemptModel
 from app.infrastructure.models.models import StudentProfile as ProfileModel
 from app.infrastructure.models.models import Submission as SubmissionModel
+from app.infrastructure.models.models import Subscription as SubscriptionModel
 from app.infrastructure.models.models import User as UserModel
 
 
@@ -708,3 +714,181 @@ class SqlAlchemyProgressRepository:
             .order_by(ProgressEventModel.completed_at.desc())
         )
         return [_to_progress(m) for m in self._session.scalars(stmt).all()]
+
+
+def _to_subscription(model: SubscriptionModel) -> SubscriptionEntity:
+    return SubscriptionEntity(
+        id=model.id,
+        user_id=model.user_id,
+        plan=model.plan,
+        status=model.status,
+        stripe_customer_id=model.stripe_customer_id,
+        stripe_subscription_id=model.stripe_subscription_id,
+        current_period_end=model.current_period_end,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemySubscriptionRepository:
+    """Concrete :class:`~app.domain.repositories.SubscriptionRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_user_id(self, user_id: uuid.UUID) -> SubscriptionEntity | None:
+        stmt = select(SubscriptionModel).where(SubscriptionModel.user_id == user_id)
+        model = self._session.scalars(stmt).first()
+        return _to_subscription(model) if model else None
+
+    def upsert(
+        self,
+        *,
+        user_id: uuid.UUID,
+        plan: str,
+        status: str,
+        stripe_customer_id: str | None = None,
+        stripe_subscription_id: str | None = None,
+        current_period_end: datetime | None = None,
+    ) -> SubscriptionEntity:
+        stmt = select(SubscriptionModel).where(SubscriptionModel.user_id == user_id)
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            model = SubscriptionModel(user_id=user_id)
+            self._session.add(model)
+        model.plan = plan
+        model.status = status
+        # Preserve existing Stripe identifiers when a later event omits them.
+        if stripe_customer_id is not None:
+            model.stripe_customer_id = stripe_customer_id
+        if stripe_subscription_id is not None:
+            model.stripe_subscription_id = stripe_subscription_id
+        model.current_period_end = current_period_end
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_subscription(model)
+
+
+def _to_track(model: LanguageTrackModel) -> LanguageTrackEntity:
+    return LanguageTrackEntity(
+        id=model.id,
+        user_id=model.user_id,
+        language_id=model.language_id,
+        level=model.level,
+        status=model.status,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyLanguageTrackRepository:
+    """Concrete :class:`~app.domain.repositories.LanguageTrackRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_id(self, track_id: uuid.UUID) -> LanguageTrackEntity | None:
+        model = self._session.get(LanguageTrackModel, track_id)
+        return _to_track(model) if model else None
+
+    def list_by_user(self, user_id: uuid.UUID) -> list[LanguageTrackEntity]:
+        stmt = (
+            select(LanguageTrackModel)
+            .where(LanguageTrackModel.user_id == user_id)
+            .order_by(LanguageTrackModel.created_at)
+        )
+        return [_to_track(m) for m in self._session.scalars(stmt).all()]
+
+    def get_by_user_and_language(
+        self, user_id: uuid.UUID, language_id: uuid.UUID
+    ) -> LanguageTrackEntity | None:
+        stmt = select(LanguageTrackModel).where(
+            LanguageTrackModel.user_id == user_id,
+            LanguageTrackModel.language_id == language_id,
+        )
+        model = self._session.scalars(stmt).first()
+        return _to_track(model) if model else None
+
+    def count_by_user(self, user_id: uuid.UUID) -> int:
+        stmt = select(func.count()).where(LanguageTrackModel.user_id == user_id)
+        return int(self._session.scalar(stmt) or 0)
+
+    def create(
+        self, *, user_id: uuid.UUID, language_id: uuid.UUID, status: str = "active"
+    ) -> LanguageTrackEntity:
+        model = LanguageTrackModel(user_id=user_id, language_id=language_id, status=status)
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_track(model)
+
+    def set_level(self, track_id: uuid.UUID, level: str) -> LanguageTrackEntity:
+        model = self._session.get(LanguageTrackModel, track_id)
+        if model is None:
+            raise LookupError(f"Track {track_id} not found")
+        model.level = level
+        model.status = "active"
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_track(model)
+
+    def delete(self, track_id: uuid.UUID) -> None:
+        model = self._session.get(LanguageTrackModel, track_id)
+        if model is None:
+            raise LookupError(f"Track {track_id} not found")
+        self._session.delete(model)
+        self._session.flush()
+
+
+def _to_placement(model: PlacementAssessmentModel) -> PlacementAssessmentEntity:
+    return PlacementAssessmentEntity(
+        id=model.id,
+        track_id=model.track_id,
+        user_id=model.user_id,
+        status=model.status,
+        items=model.items or {},
+        result=model.result,
+        score=model.score,
+        level=model.level,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyPlacementRepository:
+    """Concrete :class:`~app.domain.repositories.PlacementRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_track(self, track_id: uuid.UUID) -> PlacementAssessmentEntity | None:
+        stmt = select(PlacementAssessmentModel).where(
+            PlacementAssessmentModel.track_id == track_id
+        )
+        model = self._session.scalars(stmt).first()
+        return _to_placement(model) if model else None
+
+    def create(
+        self, *, track_id: uuid.UUID, user_id: uuid.UUID, items: dict
+    ) -> PlacementAssessmentEntity:
+        model = PlacementAssessmentModel(
+            track_id=track_id, user_id=user_id, status="ready", items=items
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_placement(model)
+
+    def save_result(
+        self, assessment_id: uuid.UUID, *, result: dict, score: int, level: str
+    ) -> PlacementAssessmentEntity:
+        model = self._session.get(PlacementAssessmentModel, assessment_id)
+        if model is None:
+            raise LookupError(f"Placement {assessment_id} not found")
+        model.result = result
+        model.score = score
+        model.level = level
+        model.status = "completed"
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_placement(model)

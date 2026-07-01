@@ -1,8 +1,10 @@
 import { useState } from "react";
 
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAskTutor } from "@/features/ai/hooks";
+import { ApiError } from "@/lib/api";
 import { renderMarkdown } from "@/lib/markdown";
 
 const inputClass =
@@ -40,11 +42,14 @@ export function AiTutorPanel({
           {ask.isPending ? "Thinking…" : "Get a hint"}
         </Button>
 
-        {ask.isError && (
-          <p className="text-sm text-destructive">
-            {ask.error instanceof Error ? ask.error.message : "Request failed"}
-          </p>
-        )}
+        {ask.isError &&
+          (ask.error instanceof ApiError && ask.error.status === 402 ? (
+            <UpgradePrompt message="The AI Tutor is a Pro feature." />
+          ) : (
+            <p className="text-sm text-destructive">
+              {ask.error instanceof Error ? ask.error.message : "Request failed"}
+            </p>
+          ))}
         {ask.data && (
           <div
             className="prose-sm max-w-none rounded-md bg-muted p-3 [&_code]:rounded [&_code]:bg-background [&_code]:px-1 [&_p]:my-2 [&_pre]:overflow-x-auto"
