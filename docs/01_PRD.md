@@ -42,7 +42,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | Judge0 execution & grading | 4 | ✅ done |
 | Quizzes & auto-grading | 5 | ✅ done |
 | AI Teacher / AI Tutor + content generation | 6 | ✅ done |
-| Recommendation ("Today") + progress | 7 | ⬜ |
+| Recommendation ("Today") + progress | 7 | ✅ done |
 | Subscriptions & hardening | 8 | ⬜ |
 
 ## Functional Requirements

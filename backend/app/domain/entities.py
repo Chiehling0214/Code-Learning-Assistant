@@ -141,3 +141,14 @@ class AIInteraction:
     model: str
     total_tokens: int
     created_at: datetime
+
+
+@dataclass(frozen=True)
+class ProgressEvent:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    item_type: str
+    item_id: uuid.UUID
+    status: str
+    score: int | None
+    completed_at: datetime

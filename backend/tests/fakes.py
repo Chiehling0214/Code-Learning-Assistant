@@ -17,6 +17,7 @@ from app.domain.entities import (
     Exercise,
     Lesson,
     ProgrammingLanguage,
+    ProgressEvent,
     Question,
     Quiz,
     QuizAttempt,
@@ -565,3 +566,33 @@ class FakeAIInteractionRepository:
         return sum(
             1 for r in self._items if r.user_id == user_id and r.created_at >= since
         )
+
+
+class FakeProgressRepository:
+    def __init__(self) -> None:
+        self._items: list[ProgressEvent] = []
+
+    def record(
+        self,
+        *,
+        user_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+        status: str,
+        score: int | None = None,
+    ) -> ProgressEvent:
+        event = ProgressEvent(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            item_type=item_type,
+            item_id=item_id,
+            status=status,
+            score=score,
+            completed_at=_now(),
+        )
+        self._items.append(event)
+        return event
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[ProgressEvent]:
+        items = [e for e in self._items if e.user_id == user_id]
+        return sorted(items, key=lambda e: e.completed_at, reverse=True)

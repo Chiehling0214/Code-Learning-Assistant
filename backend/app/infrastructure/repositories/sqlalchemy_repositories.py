@@ -18,6 +18,7 @@ from app.domain.entities import Course as CourseEntity
 from app.domain.entities import Exercise as ExerciseEntity
 from app.domain.entities import Lesson as LessonEntity
 from app.domain.entities import ProgrammingLanguage as LanguageEntity
+from app.domain.entities import ProgressEvent as ProgressEventEntity
 from app.domain.entities import Question as QuestionEntity
 from app.domain.entities import Quiz as QuizEntity
 from app.domain.entities import QuizAttempt as QuizAttemptEntity
@@ -30,6 +31,7 @@ from app.infrastructure.models.models import Course as CourseModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
 from app.infrastructure.models.models import Lesson as LessonModel
 from app.infrastructure.models.models import ProgrammingLanguage as LanguageModel
+from app.infrastructure.models.models import ProgressEvent as ProgressEventModel
 from app.infrastructure.models.models import Question as QuestionModel
 from app.infrastructure.models.models import Quiz as QuizModel
 from app.infrastructure.models.models import QuizAttempt as QuizAttemptModel
@@ -658,3 +660,51 @@ class SqlAlchemyAIInteractionRepository:
             AIInteractionModel.created_at >= since,
         )
         return int(self._session.scalar(stmt) or 0)
+
+
+def _to_progress(model: ProgressEventModel) -> ProgressEventEntity:
+    return ProgressEventEntity(
+        id=model.id,
+        user_id=model.user_id,
+        item_type=model.item_type,
+        item_id=model.item_id,
+        status=model.status,
+        score=model.score,
+        completed_at=model.completed_at,
+    )
+
+
+class SqlAlchemyProgressRepository:
+    """Concrete :class:`~app.domain.repositories.ProgressRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def record(
+        self,
+        *,
+        user_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+        status: str,
+        score: int | None = None,
+    ) -> ProgressEventEntity:
+        model = ProgressEventModel(
+            user_id=user_id,
+            item_type=item_type,
+            item_id=item_id,
+            status=status,
+            score=score,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_progress(model)
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[ProgressEventEntity]:
+        stmt = (
+            select(ProgressEventModel)
+            .where(ProgressEventModel.user_id == user_id)
+            .order_by(ProgressEventModel.completed_at.desc())
+        )
+        return [_to_progress(m) for m in self._session.scalars(stmt).all()]

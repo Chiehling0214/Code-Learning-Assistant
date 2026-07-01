@@ -17,6 +17,7 @@ from app.domain.entities import (
     Exercise,
     Lesson,
     ProgrammingLanguage,
+    ProgressEvent,
     Question,
     Quiz,
     QuizAttempt,
@@ -219,3 +220,19 @@ class AIInteractionRepository(Protocol):
     ) -> AIInteraction: ...
 
     def count_since(self, user_id: uuid.UUID, since: datetime) -> int: ...
+
+
+class ProgressRepository(Protocol):
+    """Completion events across lessons, exercises, and quizzes."""
+
+    def record(
+        self,
+        *,
+        user_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+        status: str,
+        score: int | None = None,
+    ) -> ProgressEvent: ...
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[ProgressEvent]: ...

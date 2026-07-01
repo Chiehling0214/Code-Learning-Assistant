@@ -47,6 +47,10 @@ Included tests:
   network), per-user rate limiting (`429`), the admin generation guard, AI
   content landing in the normal tables with `source="ai"` (and served by the
   existing endpoints), and the self-verification gate on generated exercises.
+- `tests/test_recommendation.py` — `GET /today` lists incomplete items and drops
+  them as they're completed (lesson mark-complete, quiz submission), per-user
+  isolation, `GET /progress` aggregates + streak, and the grading→progress
+  helper records terminal verdicts only.
 
 ## Frontend
 

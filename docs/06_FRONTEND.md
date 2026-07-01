@@ -52,22 +52,21 @@ frontend/
 
 `/` and `/login` are public. Everything below is wrapped in `ProtectedRoute`
 (redirects to `/login` when unauthenticated) and rendered inside `AppLayout`.
-Dashboard, Course, Lesson, Admin, and Profile are live; the remaining private
-pages are placeholders.
+All private pages are live except **Subscription** (Sprint 8 placeholder).
 
 | Path | Page | Access |
 |------|------|--------|
 | `/` | Landing | public |
 | `/login` | Login (Google / email, or dev mode) | public |
 | `/dashboard` | Dashboard (lists courses) | private |
-| `/today` | Today | private |
+| `/today` | Today (personalized daily plan) | private |
 | `/courses/:slug` | Course (header + ordered lessons) | private |
-| `/lessons/:id` | Lesson (rendered markdown + exercise links) | private |
-| `/exercises/:id` | Coding Exercise (Monaco + submit + history) | private |
-| `/quizzes/:id` | Quiz | private |
-| `/progress` | Progress | private |
-| `/subscription` | Subscription | private |
-| `/admin` | Admin (languages/courses/lessons CRUD) | private (admin) |
+| `/lessons/:id` | Lesson (markdown + exercises/quizzes + AI Teacher + mark-complete) | private |
+| `/exercises/:id` | Coding Exercise (Monaco + submit + history + AI Tutor) | private |
+| `/quizzes/:id` | Quiz (take + score + per-question result) | private |
+| `/progress` | Progress (completion bars + streak) | private |
+| `/subscription` | Subscription (Sprint 8 placeholder) | private |
+| `/admin` | Admin (languages/courses/lessons/quizzes CRUD) | private (admin) |
 | `/profile` | Profile (view/edit display name & skill level) | private |
 
 ## Content (Sprint 2)

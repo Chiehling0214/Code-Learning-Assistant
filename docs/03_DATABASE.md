@@ -156,12 +156,26 @@ implemented yet** — fields will be expanded in later sprints.
 > **Sprint 6 also adds** a `source` column (`human` \| `ai`, default `human`) to
 > both `lessons` and `exercises` so AI-authored rows are reviewable.
 
+### `progress_events` (Sprint 7)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| user_id | UUID (FK → users.id) | cascade delete |
+| item_type | str | `lesson` \| `exercise` \| `quiz` |
+| item_id | UUID | id of the completed item |
+| status | str | `completed` (lesson/quiz) or grading verdict (exercise) |
+| score | int, nullable | e.g. quiz score |
+| completed_at | timestamptz | indexed; backs the day streak |
+
 ## ER
 
 ```text
 users 1───1 student_profiles
 users 1───* submissions *───1 exercises
 users 1───* quiz_attempts *───1 quizzes
+users 1───* ai_interactions
+users 1───* progress_events        (item_type/item_id → lesson|exercise|quiz)
 programming_languages 1───* courses 1───* lessons 1───* exercises
 lessons 1───* quizzes 1───* questions 1───* choices
 ```
@@ -176,6 +190,7 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 - `0004_quizzes` — quizzes, questions, choices, quiz_attempts tables.
 - `0005_ai_interactions` — ai_interactions table (AI usage log / rate limiting).
 - `0006_content_source` — `source` column on lessons and exercises.
+- `0007_progress` — progress_events table.
 
 ```bash
 # create/upgrade to latest

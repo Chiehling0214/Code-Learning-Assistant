@@ -11,6 +11,7 @@ from app.infrastructure.models.models import (
     Exercise,
     Lesson,
     ProgrammingLanguage,
+    ProgressEvent,
     Question,
     Quiz,
     QuizAttempt,
@@ -32,4 +33,5 @@ __all__ = [
     "Choice",
     "QuizAttempt",
     "AIInteraction",
+    "ProgressEvent",
 ]

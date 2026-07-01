@@ -31,7 +31,9 @@ backend/
 │   │           ├── admin_content.py # admin CRUD (Sprint 2)
 │   │           ├── exercises.py     # exercises + submissions (Sprint 3)
 │   │           ├── quizzes.py       # quizzes + grading + authoring (Sprint 5)
-│   │           └── ai.py            # AI teacher/tutor + generation (Sprint 6)
+│   │           ├── ai.py            # AI teacher/tutor + generation (Sprint 6)
+│   │           ├── today.py         # personalized daily plan (Sprint 7)
+│   │           └── progress.py      # progress analytics + mark-complete (Sprint 7)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -53,7 +55,9 @@ backend/
 │   │       ├── ai_teacher_service.py  # AI teacher (Sprint 6)
 │   │       ├── ai_tutor_service.py    # AI tutor (Sprint 6)
 │   │       ├── ai_usage.py            # per-user rate limit + usage log (Sprint 6)
-│   │       └── generate_content_service.py  # AI -> lessons/exercises (Sprint 6)
+│   │       ├── generate_content_service.py  # AI -> lessons/exercises (Sprint 6)
+│   │       ├── progress_service.py    # completion aggregates + streak (Sprint 7)
+│   │       └── recommendation_service.py    # "Today" plan (Sprint 7)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base

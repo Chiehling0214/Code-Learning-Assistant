@@ -19,7 +19,9 @@ from app.api.deps import (
     get_execution_service,
     get_exercise_service,
     get_generate_content_service,
+    get_progress_service,
     get_quiz_service,
+    get_recommendation_service,
     get_submission_service,
     get_user_service,
 )
@@ -30,7 +32,9 @@ from app.application.services.content_service import ContentService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
+from app.application.services.progress_service import ProgressService
 from app.application.services.quiz_service import QuizService
+from app.application.services.recommendation_service import RecommendationService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.user_service import UserService
 from app.core.config import Settings
@@ -46,6 +50,7 @@ from tests.fakes import (
     FakeExerciseRepository,
     FakeLanguageRepository,
     FakeLessonRepository,
+    FakeProgressRepository,
     FakeQuizAttemptRepository,
     FakeQuizRepository,
     FakeStudentProfileRepository,
@@ -73,6 +78,7 @@ def fakes() -> SimpleNamespace:
         attempts=FakeQuizAttemptRepository(),
         ai=FakeAIProvider(),
         interactions=FakeAIInteractionRepository(),
+        progress=FakeProgressRepository(),
     )
 
 
@@ -92,7 +98,13 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
     )
     app.dependency_overrides[get_execution_service] = lambda: ExecutionService(fakes.runner)
     app.dependency_overrides[get_quiz_service] = lambda: QuizService(
-        fakes.quizzes, fakes.attempts, fakes.lessons
+        fakes.quizzes, fakes.attempts, fakes.lessons, fakes.progress
+    )
+    app.dependency_overrides[get_progress_service] = lambda: ProgressService(
+        fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress
+    )
+    app.dependency_overrides[get_recommendation_service] = lambda: RecommendationService(
+        fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress
     )
 
     def _guard() -> AIUsageGuard:

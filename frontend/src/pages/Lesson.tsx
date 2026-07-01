@@ -2,8 +2,10 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { AiTeacherPanel } from "@/components/AiTeacherPanel";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLesson } from "@/features/content/hooks";
+import { useMarkLessonComplete } from "@/features/progress/hooks";
 import { useLessonExercises } from "@/features/exercises/hooks";
 import { useLessonQuizzes } from "@/features/quizzes/hooks";
 import { renderMarkdown } from "@/lib/markdown";
@@ -13,6 +15,7 @@ export function LessonPage() {
   const { data: lesson, isLoading, isError } = useLesson(id);
   const { data: exercises = [] } = useLessonExercises(id);
   const { data: quizzes = [] } = useLessonQuizzes(id);
+  const markComplete = useMarkLessonComplete();
 
   const html = useMemo(() => (lesson ? renderMarkdown(lesson.content) : ""), [lesson]);
 
@@ -34,6 +37,20 @@ export function LessonPage() {
           />
         </CardContent>
       </Card>
+
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!id || markComplete.isPending || markComplete.isSuccess}
+          onClick={() => id && markComplete.mutate(id)}
+        >
+          {markComplete.isSuccess ? "Completed ✓" : "Mark lesson complete"}
+        </Button>
+        {markComplete.isError && (
+          <span className="text-sm text-destructive">Could not save. Try again.</span>
+        )}
+      </div>
 
       <AiTeacherPanel lessonId={id} />
 

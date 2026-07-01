@@ -258,3 +258,26 @@ class AIInteraction(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+# --------------------------------------------------------------------------- #
+# Progress tracking (Sprint 7)
+# --------------------------------------------------------------------------- #
+
+
+class ProgressEvent(Base):
+    __tablename__ = "progress_events"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # "lesson" | "exercise" | "quiz"
+    item_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    # e.g. "completed" (lesson/quiz) or the grading verdict (exercise).
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )

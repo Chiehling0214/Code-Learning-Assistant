@@ -65,3 +65,50 @@ frontend/
 - **Sprint 2** (content to recommend / complete).
 - **Sprint 4** (exercise verdicts) and **Sprint 5** (quiz attempts) as
   completion sources.
+
+## Status — ✅ Complete
+
+Completion is tracked across lessons/exercises/quizzes; a personalized "Today"
+plan surfaces the next items, and Progress shows per-course completion + streak.
+
+> **Migration numbering:** the plan called this `0006`, but `0006_content_source`
+> was taken in Sprint 6, so the progress migration is **`0007_progress`**.
+
+**Backend**
+- `ProgressEvent` model + migration `0007_progress`; domain entity +
+  `ProgressRepository` + SQLAlchemy implementation.
+- Events emitted automatically: exercise grading (`infrastructure/grading.py`,
+  via the testable `record_exercise_progress` helper — records `passed`/`failed`,
+  skips infra `error`) and quiz submission (`QuizService.grade`, now given a
+  `ProgressRepository`); lessons via `POST /lessons/{id}/complete`.
+- `ProgressService` (per-course completion %, totals, day streak; completion
+  semantics: lesson/quiz = event exists, exercise = `passed`) and
+  `RecommendationService` (rule-based next-incomplete-in-course-order, capped by
+  skill level: beginner 3 / intermediate 5 / advanced 8).
+- Endpoints: `GET /today`, `GET /progress`, `POST /lessons/{id}/complete`.
+- `tests/test_recommendation.py` (60 tests total, DB-free).
+
+**Frontend**
+- `features/progress/hooks.ts` (`useToday`, `useProgress`, `useMarkLessonComplete`);
+  `ProgressBar` component.
+- `Today` page: ordered plan with links per item (lesson/exercise/quiz), empty
+  state. `Progress` page: overall % + streak + per-course bars. Lesson page gains
+  a "Mark lesson complete" button.
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 60/60 pass (Today lists then excludes completed
+  items, per-user isolation, progress aggregates + streak, grading→progress
+  helper).
+- Frontend: `lint` clean, `build` succeeds.
+- Live (Docker stack): migration `0006 → 0007` applied to Postgres on start;
+  `/today`, `/progress`, `/lessons/{id}/complete` registered in the OpenAPI
+  schema; with auth-stub disabled they correctly require a token (`401`).
+
+### Notes / follow-ups
+
+- Recommendation is rule-based (course order + skill-level cap); AI-driven "fill
+  my weak spot" generation (using Sprint 6's `GenerateContentService`) is a
+  natural follow-up but was out of scope here.
+- Exercise-grading progress runs inside the Sprint 4 background task; its emission
+  is covered by a focused unit test of the `record_exercise_progress` helper.

@@ -49,6 +49,9 @@
 | POST | `/api/v1/ai/teacher` | bearer | 6 | AI explanation for a lesson/topic/question. |
 | POST | `/api/v1/ai/tutor` | bearer | 6 | AI hint on the submitted code (not the answer). |
 | POST | `/api/v1/admin/ai/generate` | admin | 6 | Generate a lesson/exercise into the content tables. |
+| GET | `/api/v1/today` | bearer | 7 | Personalized ordered plan of next items. |
+| GET | `/api/v1/progress` | bearer | 7 | Per-course completion, totals, and streak. |
+| POST | `/api/v1/lessons/{id}/complete` | bearer | 7 | Mark a lesson complete. |
 
 ### `GET /health`
 
@@ -190,15 +193,32 @@ solution must pass its own `test_spec` via Judge0) before it is persisted.
   "language": "python", "source": "ai" }
 ```
 
+### Today & Progress (Sprint 7)
+
+Completion is tracked as `ProgressEvent`s, emitted automatically when an exercise
+is graded `passed`/`failed` and when a quiz is submitted, plus an explicit
+`POST /lessons/{id}/complete` for lessons. `GET /today` returns the next
+incomplete items in course order (capped by skill level); `GET /progress`
+returns per-course completion, overall totals, and a day streak.
+
+```jsonc
+// GET /api/v1/today
+{ "items": [ { "type": "lesson", "id": "…", "title": "Loops", "course_slug": "basics" },
+             { "type": "exercise", "id": "…", "title": "Sum", "course_slug": "basics" } ] }
+
+// GET /api/v1/progress
+{ "courses": [ { "course_id": "…", "title": "Basics", "slug": "basics",
+                 "total": 3, "completed": 2, "percent": 67 } ],
+  "total": 3, "completed": 2, "percent": 67, "streak": 4 }
+```
+
 ## Planned endpoints (later sprints — not implemented)
 
 These are documented for design alignment only. Sprint numbers follow the
-[Sprint_07…08](Sprint_07.md) plan.
+[Sprint_08](Sprint_08.md) plan.
 
 | Sprint | Resource | Endpoints (sketch) |
 |--------|----------|--------------------|
-| 7 | Today | `GET /today` |
-| 7 | Progress | `GET /progress` |
 | 8 | Subscription | `GET /subscription`, `POST /subscription/checkout` |
 
 ## Versioning

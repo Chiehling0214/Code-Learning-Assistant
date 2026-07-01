@@ -14,6 +14,7 @@ from typing import Any
 from app.domain.entities import Question, Quiz, QuizAttempt
 from app.domain.repositories import (
     LessonRepository,
+    ProgressRepository,
     QuizAttemptRepository,
     QuizRepository,
 )
@@ -25,10 +26,12 @@ class QuizService:
         quizzes: QuizRepository,
         attempts: QuizAttemptRepository,
         lessons: LessonRepository,
+        progress: ProgressRepository | None = None,
     ) -> None:
         self._quizzes = quizzes
         self._attempts = attempts
         self._lessons = lessons
+        self._progress = progress
 
     # ----- reads -----
 
@@ -84,6 +87,15 @@ class QuizService:
         attempt = self._attempts.create(
             user_id=user_id, quiz_id=quiz_id, score=score, answers=stored
         )
+        if self._progress is not None:
+            # Taking a quiz counts as completing it (progress tracking, Sprint 7).
+            self._progress.record(
+                user_id=user_id,
+                item_type="quiz",
+                item_id=quiz_id,
+                status="completed",
+                score=score,
+            )
         return attempt, total, results
 
     # ----- authoring (admin) -----

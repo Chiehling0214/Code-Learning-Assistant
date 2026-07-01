@@ -52,7 +52,7 @@ Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
 | **4** | Judge0 code execution & grading. | ✅ done |
 | **5** | Quizzes & auto-grading. | ✅ done |
 | **6** | AI Teacher & AI Tutor (Gemini) + content generation. | ✅ done |
-| 7 | Recommendation ("Today") & progress analytics. | ⬜ |
+| **7** | Recommendation ("Today") & progress analytics. | ✅ done |
 | 8 | Subscriptions, billing & hardening. | ⬜ |
 
 See [01_PRD.md](01_PRD.md) for product requirements and the rest of the `docs/`
