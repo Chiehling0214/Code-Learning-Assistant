@@ -129,10 +129,10 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         fakes.quizzes, fakes.attempts, fakes.lessons, fakes.progress
     )
     app.dependency_overrides[get_progress_service] = lambda: ProgressService(
-        fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress
+        fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress, fakes.tracks
     )
     app.dependency_overrides[get_recommendation_service] = lambda: RecommendationService(
-        fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress
+        fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress, fakes.tracks
     )
 
     def _guard() -> AIUsageGuard:

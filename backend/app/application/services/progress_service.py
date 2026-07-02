@@ -16,6 +16,7 @@ from app.domain.entities import ProgressEvent
 from app.domain.repositories import (
     CourseRepository,
     ExerciseRepository,
+    LanguageTrackRepository,
     LessonRepository,
     ProgressRepository,
     QuizRepository,
@@ -60,12 +61,14 @@ class ProgressService:
         exercises: ExerciseRepository,
         quizzes: QuizRepository,
         progress: ProgressRepository,
+        tracks: LanguageTrackRepository,
     ) -> None:
         self._courses = courses
         self._lessons = lessons
         self._exercises = exercises
         self._quizzes = quizzes
         self._progress = progress
+        self._tracks = tracks
 
     def get_progress(self, user_id: uuid.UUID) -> dict[str, Any]:
         events = self._progress.list_for_user(user_id)
@@ -75,7 +78,9 @@ class ProgressService:
         total_all = 0
         completed_all = 0
 
-        for course in self._courses.list_all():
+        # Only the learner's own (track-scoped) courses — never global content.
+        track_ids = [t.id for t in self._tracks.list_by_user(user_id)]
+        for course in self._courses.list_by_track_ids(track_ids):
             total = 0
             completed = 0
             for lesson in self._lessons.list_by_course(course.id):

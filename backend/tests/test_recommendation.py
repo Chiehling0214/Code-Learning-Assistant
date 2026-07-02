@@ -10,9 +10,15 @@ from tests.fakes import FakeProgressRepository
 
 
 def _seed(fakes: SimpleNamespace):
+    # Today/Progress are scoped to the learner's own tracks, so the course must
+    # belong to a track owned by the current (stub) user.
+    user = fakes.users.get_by_firebase_uid("stub-uid") or fakes.users.create(
+        firebase_uid="stub-uid", email="dev@codepath.local"
+    )
     lang = fakes.languages.create(name="Python", slug="python")
+    track = fakes.tracks.create(user_id=user.id, language_id=lang.id)
     course = fakes.courses.create(
-        language_id=lang.id, title="Basics", slug="basics", description=None
+        language_id=lang.id, title="Basics", slug="basics", description=None, track_id=track.id
     )
     lesson = fakes.lessons.create(
         course_id=course.id, title="Loops", slug="loops", order_index=1, content="# Loops"
@@ -68,6 +74,27 @@ def test_other_users_progress_does_not_affect_plan(
     )
     ids = {i["id"] for i in client.get("/api/v1/today").json()["items"]}
     assert str(exercise.id) in ids
+
+
+def test_today_excludes_other_users_courses(
+    client: TestClient, fakes: SimpleNamespace
+) -> None:
+    _seed(fakes)  # the current user's own course
+    # A course on another user's track must never surface in this learner's plan.
+    other = fakes.users.create(firebase_uid="other-uid", email="other@codepath.local")
+    lang = fakes.languages.create(name="C++", slug="cpp")
+    other_track = fakes.tracks.create(user_id=other.id, language_id=lang.id)
+    other_course = fakes.courses.create(
+        language_id=lang.id, title="C++", slug="cpp", description=None, track_id=other_track.id
+    )
+    fakes.lessons.create(
+        course_id=other_course.id, title="Ptrs", slug="ptrs", order_index=1, content="x"
+    )
+
+    slugs = {i["course_slug"] for i in client.get("/api/v1/today").json()["items"]}
+    assert "cpp" not in slugs
+    prog_slugs = {c["slug"] for c in client.get("/api/v1/progress").json()["courses"]}
+    assert "cpp" not in prog_slugs
 
 
 def _add_question(fakes: SimpleNamespace, quiz_id: uuid.UUID):

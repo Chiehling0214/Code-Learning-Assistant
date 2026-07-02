@@ -173,6 +173,7 @@ def get_progress_service(session: DbSession) -> ProgressService:
         SqlAlchemyExerciseRepository(session),
         SqlAlchemyQuizRepository(session),
         SqlAlchemyProgressRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
     )
 
 
@@ -186,6 +187,7 @@ def get_recommendation_service(session: DbSession) -> RecommendationService:
         SqlAlchemyExerciseRepository(session),
         SqlAlchemyQuizRepository(session),
         SqlAlchemyProgressRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
     )
 
 
