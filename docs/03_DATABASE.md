@@ -222,6 +222,17 @@ implemented yet** — fields will be expanded in later sprints.
 | level | str, nullable | `beginner` \| `intermediate` \| `advanced` |
 | created_at / updated_at | timestamptz | |
 
+### `course_chat_messages` (Sprint 12)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| course_id | UUID (FK → courses.id) | cascade delete, indexed |
+| user_id | UUID (FK → users.id) | cascade delete, indexed |
+| role | str | `user` \| `assistant` |
+| content | text | message body |
+| created_at / updated_at | timestamptz | |
+
 ## ER
 
 ```text
@@ -237,6 +248,7 @@ language_tracks 1───* generation_jobs
 language_tracks 1───* courses (track_id; AI-generated, personalized)
 programming_languages 1───* courses 1───* lessons 1───* exercises
 lessons 1───* quizzes 1───* questions 1───* choices
+courses 1───* course_chat_messages (per learner)
 ```
 
 ## Migrations
@@ -254,6 +266,7 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 - `0009_language_tracks` — language_tracks table (a learner's chosen languages).
 - `0010_placement` — placement_assessments table.
 - `0011_curriculum` — `courses.track_id` + generation_jobs table.
+- `0012_course_chat` — course_chat_messages table (in-course chat).
 
 ```bash
 # create/upgrade to latest

@@ -58,7 +58,10 @@ study?") instead of the dashboard (Sprint 9). Picking a language leads into a
 **placement test** (Sprint 10) that assesses the learner's level, then an
 **AI course-generation** step (Sprint 11) that builds their course before the
 dashboard. The dashboard lists the learner's own generated courses
-(`GET /me/courses`).
+(`GET /me/courses`). Inside a course (Sprint 12), a **"Learn more"** button
+appears near completion and a **`CourseChatPanel`** lets the learner ask for a
+topic — the AI appends a matching lesson (+ exercises + quiz) and the lesson list
+refreshes.
 
 | Path | Page | Access |
 |------|------|--------|

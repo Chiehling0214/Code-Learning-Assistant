@@ -289,6 +289,17 @@ class GeminiAIProvider:
                 + "; ".join(request.prior_titles)
                 + ". Continue from there with no repeats, increasing difficulty."
             )
+        focus = ""
+        if request.focus.strip():
+            # The learner's request (possibly a short chat transcript). Infer the
+            # concrete subject from it — a follow-up like "I need more" means more
+            # of whatever the recent conversation was about, not a new topic.
+            focus = (
+                " Focus the lessons specifically on what the learner is asking for, "
+                "inferring the concrete subject from this conversation (resolve vague "
+                'follow-ups like "more" against the most recent topic):\n'
+                + _fence(request.focus)
+            )
         prompt = (
             f"Generate the next {request.count} lessons of a {request.level}-level "
             f"{request.language} course as JSON with one key "
@@ -303,6 +314,7 @@ class GeminiAIProvider:
             f"{request.quiz_question_count} "
             '{"prompt", "choices": [{"text", "is_correct"}]} with exactly one correct '
             "choice each]})}. Lessons must be ordered foundational → advanced."
+            + focus
             + prior
             + " Return ONLY the JSON object."
         )

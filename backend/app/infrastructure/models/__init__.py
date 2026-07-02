@@ -8,6 +8,7 @@ from app.infrastructure.models.models import (
     AIInteraction,
     Choice,
     Course,
+    CourseChatMessage,
     Exercise,
     GenerationJob,
     LanguageTrack,
@@ -42,4 +43,5 @@ __all__ = [
     "LanguageTrack",
     "PlacementAssessment",
     "GenerationJob",
+    "CourseChatMessage",
 ]

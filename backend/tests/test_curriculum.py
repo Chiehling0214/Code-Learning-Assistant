@@ -30,6 +30,7 @@ def _service(fakes: SimpleNamespace) -> CurriculumService:
         ExecutionService(fakes.runner),
         AIUsageGuard(fakes.interactions, _SETTINGS),
         _SETTINGS,
+        fakes.progress,
     )
 
 

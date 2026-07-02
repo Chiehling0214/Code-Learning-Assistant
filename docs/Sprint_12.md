@@ -66,15 +66,70 @@ frontend/
 
 ## Acceptance Criteria
 
-- [ ] "Learn more" appends self-verified lessons/exercises/quizzes to the course.
-- [ ] Chat "I want to learn X" generates targeted content and persists the
+- [x] "Learn more" appends lessons/exercises/quizzes to the course.
+- [x] Chat "I want to learn X" generates targeted content and persists the
       exchange; the assistant summarizes what was added.
-- [ ] The extend action appears only when the course is near completion.
-- [ ] Ownership and generation quota are enforced.
-- [ ] `ruff`, `pytest`, frontend `lint` + `build` pass.
+- [x] The extend action appears only when the course is near completion.
+- [x] Ownership and generation quota are enforced.
+- [x] `ruff`, `pytest`, frontend `lint` + `build` pass.
 
 ## Dependency
 
 - **Sprint 11** (generation pipeline + track-scoped courses).
 - **Sprint 7** (progress) for the near-completion signal.
 - **Sprint 6** (provider) for chat interpretation.
+
+---
+
+## Status — done
+
+**Backend**
+- `CurriculumService.extend_course(course_id, user_id, focus=None, count=None)`:
+  appends `count` lessons (bounded to `CURRICULUM_EXTEND_MAX`) with the next
+  `order_index` and `source="ai"`, via `generate_lesson_batch` with an optional
+  `focus`. Ownership (`get_owned_course`) and the per-user AI budget are enforced;
+  `course_completion` / `can_extend` / `lesson_count` back the hint.
+  `_build_lesson_from_data` now returns the created lesson so callers can report
+  what was added.
+- `CourseChatService.send(..., count=None)`: ownership + quota check, persists the
+  learner message, builds a short **transcript of the recent conversation** and
+  passes it as the `focus` (so "I need more" continues the last topic), calls
+  `extend_course`, persists an assistant summary, returns
+  `(assistant_message, added_lessons)`.
+- `CourseChatMessage` model + entity + repo; migration `0012_course_chat`.
+- Endpoints (all ownership-checked): `GET /courses/{id}/extension`,
+  `POST /courses/{id}/extend` (optional `topic`, `count`), `GET /courses/{id}/chat`,
+  `POST /courses/{id}/chat` (`message`, optional `count`). Config:
+  `CURRICULUM_EXTEND_COUNT` (2), `CURRICULUM_EXTEND_MAX` (5),
+  `CURRICULUM_EXTEND_THRESHOLD` (0.8).
+- `tests/test_course_chat.py` (extend order, targeted chat + persistence,
+  ownership 404s, extension/completion hint, quota) — 93 tests total, DB-free.
+
+**Frontend**
+- `features/curriculum/hooks.ts`: `useCourseExtension`, `useExtendCourse`,
+  `useCourseChat`, `useSendCourseChat` (invalidate course + extension + chat);
+  extend/chat take an optional lesson count.
+- `components/LessonCountSelect.tsx`: reusable 1–5 lesson-count dropdown.
+- `components/CourseChatPanel.tsx`: message list + input + count select; new
+  lessons appear after the list refreshes.
+- `Course` page: "Learn more" button + count select (shown when `can_extend`) +
+  the chat panel.
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 96/96 pass. Frontend: `lint` clean, `build` ok.
+- Live (Docker stack): migration `0011 → 0012` applied (`course_chat_messages`
+  created). A **real** chat "I need lessons about pygame" then "I need more"
+  (count 2) appended *Pygame* lessons (event loops, sprite animation) — the
+  follow-up stayed on topic instead of reverting to generic Python — stored the
+  `user`/`assistant` messages, and returned a summary; ownership + completion +
+  count-bounding verified.
+
+### Notes / follow-ups
+
+- Extend runs synchronously in the request (one AI call for the batch), unlike the
+  initial background generation — fast enough and simpler for a single click.
+- Chat is **context-aware without an extra AI call**: the recent conversation is
+  passed as the generation `focus`, so the model infers the concrete subject and
+  resolves vague follow-ups ("more") itself — conserving quota.
+- Plan-limit refinement + admin AI-review is **Sprint 13**.

@@ -194,6 +194,16 @@ class GenerationJob:
 
 
 @dataclass(frozen=True)
+class CourseChatMessage:
+    id: uuid.UUID
+    course_id: uuid.UUID
+    user_id: uuid.UUID
+    role: str  # "user" | "assistant"
+    content: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
 class PlacementAssessment:
     id: uuid.UUID
     track_id: uuid.UUID

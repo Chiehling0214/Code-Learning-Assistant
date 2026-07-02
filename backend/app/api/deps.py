@@ -17,6 +17,7 @@ from app.application.services.ai_teacher_service import AITeacherService
 from app.application.services.ai_tutor_service import AITutorService
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
+from app.application.services.course_chat_service import CourseChatService
 from app.application.services.curriculum_service import CurriculumService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
@@ -38,6 +39,7 @@ from app.infrastructure.db.session import get_session
 from app.infrastructure.judge0.client import Judge0Client
 from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyAIInteractionRepository,
+    SqlAlchemyCourseChatRepository,
     SqlAlchemyCourseRepository,
     SqlAlchemyExerciseRepository,
     SqlAlchemyGenerationJobRepository,
@@ -247,10 +249,22 @@ def get_curriculum_service(session: DbSession, settings: SettingsDep) -> Curricu
         ExecutionService(Judge0Client(settings)),
         AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
         settings,
+        SqlAlchemyProgressRepository(session),
     )
 
 
 CurriculumServiceDep = Annotated[CurriculumService, Depends(get_curriculum_service)]
+
+
+def get_course_chat_service(session: DbSession, settings: SettingsDep) -> CourseChatService:
+    return CourseChatService(
+        SqlAlchemyCourseChatRepository(session),
+        get_curriculum_service(session, settings),
+        AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
+    )
+
+
+CourseChatServiceDep = Annotated[CourseChatService, Depends(get_course_chat_service)]
 
 
 def require_active_subscription(

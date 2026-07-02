@@ -106,6 +106,9 @@ class GenerateLessonBatchRequest:
     quiz_question_count: int = 3
     # Titles of lessons already generated, so the batch continues coherently.
     prior_titles: list[str] = field(default_factory=list)
+    # Optional thematic focus / learner request (may be a short chat transcript).
+    # When set, the lessons target it instead of just continuing the syllabus.
+    focus: str = ""
 
 
 @dataclass(frozen=True)

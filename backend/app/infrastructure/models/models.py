@@ -353,6 +353,26 @@ class GenerationJob(TimestampMixin, Base):
 
 
 # --------------------------------------------------------------------------- #
+# In-course chat (Sprint 12)
+# --------------------------------------------------------------------------- #
+
+
+class CourseChatMessage(TimestampMixin, Base):
+    __tablename__ = "course_chat_messages"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    course_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # "user" | "assistant"
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, default="", nullable=False)
+
+
+# --------------------------------------------------------------------------- #
 # Placement test (Sprint 10)
 # --------------------------------------------------------------------------- #
 

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.domain.entities import AIInteraction as AIInteractionEntity
 from app.domain.entities import Choice as ChoiceEntity
 from app.domain.entities import Course as CourseEntity
+from app.domain.entities import CourseChatMessage as CourseChatMessageEntity
 from app.domain.entities import Exercise as ExerciseEntity
 from app.domain.entities import GenerationJob as GenerationJobEntity
 from app.domain.entities import LanguageTrack as LanguageTrackEntity
@@ -32,6 +33,7 @@ from app.domain.entities import User as UserEntity
 from app.infrastructure.models.models import AIInteraction as AIInteractionModel
 from app.infrastructure.models.models import Choice as ChoiceModel
 from app.infrastructure.models.models import Course as CourseModel
+from app.infrastructure.models.models import CourseChatMessage as CourseChatMessageModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
 from app.infrastructure.models.models import GenerationJob as GenerationJobModel
 from app.infrastructure.models.models import LanguageTrack as LanguageTrackModel
@@ -983,3 +985,45 @@ class SqlAlchemyGenerationJobRepository:
         self._session.flush()
         self._session.refresh(model)
         return _to_job(model)
+
+
+def _to_chat(model: CourseChatMessageModel) -> CourseChatMessageEntity:
+    return CourseChatMessageEntity(
+        id=model.id,
+        course_id=model.course_id,
+        user_id=model.user_id,
+        role=model.role,
+        content=model.content,
+        created_at=model.created_at,
+    )
+
+
+class SqlAlchemyCourseChatRepository:
+    """Concrete :class:`~app.domain.repositories.CourseChatRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_by_course_and_user(
+        self, course_id: uuid.UUID, user_id: uuid.UUID
+    ) -> list[CourseChatMessageEntity]:
+        stmt = (
+            select(CourseChatMessageModel)
+            .where(
+                CourseChatMessageModel.course_id == course_id,
+                CourseChatMessageModel.user_id == user_id,
+            )
+            .order_by(CourseChatMessageModel.created_at)
+        )
+        return [_to_chat(m) for m in self._session.scalars(stmt).all()]
+
+    def create(
+        self, *, course_id: uuid.UUID, user_id: uuid.UUID, role: str, content: str
+    ) -> CourseChatMessageEntity:
+        model = CourseChatMessageModel(
+            course_id=course_id, user_id=user_id, role=role, content=content
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_chat(model)

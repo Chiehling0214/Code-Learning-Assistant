@@ -82,6 +82,12 @@ class Settings(BaseSettings):
     # and retry the lesson (the free tier's per-minute cap resets in ~60s).
     curriculum_retry_delay_seconds: float = 20.0
     curriculum_retry_attempts: int = 3
+    # Continuous learning (Sprint 12): default lessons added per "Learn more" /
+    # chat request, the upper bound the learner may request, and the completion
+    # ratio at which the "Learn more" hint appears.
+    curriculum_extend_count: int = 2
+    curriculum_extend_max: int = 5
+    curriculum_extend_threshold: float = 0.8
 
     # --- Billing (Stripe, Sprint 8) ---
     # When billing is disabled (default), premium gating is a no-op — every

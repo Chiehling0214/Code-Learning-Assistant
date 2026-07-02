@@ -18,6 +18,7 @@ from app.domain.entities import (
     AIInteraction,
     Choice,
     Course,
+    CourseChatMessage,
     Exercise,
     GenerationJob,
     LanguageTrack,
@@ -601,9 +602,11 @@ class FakeAIProvider:
 
     def generate_lesson_batch(self, request) -> GeneratedLessonBatch:
         start = len(request.prior_titles)
+        # Echo the focus into titles so tests can assert targeting.
+        base = request.focus.strip() or f"{request.language} lesson"
         lessons = [
             {
-                "title": f"{request.language} lesson {start + n + 1}",
+                "title": f"{base} {start + n + 1}",
                 "content": "# Lesson\n\nContent.",
                 "exercises": [
                     {
@@ -938,3 +941,30 @@ class FakePlacementRepository:
         )
         self._items[assessment_id] = updated
         return updated
+
+
+class FakeCourseChatRepository:
+    def __init__(self) -> None:
+        self._items: list[CourseChatMessage] = []
+
+    def list_by_course_and_user(
+        self, course_id: uuid.UUID, user_id: uuid.UUID
+    ) -> list[CourseChatMessage]:
+        items = [
+            m for m in self._items if m.course_id == course_id and m.user_id == user_id
+        ]
+        return sorted(items, key=lambda m: m.created_at)
+
+    def create(
+        self, *, course_id: uuid.UUID, user_id: uuid.UUID, role: str, content: str
+    ) -> CourseChatMessage:
+        message = CourseChatMessage(
+            id=uuid.uuid4(),
+            course_id=course_id,
+            user_id=user_id,
+            role=role,
+            content=content,
+            created_at=_now(),
+        )
+        self._items.append(message)
+        return message

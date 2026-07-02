@@ -15,6 +15,7 @@ from app.api.deps import (
     get_ai_teacher_service,
     get_ai_tutor_service,
     get_content_service,
+    get_course_chat_service,
     get_current_db_user,
     get_curriculum_service,
     get_execution_service,
@@ -33,6 +34,7 @@ from app.application.services.ai_teacher_service import AITeacherService
 from app.application.services.ai_tutor_service import AITutorService
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
+from app.application.services.course_chat_service import CourseChatService
 from app.application.services.curriculum_service import CurriculumService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
@@ -54,6 +56,7 @@ from tests.fakes import (
     FakeAIInteractionRepository,
     FakeAIProvider,
     FakeCodeRunner,
+    FakeCourseChatRepository,
     FakeCourseRepository,
     FakeExerciseRepository,
     FakeGenerationJobRepository,
@@ -107,6 +110,7 @@ def fakes() -> SimpleNamespace:
         tracks=FakeLanguageTrackRepository(),
         placements=FakePlacementRepository(),
         jobs=FakeGenerationJobRepository(),
+        chats=FakeCourseChatRepository(),
     )
 
 
@@ -170,18 +174,27 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         AIUsageGuard(fakes.interactions, _AI_SETTINGS),
         _AI_SETTINGS,
     )
-    app.dependency_overrides[get_curriculum_service] = lambda: CurriculumService(
-        fakes.ai,
-        fakes.jobs,
-        fakes.courses,
-        fakes.lessons,
-        fakes.exercises,
-        fakes.quizzes,
-        fakes.languages,
-        fakes.tracks,
-        ExecutionService(fakes.runner),
+    def _curriculum() -> CurriculumService:
+        return CurriculumService(
+            fakes.ai,
+            fakes.jobs,
+            fakes.courses,
+            fakes.lessons,
+            fakes.exercises,
+            fakes.quizzes,
+            fakes.languages,
+            fakes.tracks,
+            ExecutionService(fakes.runner),
+            AIUsageGuard(fakes.interactions, _CURRICULUM_SETTINGS),
+            _CURRICULUM_SETTINGS,
+            fakes.progress,
+        )
+
+    app.dependency_overrides[get_curriculum_service] = _curriculum
+    app.dependency_overrides[get_course_chat_service] = lambda: CourseChatService(
+        fakes.chats,
+        _curriculum(),
         AIUsageGuard(fakes.interactions, _CURRICULUM_SETTINGS),
-        _CURRICULUM_SETTINGS,
     )
     with TestClient(app) as test_client:
         yield test_client

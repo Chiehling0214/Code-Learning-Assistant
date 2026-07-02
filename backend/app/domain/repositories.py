@@ -14,6 +14,7 @@ from typing import Protocol
 from app.domain.entities import (
     AIInteraction,
     Course,
+    CourseChatMessage,
     Exercise,
     GenerationJob,
     LanguageTrack,
@@ -309,6 +310,18 @@ class GenerationJobRepository(Protocol):
         course_id: uuid.UUID | None = None,
         error: str | None = None,
     ) -> GenerationJob: ...
+
+
+class CourseChatRepository(Protocol):
+    """In-course chat messages between a learner and the AI (Sprint 12)."""
+
+    def list_by_course_and_user(
+        self, course_id: uuid.UUID, user_id: uuid.UUID
+    ) -> list[CourseChatMessage]: ...
+
+    def create(
+        self, *, course_id: uuid.UUID, user_id: uuid.UUID, role: str, content: str
+    ) -> CourseChatMessage: ...
 
 
 class PlacementRepository(Protocol):

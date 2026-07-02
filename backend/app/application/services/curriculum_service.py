@@ -24,9 +24,10 @@ from app.application.ports.ai_provider import (
 )
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.execution_service import ExecutionService
+from app.application.services.progress_service import completed_item_ids
 from app.core.config import Settings
 from app.core.logging import get_logger
-from app.domain.entities import GenerationJob
+from app.domain.entities import Course, GenerationJob, Lesson
 from app.domain.repositories import (
     CourseRepository,
     ExerciseRepository,
@@ -34,6 +35,7 @@ from app.domain.repositories import (
     LanguageRepository,
     LanguageTrackRepository,
     LessonRepository,
+    ProgressRepository,
     QuizRepository,
 )
 
@@ -61,6 +63,7 @@ class CurriculumService:
         execution: ExecutionService,
         usage: AIUsageGuard,
         settings: Settings,
+        progress: ProgressRepository,
     ) -> None:
         self._provider = provider
         self._jobs = jobs
@@ -73,6 +76,7 @@ class CurriculumService:
         self._execution = execution
         self._usage = usage
         self._settings = settings
+        self._progress = progress
 
     # ----- job control -----
 
@@ -100,6 +104,103 @@ class CurriculumService:
         if job is None:
             raise LookupError("No generation job for this track")
         return job
+
+    # ----- continuous learning: extend an existing course (Sprint 12) -----
+
+    def get_owned_course(self, *, course_id: uuid.UUID, user_id: uuid.UUID) -> Course:
+        """Return the course only if it belongs to one of the learner's tracks.
+
+        Raises ``LookupError`` when the course does not exist or is not owned by
+        the user (we don't distinguish, to avoid leaking others' course ids).
+        """
+        course = self._courses.get_by_id(course_id)
+        if course is None or course.track_id is None:
+            raise LookupError("Course not found")
+        track = self._tracks.get_by_id(course.track_id)
+        if track is None or track.user_id != user_id:
+            raise LookupError("Course not found")
+        return course
+
+    def course_completion(
+        self, *, course_id: uuid.UUID, user_id: uuid.UUID
+    ) -> tuple[int, int, int]:
+        """Return ``(completed, total, percent)`` items for this learner's course."""
+        done = completed_item_ids(self._progress.list_for_user(user_id))
+        total = 0
+        completed = 0
+        for lesson in self._lessons.list_by_course(course_id):
+            total += 1
+            completed += 1 if lesson.id in done["lesson"] else 0
+            for ex in self._exercises.list_by_lesson(lesson.id):
+                total += 1
+                completed += 1 if ex.id in done["exercise"] else 0
+            for qz in self._quizzes.list_by_lesson(lesson.id):
+                total += 1
+                completed += 1 if qz.id in done["quiz"] else 0
+        percent = round(completed / total * 100) if total else 0
+        return completed, total, percent
+
+    def can_extend(self, *, course_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Whether the "Learn more" hint should show (course near completion)."""
+        _, total, percent = self.course_completion(course_id=course_id, user_id=user_id)
+        return total > 0 and percent >= round(self._settings.curriculum_extend_threshold * 100)
+
+    def lesson_count(self, course_id: uuid.UUID) -> int:
+        return len(self._lessons.list_by_course(course_id))
+
+    def clamp_extend_count(self, count: int | None) -> int:
+        """Bound a requested lesson count to [1, curriculum_extend_max]."""
+        if count is None:
+            count = self._settings.curriculum_extend_count
+        return max(1, min(int(count), self._settings.curriculum_extend_max))
+
+    def extend_course(
+        self,
+        *,
+        course_id: uuid.UUID,
+        user_id: uuid.UUID,
+        focus: str | None = None,
+        count: int | None = None,
+    ) -> list[Lesson]:
+        """Append ``count`` lessons (each with exercises + a quiz) to an owned course.
+
+        ``focus`` is the learner's request — a specific subject or a short chat
+        transcript — which the generator uses to target the new lessons (and to
+        resolve vague follow-ups like "more" against the recent conversation).
+        Without a focus the syllabus is simply continued. Ownership and the
+        per-user AI budget are enforced. Returns the newly created lessons.
+        """
+        course = self.get_owned_course(course_id=course_id, user_id=user_id)
+        # Enforce the per-user AI budget before spending a generation call.
+        self._usage.check(user_id)
+        track = self._tracks.get_by_id(course.track_id)
+        language = self._languages.get_by_id(course.language_id)
+        if track is None or language is None:
+            raise LookupError("Course not found")
+        level = (track.level if track else None) or "beginner"
+
+        existing = self._lessons.list_by_course(course_id)
+        order_index = max((ln.order_index for ln in existing), default=-1) + 1
+        prior_titles = [ln.title for ln in existing]
+
+        count = self.clamp_extend_count(count)
+        batch = self._generate_batch_with_retry(
+            language, level, count, prior_titles, user_id, focus=focus or ""
+        )
+        lesson_dicts = (batch.lessons if batch else [])[:count]
+
+        created: list[Lesson] = []
+        for data in lesson_dicts:
+            lesson = self._build_lesson_from_data(course.id, language, order_index, data)
+            created.append(lesson)
+            order_index += 1
+        logger.info(
+            "curriculum: extended course=%s by %d lesson(s) focus=%r",
+            course_id,
+            len(created),
+            (focus or "")[:60],
+        )
+        return created
 
     # ----- generation (run by the background worker) -----
 
@@ -164,10 +265,10 @@ class CurriculumService:
                 language, level, count, prior_titles, job.user_id
             )
             for lesson_data in (batch.lessons if batch else [])[:count]:
-                title = self._build_lesson_from_data(
+                lesson = self._build_lesson_from_data(
                     course.id, language, order_index, lesson_data
                 )
-                prior_titles.append(title)
+                prior_titles.append(lesson.title)
                 order_index += 1
                 completed += 1
                 # Publish lessons as each batch lands (incremental progress).
@@ -189,6 +290,7 @@ class CurriculumService:
         count: int,
         prior_titles: list[str],
         user_id: uuid.UUID,
+        focus: str = "",
     ) -> GeneratedLessonBatch | None:
         """Generate one batch of lessons, retrying on rate-limit; None on failure."""
         attempts = max(1, self._settings.curriculum_retry_attempts)
@@ -202,6 +304,7 @@ class CurriculumService:
                         exercise_count=self._settings.curriculum_exercises_per_lesson,
                         quiz_question_count=self._settings.curriculum_quiz_questions,
                         prior_titles=prior_titles,
+                        focus=focus,
                     )
                 )
                 self._usage.record(
@@ -245,8 +348,8 @@ class CurriculumService:
         language,  # noqa: ANN001 - domain entity
         order_index: int,
         data: dict[str, Any],
-    ) -> str:
-        """Persist one generated lesson (content + exercises + quiz); return its title."""
+    ) -> Lesson:
+        """Persist one generated lesson (content + exercises + quiz); return it."""
         title = str(data.get("title", f"Lesson {order_index + 1}"))
         lesson = self._lessons.create(
             course_id=course_id,
@@ -268,7 +371,7 @@ class CurriculumService:
             len(exercises),
             len((quiz or {}).get("questions", [])),
         )
-        return title
+        return lesson
 
     def _build_exercise(
         self, lesson_id: uuid.UUID, language: str, topic: str, ex: dict[str, Any]

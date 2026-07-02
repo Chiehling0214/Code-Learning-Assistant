@@ -38,7 +38,7 @@ backend/
 │   │           ├── webhooks.py      # Stripe webhook receiver (Sprint 8)
 │   │           ├── tracks.py        # language tracks + onboarding (Sprint 9)
 │   │           ├── placement.py     # placement test (Sprint 10)
-│   │           └── curriculum.py    # AI course generation + /me/courses (Sprint 11)
+│   │           └── curriculum.py    # generation, /me/courses, extend + chat (Sprint 11/12)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -66,7 +66,8 @@ backend/
 │   │       ├── subscription_service.py      # billing + entitlement (Sprint 8)
 │   │       ├── track_service.py             # language tracks + caps (Sprint 9)
 │   │       ├── placement_service.py         # placement generate/grade (Sprint 10)
-│   │       └── curriculum_service.py        # AI course generation (Sprint 11)
+│   │       ├── curriculum_service.py        # AI course generation + extend (Sprint 11/12)
+│   │       └── course_chat_service.py        # in-course chat → append content (Sprint 12)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base

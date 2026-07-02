@@ -64,6 +64,10 @@
 | POST | `/api/v1/me/tracks/{id}/generate` | bearer | 11 | Start AI course generation (background job). |
 | GET | `/api/v1/me/tracks/{id}/generation` | bearer | 11 | Poll the generation job. |
 | GET | `/api/v1/me/courses` | bearer | 11 | The learner's own (generated) courses. |
+| GET | `/api/v1/courses/{id}/extension` | bearer | 12 | Completion % + `can_extend` hint. |
+| POST | `/api/v1/courses/{id}/extend` | bearer | 12 | Append lessons (optional `topic`, `count`). |
+| GET | `/api/v1/courses/{id}/chat` | bearer | 12 | The in-course chat history. |
+| POST | `/api/v1/courses/{id}/chat` | bearer | 12 | Ask for a topic (+ optional `count`) → AI appends content. |
 
 ### `GET /health`
 
