@@ -9,6 +9,7 @@ from app.infrastructure.models.models import (
     Choice,
     Course,
     Exercise,
+    GenerationJob,
     LanguageTrack,
     Lesson,
     PlacementAssessment,
@@ -40,4 +41,5 @@ __all__ = [
     "Subscription",
     "LanguageTrack",
     "PlacementAssessment",
+    "GenerationJob",
 ]

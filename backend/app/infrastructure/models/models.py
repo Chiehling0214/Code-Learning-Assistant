@@ -92,6 +92,11 @@ class Course(TimestampMixin, Base):
     language_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("programming_languages.id", ondelete="CASCADE")
     )
+    # Owning learner track for AI-generated, personalized courses (Sprint 11).
+    # Null for shared/legacy courses.
+    track_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("language_tracks.id", ondelete="CASCADE"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(255))
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -327,6 +332,24 @@ class LanguageTrack(TimestampMixin, Base):
     level: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # "onboarding" (awaiting placement) | "active"
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
+
+
+class GenerationJob(TimestampMixin, Base):
+    __tablename__ = "generation_jobs"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    track_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("language_tracks.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # "pending" | "running" | "done" | "error"
+    status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
+    total: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    completed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    course_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 # --------------------------------------------------------------------------- #

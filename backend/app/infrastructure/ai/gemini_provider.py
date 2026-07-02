@@ -10,6 +10,7 @@ fenced to limit prompt injection. Quota (``429``) failures are surfaced as
 from __future__ import annotations
 
 import json
+import re
 
 from app.application.ports.ai_provider import (
     AINotConfiguredError,
@@ -18,10 +19,16 @@ from app.application.ports.ai_provider import (
     AIResponse,
     GeneratedExercise,
     GeneratedLesson,
+    GeneratedLessonBatch,
+    GeneratedLessonPack,
     GeneratedPlacement,
+    GeneratedSyllabus,
     GenerateExerciseRequest,
+    GenerateLessonBatchRequest,
+    GenerateLessonPackRequest,
     GenerateLessonRequest,
     GeneratePlacementRequest,
+    GenerateSyllabusRequest,
     TeachRequest,
     TutorRequest,
 )
@@ -73,8 +80,11 @@ class GeminiAIProvider:
         mime type), which avoids Markdown fences / prose around the JSON.
         """
         client = self._ensure_client()
+        # A generated lesson pack (content + exercises with full reference
+        # solutions + a quiz) is large; a small cap truncates the JSON and the
+        # parse fails. Give plenty of room for structured output.
         config = (
-            {"response_mime_type": "application/json", "max_output_tokens": 8192}
+            {"response_mime_type": "application/json", "max_output_tokens": 32768}
             if json_mode
             else None
         )
@@ -87,7 +97,14 @@ class GeminiAIProvider:
             lowered = message.lower()
             if "429" in message or "resource_exhausted" in lowered or "quota" in lowered:
                 logger.warning("Gemini quota exceeded: %s", message)
-                raise AIQuotaError("AI quota exceeded; try again later") from exc
+                # Honor the provider's suggested retry delay when present.
+                match = re.search(r"retry in ([0-9.]+)s", message) or re.search(
+                    r"retryDelay['\"]?:\s*['\"]?([0-9.]+)s", message
+                )
+                retry_after = float(match.group(1)) if match else None
+                raise AIQuotaError(
+                    "AI quota exceeded; try again later", retry_after=retry_after
+                ) from exc
             logger.warning("Gemini request failed: %s", message)
             raise AIProviderError(f"AI request failed: {message}") from exc
 
@@ -214,4 +231,83 @@ class GeminiAIProvider:
                 task.setdefault("language", request.language)
         return GeneratedPlacement(
             mcqs=mcqs, coding=coding, model=self._teacher_model, total_tokens=tokens
+        )
+
+    def generate_syllabus(self, request: GenerateSyllabusRequest) -> GeneratedSyllabus:
+        prompt = (
+            "Design a course syllabus as JSON with one key "
+            f'"topics": a list of {request.lesson_count} concise lesson titles for a '
+            f"{request.level}-level {request.language} course, ordered from "
+            "foundational to advanced, each building on the previous. "
+            "Return ONLY the JSON object."
+        )
+        data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
+        raw = data.get("topics") if isinstance(data.get("topics"), list) else []
+        topics = [str(t) for t in raw if str(t).strip()]
+        return GeneratedSyllabus(
+            topics=topics, model=self._teacher_model, total_tokens=tokens
+        )
+
+    def generate_lesson_pack(
+        self, request: GenerateLessonPackRequest
+    ) -> GeneratedLessonPack:
+        prompt = (
+            "Generate a complete lesson as JSON with keys: "
+            '"title" (string), "content" (a Markdown lesson; put ALL code in fenced '
+            f"```{request.language} code blocks), "
+            f'"exercises" (a list of {request.exercise_count} coding exercises, each '
+            '{"title", "prompt", "starter_code", "reference_solution", '
+            '"test_spec": {"cases": [{"input": string, "expected": string}]}} where the '
+            f"reference_solution is a correct {request.language} program that reads any "
+            "stdin and prints the answer to stdout, and matches every expected output "
+            "exactly), and "
+            f'"quiz" ({{"title", "questions": [a list of {request.quiz_question_count} '
+            '{"prompt", "choices": [{"text", "is_correct"}]} with exactly one correct '
+            "choice each]}). "
+            f"Lesson topic: {request.topic}. Language: {request.language}. Level: "
+            f"{request.level}. Return ONLY the JSON object."
+        )
+        data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
+        exercises = data.get("exercises") if isinstance(data.get("exercises"), list) else []
+        quiz = data.get("quiz") if isinstance(data.get("quiz"), dict) else {}
+        return GeneratedLessonPack(
+            title=str(data.get("title", request.topic)),
+            content=str(data.get("content", "")),
+            exercises=exercises,
+            quiz=quiz,
+            model=self._teacher_model,
+            total_tokens=tokens,
+        )
+
+    def generate_lesson_batch(
+        self, request: GenerateLessonBatchRequest
+    ) -> GeneratedLessonBatch:
+        prior = ""
+        if request.prior_titles:
+            prior = (
+                " Earlier lessons already covered: "
+                + "; ".join(request.prior_titles)
+                + ". Continue from there with no repeats, increasing difficulty."
+            )
+        prompt = (
+            f"Generate the next {request.count} lessons of a {request.level}-level "
+            f"{request.language} course as JSON with one key "
+            '"lessons": a list where each item is a complete lesson '
+            '{"title" (string), "content" (Markdown; put ALL code in fenced '
+            f"```{request.language} blocks), "
+            f'"exercises" (a list of {request.exercise_count} coding exercises, each '
+            '{"title", "prompt", "starter_code", "reference_solution", '
+            '"test_spec": {"cases": [{"input": string, "expected": string}]}} whose '
+            "reference_solution is correct and matches every expected stdout exactly), "
+            f'and "quiz" ({{"title", "questions": [a list of '
+            f"{request.quiz_question_count} "
+            '{"prompt", "choices": [{"text", "is_correct"}]} with exactly one correct '
+            "choice each]})}. Lessons must be ordered foundational → advanced."
+            + prior
+            + " Return ONLY the JSON object."
+        )
+        data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
+        lessons = data.get("lessons") if isinstance(data.get("lessons"), list) else []
+        return GeneratedLessonBatch(
+            lessons=lessons, model=self._teacher_model, total_tokens=tokens
         )

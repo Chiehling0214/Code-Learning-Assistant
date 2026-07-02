@@ -5,7 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCourses, useLanguages } from "@/features/content/hooks";
+import { useLanguages } from "@/features/content/hooks";
+import { useMyCourses } from "@/features/curriculum/hooks";
 import { useAddTrack, useRemoveTrack, useTracks } from "@/features/tracks/hooks";
 import { ApiError, apiFetch } from "@/lib/api";
 
@@ -96,14 +97,9 @@ export function DashboardPage() {
     queryKey: ["health"],
     queryFn: () => apiFetch<Readiness>("/health"),
   });
-  const { data: courses = [], isLoading: coursesLoading } = useCourses();
-  const { data: tracks = [] } = useTracks();
+  const { data: myCourses = [], isLoading: coursesLoading } = useMyCourses();
 
   const apiStatus = isLoading ? "checking…" : isError ? "unreachable" : (data?.status ?? "unknown");
-
-  // Only show courses for languages the learner has chosen to study.
-  const trackedLanguageIds = new Set(tracks.map((t) => t.language_id));
-  const myCourses = courses.filter((c) => trackedLanguageIds.has(c.language_id));
 
   return (
     <div className="space-y-6">

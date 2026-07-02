@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api";
+import { useSessionStore } from "@/store/session";
 
 export interface Track {
   id: string;
@@ -24,12 +25,12 @@ export function useAddTrack() {
         body: JSON.stringify({ language_id: languageId }),
       }),
     onSuccess: (track) => {
-      // Write the new track into the cache immediately so the onboarding gate
-      // doesn't briefly see an empty list (which would bounce back to onboarding).
       queryClient.setQueryData<Track[]>(["tracks"], (old = []) =>
         old.some((t) => t.id === track.id) ? old : [...old, track],
       );
-      queryClient.invalidateQueries({ queryKey: ["me"] });
+      // Mark the session onboarded so the gate lets the learner into the app.
+      const { user, setUser } = useSessionStore.getState();
+      if (user && !user.onboarded) setUser({ ...user, onboarded: true });
     },
   });
 }

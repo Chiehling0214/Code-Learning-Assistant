@@ -1,8 +1,10 @@
-"""Seed the database with sample content.
+"""Seed the database with the selectable programming languages.
 
-Idempotent: safe to run repeatedly (rows are keyed by slug). Data-driven — each
-entry in ``PACKS`` is a language with a starter course (lessons + an exercise +
-a quiz). Run with:
+Idempotent (rows keyed by slug). As of Sprint 11 courses are **AI-generated per
+learner** (see the placement → curriculum flow), so this only seeds the
+languages a learner can pick — no sample courses/lessons. The ``*_PACK`` course
+definitions are kept as dev fixtures for the (dev-only) ``seed_sample_course``
+helper. Run with:
 
     python -m scripts.seed            # from the backend/ directory
 """
@@ -288,15 +290,36 @@ def _seed_pack(session: Session, pack: dict) -> tuple[str, int, int, int]:
 
 
 def seed() -> None:
+    """Seed the selectable languages only (courses are AI-generated per learner)."""
     session = SessionLocal()
     try:
         for pack in PACKS:
-            slug, lessons, exercises, quizzes = _seed_pack(session, pack)
-            print(
-                f"Seeded '{slug}': {lessons} new lesson(s), "
-                f"{exercises} new exercise(s), {quizzes} new quiz(zes)."
-            )
+            language = _get_or_create_language(session, pack["language"])
+            print(f"Seeded language '{language.slug}'.")
         session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def seed_sample_course(slug: str = "python") -> None:
+    """Dev-only: seed a full sample course (lessons/exercises/quiz) for a pack.
+
+    Handy for local testing without running AI generation. Not part of ``seed()``.
+    """
+    pack = next((p for p in PACKS if p["language"]["slug"] == slug), None)
+    if pack is None:
+        raise SystemExit(f"No pack for language '{slug}'")
+    session = SessionLocal()
+    try:
+        name, lessons, exercises, quizzes = _seed_pack(session, pack)
+        session.commit()
+        print(
+            f"Seeded sample course for '{name}': {lessons} lesson(s), "
+            f"{exercises} exercise(s), {quizzes} quiz(zes)."
+        )
     except Exception:
         session.rollback()
         raise

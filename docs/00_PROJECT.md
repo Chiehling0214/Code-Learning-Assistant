@@ -56,7 +56,7 @@ Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
 | **8** | Subscriptions, billing & hardening. | ✅ done |
 | **9** | Onboarding & language tracks (pick a language on first login). | ✅ done |
 | **10** | Placement test (MCQ + coding) → assessed level. | ✅ done |
-| 11 | AI curriculum generation (full personalized courses). | ⬜ planned |
+| **11** | AI curriculum generation (full personalized courses). | ✅ done |
 | 12 | Continuous learning: extend course + in-course chat. | ⬜ planned |
 | 13 | Entitlements (plan limits) & admin AI-content review. | ⬜ planned |
 

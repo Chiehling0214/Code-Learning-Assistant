@@ -9,13 +9,17 @@ from app.application.ports.ai_provider import (
     AIResponse,
     GeneratedExercise,
     GeneratedLesson,
+    GeneratedLessonBatch,
+    GeneratedLessonPack,
     GeneratedPlacement,
+    GeneratedSyllabus,
 )
 from app.domain.entities import (
     AIInteraction,
     Choice,
     Course,
     Exercise,
+    GenerationJob,
     LanguageTrack,
     Lesson,
     PlacementAssessment,
@@ -181,6 +185,11 @@ class FakeCourseRepository:
     def list_all(self) -> list[Course]:
         return sorted(self._items.values(), key=lambda x: x.title)
 
+    def list_by_track_ids(self, track_ids: list[uuid.UUID]) -> list[Course]:
+        ids = set(track_ids)
+        items = [c for c in self._items.values() if c.track_id in ids]
+        return sorted(items, key=lambda x: x.created_at)
+
     def get_by_id(self, course_id: uuid.UUID) -> Course | None:
         return self._items.get(course_id)
 
@@ -188,7 +197,13 @@ class FakeCourseRepository:
         return next((x for x in self._items.values() if x.slug == slug), None)
 
     def create(
-        self, *, language_id: uuid.UUID, title: str, slug: str, description: str | None
+        self,
+        *,
+        language_id: uuid.UUID,
+        title: str,
+        slug: str,
+        description: str | None,
+        track_id: uuid.UUID | None = None,
     ) -> Course:
         now = _now()
         course = Course(
@@ -199,6 +214,7 @@ class FakeCourseRepository:
             description=description,
             created_at=now,
             updated_at=now,
+            track_id=track_id,
         )
         self._items[course.id] = course
         return course
@@ -548,6 +564,75 @@ class FakeAIProvider:
             total_tokens=9,
         )
 
+    def generate_syllabus(self, request) -> GeneratedSyllabus:
+        topics = [f"{request.language} topic {i + 1}" for i in range(request.lesson_count)]
+        return GeneratedSyllabus(topics=topics, model=self.model, total_tokens=6)
+
+    def generate_lesson_pack(self, request) -> GeneratedLessonPack:
+        return GeneratedLessonPack(
+            title=request.topic,
+            content=f"# {request.topic}\n\nContent.",
+            exercises=[
+                {
+                    "title": f"{request.topic} ex{i + 1}",
+                    "prompt": "Solve it",
+                    "starter_code": "# start\n",
+                    "reference_solution": "pass\n",
+                    "test_spec": {"cases": [{"input": "", "expected": ""}]},
+                }
+                for i in range(request.exercise_count)
+            ],
+            quiz={
+                "title": f"{request.topic} quiz",
+                "questions": [
+                    {
+                        "prompt": "Q?",
+                        "choices": [
+                            {"text": "A", "is_correct": True},
+                            {"text": "B", "is_correct": False},
+                        ],
+                    }
+                    for _ in range(request.quiz_question_count)
+                ],
+            },
+            model=self.model,
+            total_tokens=12,
+        )
+
+    def generate_lesson_batch(self, request) -> GeneratedLessonBatch:
+        start = len(request.prior_titles)
+        lessons = [
+            {
+                "title": f"{request.language} lesson {start + n + 1}",
+                "content": "# Lesson\n\nContent.",
+                "exercises": [
+                    {
+                        "title": f"ex{i + 1}",
+                        "prompt": "Solve it",
+                        "starter_code": "# start\n",
+                        "reference_solution": "pass\n",
+                        "test_spec": {"cases": [{"input": "", "expected": ""}]},
+                    }
+                    for i in range(request.exercise_count)
+                ],
+                "quiz": {
+                    "title": "quiz",
+                    "questions": [
+                        {
+                            "prompt": "Q?",
+                            "choices": [
+                                {"text": "A", "is_correct": True},
+                                {"text": "B", "is_correct": False},
+                            ],
+                        }
+                        for _ in range(request.quiz_question_count)
+                    ],
+                },
+            }
+            for n in range(request.count)
+        ]
+        return GeneratedLessonBatch(lessons=lessons, model=self.model, total_tokens=20)
+
     def generate_placement(self, request) -> GeneratedPlacement:
         # 2 MCQs (first choice correct) + 1 coding task whose reference passes the
         # default FakeCodeRunner (stdout "" == expected "").
@@ -753,6 +838,60 @@ class FakeLanguageTrackRepository:
         if track_id not in self._items:
             raise LookupError(f"Track {track_id} not found")
         del self._items[track_id]
+
+
+class FakeGenerationJobRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, GenerationJob] = {}
+
+    def get_by_id(self, job_id: uuid.UUID) -> GenerationJob | None:
+        return self._items.get(job_id)
+
+    def get_latest_for_track(self, track_id: uuid.UUID) -> GenerationJob | None:
+        items = [j for j in self._items.values() if j.track_id == track_id]
+        return max(items, key=lambda j: j.created_at) if items else None
+
+    def create(self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int) -> GenerationJob:
+        now = _now()
+        job = GenerationJob(
+            id=uuid.uuid4(),
+            track_id=track_id,
+            user_id=user_id,
+            status="pending",
+            total=total,
+            completed=0,
+            course_id=None,
+            error=None,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[job.id] = job
+        return job
+
+    def update(
+        self,
+        job_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        completed: int | None = None,
+        course_id: uuid.UUID | None = None,
+        error: str | None = None,
+    ) -> GenerationJob:
+        e = self._items[job_id]
+        updated = GenerationJob(
+            id=e.id,
+            track_id=e.track_id,
+            user_id=e.user_id,
+            status=status if status is not None else e.status,
+            total=e.total,
+            completed=completed if completed is not None else e.completed,
+            course_id=course_id if course_id is not None else e.course_id,
+            error=error if error is not None else e.error,
+            created_at=e.created_at,
+            updated_at=_now(),
+        )
+        self._items[job_id] = updated
+        return updated
 
 
 class FakePlacementRepository:

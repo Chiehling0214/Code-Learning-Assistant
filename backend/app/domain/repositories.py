@@ -15,6 +15,7 @@ from app.domain.entities import (
     AIInteraction,
     Course,
     Exercise,
+    GenerationJob,
     LanguageTrack,
     Lesson,
     PlacementAssessment,
@@ -82,12 +83,20 @@ class CourseRepository(Protocol):
 
     def list_all(self) -> list[Course]: ...
 
+    def list_by_track_ids(self, track_ids: list[uuid.UUID]) -> list[Course]: ...
+
     def get_by_id(self, course_id: uuid.UUID) -> Course | None: ...
 
     def get_by_slug(self, slug: str) -> Course | None: ...
 
     def create(
-        self, *, language_id: uuid.UUID, title: str, slug: str, description: str | None
+        self,
+        *,
+        language_id: uuid.UUID,
+        title: str,
+        slug: str,
+        description: str | None,
+        track_id: uuid.UUID | None = None,
     ) -> Course: ...
 
     def update(
@@ -278,6 +287,28 @@ class LanguageTrackRepository(Protocol):
     def set_level(self, track_id: uuid.UUID, level: str) -> LanguageTrack: ...
 
     def delete(self, track_id: uuid.UUID) -> None: ...
+
+
+class GenerationJobRepository(Protocol):
+    """Tracks an async AI curriculum-generation job (Sprint 11)."""
+
+    def get_by_id(self, job_id: uuid.UUID) -> GenerationJob | None: ...
+
+    def get_latest_for_track(self, track_id: uuid.UUID) -> GenerationJob | None: ...
+
+    def create(
+        self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int
+    ) -> GenerationJob: ...
+
+    def update(
+        self,
+        job_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        completed: int | None = None,
+        course_id: uuid.UUID | None = None,
+        error: str | None = None,
+    ) -> GenerationJob: ...
 
 
 class PlacementRepository(Protocol):

@@ -61,6 +61,10 @@ Included tests:
   idempotent and never leaks answer keys; grading maps score→level
   (all-correct → advanced, all-wrong → beginner) and persists the level on the
   track and profile; `404` before generate / for an unknown track.
+- `tests/test_curriculum.py` — `generate_course` builds the configured number of
+  lessons, each with exercises + a quiz, all `source="ai"`, and finishes the job;
+  generation is idempotent while active; `POST …/generate` returns a pending job;
+  `GET /me/courses` lists only the learner's own courses.
 
 ### End-to-end (opt-in)
 

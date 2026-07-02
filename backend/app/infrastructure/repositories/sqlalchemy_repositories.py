@@ -16,6 +16,7 @@ from app.domain.entities import AIInteraction as AIInteractionEntity
 from app.domain.entities import Choice as ChoiceEntity
 from app.domain.entities import Course as CourseEntity
 from app.domain.entities import Exercise as ExerciseEntity
+from app.domain.entities import GenerationJob as GenerationJobEntity
 from app.domain.entities import LanguageTrack as LanguageTrackEntity
 from app.domain.entities import Lesson as LessonEntity
 from app.domain.entities import PlacementAssessment as PlacementAssessmentEntity
@@ -32,6 +33,7 @@ from app.infrastructure.models.models import AIInteraction as AIInteractionModel
 from app.infrastructure.models.models import Choice as ChoiceModel
 from app.infrastructure.models.models import Course as CourseModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
+from app.infrastructure.models.models import GenerationJob as GenerationJobModel
 from app.infrastructure.models.models import LanguageTrack as LanguageTrackModel
 from app.infrastructure.models.models import Lesson as LessonModel
 from app.infrastructure.models.models import PlacementAssessment as PlacementAssessmentModel
@@ -156,6 +158,7 @@ def _to_course(model: CourseModel) -> CourseEntity:
         description=model.description,
         created_at=model.created_at,
         updated_at=model.updated_at,
+        track_id=model.track_id,
     )
 
 
@@ -231,6 +234,16 @@ class SqlAlchemyCourseRepository:
         stmt = select(CourseModel).order_by(CourseModel.title)
         return [_to_course(m) for m in self._session.scalars(stmt).all()]
 
+    def list_by_track_ids(self, track_ids: list[uuid.UUID]) -> list[CourseEntity]:
+        if not track_ids:
+            return []
+        stmt = (
+            select(CourseModel)
+            .where(CourseModel.track_id.in_(track_ids))
+            .order_by(CourseModel.created_at)
+        )
+        return [_to_course(m) for m in self._session.scalars(stmt).all()]
+
     def get_by_id(self, course_id: uuid.UUID) -> CourseEntity | None:
         model = self._session.get(CourseModel, course_id)
         return _to_course(model) if model else None
@@ -241,10 +254,20 @@ class SqlAlchemyCourseRepository:
         return _to_course(model) if model else None
 
     def create(
-        self, *, language_id: uuid.UUID, title: str, slug: str, description: str | None
+        self,
+        *,
+        language_id: uuid.UUID,
+        title: str,
+        slug: str,
+        description: str | None,
+        track_id: uuid.UUID | None = None,
     ) -> CourseEntity:
         model = CourseModel(
-            language_id=language_id, title=title, slug=slug, description=description
+            language_id=language_id,
+            title=title,
+            slug=slug,
+            description=description,
+            track_id=track_id,
         )
         self._session.add(model)
         self._session.flush()
@@ -892,3 +915,71 @@ class SqlAlchemyPlacementRepository:
         self._session.flush()
         self._session.refresh(model)
         return _to_placement(model)
+
+
+def _to_job(model: GenerationJobModel) -> GenerationJobEntity:
+    return GenerationJobEntity(
+        id=model.id,
+        track_id=model.track_id,
+        user_id=model.user_id,
+        status=model.status,
+        total=model.total,
+        completed=model.completed,
+        course_id=model.course_id,
+        error=model.error,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyGenerationJobRepository:
+    """Concrete :class:`~app.domain.repositories.GenerationJobRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_id(self, job_id: uuid.UUID) -> GenerationJobEntity | None:
+        model = self._session.get(GenerationJobModel, job_id)
+        return _to_job(model) if model else None
+
+    def get_latest_for_track(self, track_id: uuid.UUID) -> GenerationJobEntity | None:
+        stmt = (
+            select(GenerationJobModel)
+            .where(GenerationJobModel.track_id == track_id)
+            .order_by(GenerationJobModel.created_at.desc())
+        )
+        model = self._session.scalars(stmt).first()
+        return _to_job(model) if model else None
+
+    def create(
+        self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int
+    ) -> GenerationJobEntity:
+        model = GenerationJobModel(track_id=track_id, user_id=user_id, total=total)
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_job(model)
+
+    def update(
+        self,
+        job_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        completed: int | None = None,
+        course_id: uuid.UUID | None = None,
+        error: str | None = None,
+    ) -> GenerationJobEntity:
+        model = self._session.get(GenerationJobModel, job_id)
+        if model is None:
+            raise LookupError(f"Job {job_id} not found")
+        if status is not None:
+            model.status = status
+        if completed is not None:
+            model.completed = completed
+        if course_id is not None:
+            model.course_id = course_id
+        if error is not None:
+            model.error = error
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_job(model)

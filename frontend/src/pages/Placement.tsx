@@ -47,8 +47,11 @@ export function PlacementPage() {
             <p className="text-lg font-semibold">
               Your level: <span className="capitalize">{result.level}</span> ({result.percent}%)
             </p>
-            <Button onClick={() => navigate("/dashboard", { replace: true })}>
-              Continue to dashboard
+            <p className="text-sm text-muted-foreground">
+              Next, we'll build a {result.level} course tailored to you.
+            </p>
+            <Button onClick={() => navigate(`/tracks/${trackId}/generating`, { replace: true })}>
+              Build my course
             </Button>
           </CardContent>
         </Card>

@@ -17,6 +17,7 @@ from app.application.services.ai_teacher_service import AITeacherService
 from app.application.services.ai_tutor_service import AITutorService
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
+from app.application.services.curriculum_service import CurriculumService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
@@ -39,6 +40,7 @@ from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyAIInteractionRepository,
     SqlAlchemyCourseRepository,
     SqlAlchemyExerciseRepository,
+    SqlAlchemyGenerationJobRepository,
     SqlAlchemyLanguageRepository,
     SqlAlchemyLanguageTrackRepository,
     SqlAlchemyLessonRepository,
@@ -228,6 +230,25 @@ def get_placement_service(session: DbSession, settings: SettingsDep) -> Placemen
 
 
 PlacementServiceDep = Annotated[PlacementService, Depends(get_placement_service)]
+
+
+def get_curriculum_service(session: DbSession, settings: SettingsDep) -> CurriculumService:
+    return CurriculumService(
+        GeminiAIProvider(settings),
+        SqlAlchemyGenerationJobRepository(session),
+        SqlAlchemyCourseRepository(session),
+        SqlAlchemyLessonRepository(session),
+        SqlAlchemyExerciseRepository(session),
+        SqlAlchemyQuizRepository(session),
+        SqlAlchemyLanguageRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
+        ExecutionService(Judge0Client(settings)),
+        AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
+        settings,
+    )
+
+
+CurriculumServiceDep = Annotated[CurriculumService, Depends(get_curriculum_service)]
 
 
 def require_active_subscription(

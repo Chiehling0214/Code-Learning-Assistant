@@ -11,6 +11,7 @@ import { LandingPage } from "@/pages/Landing";
 import { LessonPage } from "@/pages/Lesson";
 import { LoginPage } from "@/pages/Login";
 import { NotFoundPage } from "@/pages/NotFound";
+import { GeneratingPage } from "@/pages/Generating";
 import { OnboardingPage } from "@/pages/Onboarding";
 import { PlacementPage } from "@/pages/Placement";
 import { ProfilePage } from "@/pages/Profile";
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       // are reachable while authenticated.
       { path: "/onboarding", element: <OnboardingPage /> },
       { path: "/tracks/:id/placement", element: <PlacementPage /> },
+      { path: "/tracks/:id/generating", element: <GeneratingPage /> },
       {
         // First-login learners with no track are redirected to /onboarding.
         element: <OnboardingGate />,

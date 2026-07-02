@@ -28,7 +28,14 @@ class AINotConfiguredError(AIProviderError):
 
 
 class AIQuotaError(AIProviderError):
-    """Raised when the provider rejects the request for quota reasons (429)."""
+    """Raised when the provider rejects the request for quota reasons (429).
+
+    ``retry_after`` carries the provider's suggested wait (seconds), when known.
+    """
+
+    def __init__(self, message: str, retry_after: float | None = None) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 # --------------------------------------------------------------------------- #
@@ -73,6 +80,35 @@ class GeneratePlacementRequest:
 
 
 @dataclass(frozen=True)
+class GenerateSyllabusRequest:
+    language: str
+    level: str = "beginner"
+    lesson_count: int = 8
+
+
+@dataclass(frozen=True)
+class GenerateLessonPackRequest:
+    topic: str
+    language: str = "python"
+    level: str = "beginner"
+    exercise_count: int = 2
+    quiz_question_count: int = 3
+
+
+@dataclass(frozen=True)
+class GenerateLessonBatchRequest:
+    """Generate several complete lessons in a single request (saves API calls)."""
+
+    language: str
+    level: str = "beginner"
+    count: int = 3
+    exercise_count: int = 2
+    quiz_question_count: int = 3
+    # Titles of lessons already generated, so the batch continues coherently.
+    prior_titles: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class AIResponse:
     """Free-form text answer (teacher explanation / tutor feedback)."""
 
@@ -96,6 +132,40 @@ class GeneratedExercise:
     starter_code: str
     reference_solution: str
     test_spec: dict[str, Any] = field(default_factory=dict)
+    model: str = ""
+    total_tokens: int = 0
+
+
+@dataclass(frozen=True)
+class GeneratedSyllabus:
+    topics: list[str] = field(default_factory=list)
+    model: str = ""
+    total_tokens: int = 0
+
+
+@dataclass(frozen=True)
+class GeneratedLessonPack:
+    """A full lesson: Markdown content, exercises, and a quiz.
+
+    ``exercises`` items: ``{"title", "prompt", "starter_code", "reference_solution",
+    "test_spec"}``. ``quiz``: ``{"title", "questions": [{"prompt", "choices":
+    [{"text", "is_correct"}]}]}``.
+    """
+
+    title: str = ""
+    content: str = ""
+    exercises: list[dict[str, Any]] = field(default_factory=list)
+    quiz: dict[str, Any] = field(default_factory=dict)
+    model: str = ""
+    total_tokens: int = 0
+
+
+@dataclass(frozen=True)
+class GeneratedLessonBatch:
+    """Several lessons from one call. Each item has the shape of a lesson pack:
+    ``{"title", "content", "exercises": [...], "quiz": {...}}``."""
+
+    lessons: list[dict[str, Any]] = field(default_factory=list)
     model: str = ""
     total_tokens: int = 0
 
@@ -130,3 +200,13 @@ class AIProvider(Protocol):
     def generate_exercise(self, request: GenerateExerciseRequest) -> GeneratedExercise: ...
 
     def generate_placement(self, request: GeneratePlacementRequest) -> GeneratedPlacement: ...
+
+    def generate_syllabus(self, request: GenerateSyllabusRequest) -> GeneratedSyllabus: ...
+
+    def generate_lesson_pack(
+        self, request: GenerateLessonPackRequest
+    ) -> GeneratedLessonPack: ...
+
+    def generate_lesson_batch(
+        self, request: GenerateLessonBatchRequest
+    ) -> GeneratedLessonBatch: ...

@@ -49,6 +49,7 @@ class Course:
     description: str | None
     created_at: datetime
     updated_at: datetime
+    track_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -174,6 +175,20 @@ class LanguageTrack:
     language_id: uuid.UUID
     level: str | None
     status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class GenerationJob:
+    id: uuid.UUID
+    track_id: uuid.UUID
+    user_id: uuid.UUID
+    status: str
+    total: int
+    completed: int
+    course_id: uuid.UUID | None
+    error: str | None
     created_at: datetime
     updated_at: datetime
 

@@ -84,3 +84,58 @@ frontend/
 
 - **Sprint 10** (level) and **Sprint 6** (`GenerateContentService`/provider).
 - **Sprints 2–5, 7** (content tables, grading, Today/Progress) as the substrate.
+
+## Status — ✅ Complete
+
+After placement, a background job builds a full personalized course; the manual
+course-authoring flow is retired.
+
+> **Design notes vs. the plan.** (1) Migration is **`0011_curriculum`** (adds
+> `courses.track_id` + `generation_jobs` in one migration). (2) To keep AI calls
+> feasible on the free tier, a lesson is generated as **one "lesson pack"**
+> (content + exercises + quiz) rather than a call per artifact — `generate_syllabus`
+> then one `generate_lesson_pack` per topic. (3) Manual content CRUD endpoints are
+> **retired from the primary flow** (frontend no longer uses them; seed only
+> seeds languages) but the admin endpoints remain until Sprint 13 repurposes
+> admin for review — avoiding a large test rewrite now.
+
+**Backend**
+- `courses.track_id` + `GenerationJob` model + migration `0011_curriculum`;
+  entities, `CourseRepository.list_by_track_ids`, `GenerationJobRepository`.
+- Provider: `generate_syllabus` + `generate_lesson_pack` (JSON mode).
+- `CurriculumService`: `start_generation` (idempotent while a job is active),
+  `generate_course` (syllabus → per-topic lesson pack → lesson + exercises
+  (lenient self-verify) + quiz, all `source="ai"`, progress per lesson),
+  `get_status`, `list_courses`.
+- `infrastructure/generation_worker.py` runs it as a `BackgroundTask` with its
+  own session, committing after each lesson for live progress.
+- Endpoints: `POST /me/tracks/{id}/generate`, `GET …/generation`, `GET /me/courses`.
+  Config `CURRICULUM_LESSON_COUNT` (8), `CURRICULUM_EXERCISES_PER_LESSON` (2),
+  `CURRICULUM_QUIZ_QUESTIONS` (3), `CURRICULUM_SELF_VERIFY`.
+- Seed now seeds only languages (+ a dev-only `seed_sample_course`).
+- `tests/test_curriculum.py` (85 tests total, DB-free).
+
+**Frontend**
+- `features/curriculum/hooks.ts` (`useGenerateCourse`, `useGenerationStatus`,
+  `useMyCourses`); `Generating` page (starts generation, polls progress → the
+  dashboard). Placement → "Build my course" → generating. Dashboard lists
+  `GET /me/courses` (the learner's own courses).
+
+### Verification
+
+- Backend: `ruff` clean, `pytest` 85/85 pass (full-curriculum build, idempotent
+  job, `GET /me/courses` scoping, `404` paths).
+- Frontend: `lint` clean, `build` succeeds.
+- Live (Docker stack): migration `0010 → 0011` applied; the three endpoints
+  registered; a **real** generation for a track produced a "Python — Beginner"
+  course with AI lessons, each with an exercise + quiz (`source="ai"`), job
+  `done`. Existing seed courses were deleted; only the languages remain.
+
+### Notes / follow-ups
+
+- Default 8 lessons × (2 exercises + quiz) is a lot of AI + Judge0 calls; the job
+  paces them and continues past a failed lesson. Counts + self-verify are
+  config-toggleable to fit free-tier quotas.
+- Two entry points (onboarding, add-language) both run placement → generation,
+  so behavior is consistent.
+- Continuous "generate more" + in-course chat is **Sprint 12**.

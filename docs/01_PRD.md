@@ -46,7 +46,7 @@ Sprint numbers follow the detailed [Sprint_01…08](Sprint_01.md) plan.
 | Subscriptions & hardening | 8 | ✅ done |
 | Onboarding & language tracks | 9 | ✅ done |
 | Placement test → assessed level | 10 | ✅ done |
-| AI curriculum generation (full courses) | 11 | ⬜ planned |
+| AI curriculum generation (full courses) | 11 | ✅ done |
 | Continuous learning: extend + in-course chat | 12 | ⬜ planned |
 | Entitlements (plan limits) & admin AI review | 13 | ⬜ planned |
 

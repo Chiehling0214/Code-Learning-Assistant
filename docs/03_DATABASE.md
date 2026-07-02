@@ -192,6 +192,22 @@ implemented yet** — fields will be expanded in later sprints.
 | status | str | `onboarding` \| `active` |
 | created_at / updated_at | timestamptz | unique `(user_id, language_id)` |
 
+### `generation_jobs` (Sprint 11)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| track_id | UUID (FK → language_tracks.id) | cascade delete |
+| user_id | UUID (FK → users.id) | cascade delete |
+| status | str | `pending` \| `running` \| `done` \| `error` |
+| total / completed | int | lessons planned / built (progress) |
+| course_id | UUID, nullable | the course being generated |
+| error | text, nullable | |
+| created_at / updated_at | timestamptz | |
+
+> **Sprint 11 also adds** a nullable `track_id` (FK → language_tracks) to
+> `courses` so AI-generated courses belong to a learner's track (null = shared).
+
 ### `placement_assessments` (Sprint 10)
 
 | Column | Type | Notes |
@@ -217,6 +233,8 @@ users 1───* progress_events        (item_type/item_id → lesson|exercise|
 users 1───1 subscriptions
 users 1───* language_tracks *───1 programming_languages
 language_tracks 1───1 placement_assessments
+language_tracks 1───* generation_jobs
+language_tracks 1───* courses (track_id; AI-generated, personalized)
 programming_languages 1───* courses 1───* lessons 1───* exercises
 lessons 1───* quizzes 1───* questions 1───* choices
 ```
@@ -235,6 +253,7 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 - `0008_subscriptions` — subscriptions table.
 - `0009_language_tracks` — language_tracks table (a learner's chosen languages).
 - `0010_placement` — placement_assessments table.
+- `0011_curriculum` — `courses.track_id` + generation_jobs table.
 
 ```bash
 # create/upgrade to latest
@@ -256,6 +275,8 @@ The compose stack runs `alembic upgrade head` automatically on backend start.
 
 ## Seeding
 
-`python -m scripts.seed` (from `backend/`, or in the backend container) inserts a
-sample language, course, lessons, an exercise, and a quiz (on the "Control Flow"
-lesson). It is idempotent (rows keyed by slug).
+`python -m scripts.seed` (from `backend/`, or in the backend container) inserts
+the **selectable languages** (Python, C++). As of Sprint 11 courses are
+AI-generated per learner (placement → curriculum), so the seed no longer creates
+sample courses; a dev-only `seed_sample_course()` helper remains for local
+testing. Idempotent (rows keyed by slug).

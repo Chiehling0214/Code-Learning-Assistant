@@ -22,6 +22,7 @@ interface MeResponse {
   email: string | null;
   display_name: string | null;
   is_admin: boolean;
+  onboarded: boolean;
 }
 
 async function fetchSessionUser(): Promise<SessionUser> {
@@ -32,6 +33,7 @@ async function fetchSessionUser(): Promise<SessionUser> {
     email: me.email,
     displayName: me.display_name,
     isAdmin: me.is_admin,
+    onboarded: me.onboarded,
   };
 }
 

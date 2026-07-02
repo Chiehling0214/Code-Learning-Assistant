@@ -55,7 +55,10 @@ frontend/
 All private pages are live. On first login (no language track yet), an
 `OnboardingGate` redirects the learner to **`/onboarding`** ("What do you want to
 study?") instead of the dashboard (Sprint 9). Picking a language leads into a
-**placement test** (Sprint 10) that assesses the learner's level before the app.
+**placement test** (Sprint 10) that assesses the learner's level, then an
+**AI course-generation** step (Sprint 11) that builds their course before the
+dashboard. The dashboard lists the learner's own generated courses
+(`GET /me/courses`).
 
 | Path | Page | Access |
 |------|------|--------|
@@ -63,6 +66,7 @@ study?") instead of the dashboard (Sprint 9). Picking a language leads into a
 | `/login` | Login (Google / email, or dev mode) | public |
 | `/onboarding` | Onboarding — pick a language to study | private |
 | `/tracks/:id/placement` | Placement test (MCQ + coding) → assessed level | private |
+| `/tracks/:id/generating` | AI course generation progress → dashboard | private |
 | `/dashboard` | Dashboard (your languages + courses) | private |
 | `/today` | Today (personalized daily plan) | private |
 | `/courses/:slug` | Course (header + ordered lessons) | private |

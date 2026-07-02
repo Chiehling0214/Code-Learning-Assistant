@@ -6,6 +6,8 @@ export interface SessionUser {
   email: string | null;
   displayName: string | null;
   isAdmin: boolean;
+  /** True once the learner has chosen at least one language track. */
+  onboarded: boolean;
 }
 
 interface SessionState {

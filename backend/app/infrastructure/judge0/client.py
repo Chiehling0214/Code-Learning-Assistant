@@ -7,6 +7,8 @@ configuration problem so callers can degrade gracefully.
 
 from __future__ import annotations
 
+import base64
+
 import httpx
 
 from app.core.config import Settings
@@ -26,6 +28,20 @@ LANGUAGE_IDS: dict[str, int] = {
     "go": 60,
     "ruby": 72,
 }
+
+
+def _b64(text: str) -> str:
+    return base64.b64encode((text or "").encode("utf-8")).decode("ascii")
+
+
+def _unb64(value: str | None) -> str:
+    """Decode a base64 field from Judge0; tolerate already-plain/empty values."""
+    if not value:
+        return ""
+    try:
+        return base64.b64decode(value).decode("utf-8", errors="replace")
+    except (ValueError, TypeError):
+        return value
 
 
 class Judge0Error(RuntimeError):
@@ -73,13 +89,28 @@ class Judge0Client:
         language_id = LANGUAGE_IDS.get(language)
         if language_id is None:
             raise Judge0Error(f"Unsupported language: {language!r}")
+        # Judge0 rejects a blank submission (422); short-circuit with a clear
+        # result so the learner sees "write some code" rather than an error.
+        if not source_code.strip():
+            return {
+                "stdout": "",
+                "stderr": "No code submitted.",
+                "compile_output": None,
+                "status_id": None,
+                "status": "No code submitted",
+                "time": None,
+                "memory": None,
+            }
 
+        # Use base64 transport: raw (base64_encoded=false) submissions 400 when the
+        # source or stdin contains characters Judge0's parser rejects (and on empty
+        # source). Base64 encoding sidesteps all of that.
         payload = {
-            "source_code": source_code,
+            "source_code": _b64(source_code),
             "language_id": language_id,
-            "stdin": stdin,
+            "stdin": _b64(stdin),
         }
-        url = f"{self._url}/submissions?base64_encoded=false&wait=true"
+        url = f"{self._url}/submissions?base64_encoded=true&wait=true"
         try:
             response = httpx.post(
                 url, json=payload, headers=self._headers, timeout=self._timeout
@@ -92,9 +123,9 @@ class Judge0Client:
 
         status = data.get("status") or {}
         return {
-            "stdout": data.get("stdout") or "",
-            "stderr": data.get("stderr") or "",
-            "compile_output": data.get("compile_output"),
+            "stdout": _unb64(data.get("stdout")),
+            "stderr": _unb64(data.get("stderr")),
+            "compile_output": _unb64(data.get("compile_output")) or None,
             "status_id": status.get("id"),
             "status": status.get("description"),
             "time": data.get("time"),

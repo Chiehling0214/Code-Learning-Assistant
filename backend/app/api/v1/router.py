@@ -6,6 +6,7 @@ from app.api.v1.routes import (
     admin_content,
     ai,
     courses,
+    curriculum,
     exercises,
     health,
     languages,
@@ -41,3 +42,4 @@ api_router.include_router(subscription.router)
 api_router.include_router(webhooks.router)
 api_router.include_router(tracks.router)
 api_router.include_router(placement.router)
+api_router.include_router(curriculum.router)

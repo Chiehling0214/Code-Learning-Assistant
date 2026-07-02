@@ -16,6 +16,7 @@ from app.api.deps import (
     get_ai_tutor_service,
     get_content_service,
     get_current_db_user,
+    get_curriculum_service,
     get_execution_service,
     get_exercise_service,
     get_generate_content_service,
@@ -32,6 +33,7 @@ from app.application.services.ai_teacher_service import AITeacherService
 from app.application.services.ai_tutor_service import AITutorService
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
+from app.application.services.curriculum_service import CurriculumService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
@@ -54,6 +56,7 @@ from tests.fakes import (
     FakeCodeRunner,
     FakeCourseRepository,
     FakeExerciseRepository,
+    FakeGenerationJobRepository,
     FakeLanguageRepository,
     FakeLanguageTrackRepository,
     FakeLessonRepository,
@@ -70,6 +73,16 @@ from tests.fakes import (
 
 # Small per-user AI limits so the rate-limit test stays fast and deterministic.
 _AI_SETTINGS = Settings(ai_rate_limit_per_minute=5, ai_daily_limit=100)
+
+# Small curriculum so generation tests stay fast (3 lessons, no batch pause).
+_CURRICULUM_SETTINGS = Settings(
+    curriculum_lesson_count=3,
+    curriculum_exercises_per_lesson=2,
+    curriculum_quiz_questions=2,
+    curriculum_batch_pause_seconds=0,
+    ai_rate_limit_per_minute=100,
+    ai_daily_limit=1000,
+)
 
 
 @pytest.fixture
@@ -93,6 +106,7 @@ def fakes() -> SimpleNamespace:
         stripe=FakeStripeClient(),
         tracks=FakeLanguageTrackRepository(),
         placements=FakePlacementRepository(),
+        jobs=FakeGenerationJobRepository(),
     )
 
 
@@ -155,6 +169,19 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         ExecutionService(fakes.runner),
         AIUsageGuard(fakes.interactions, _AI_SETTINGS),
         _AI_SETTINGS,
+    )
+    app.dependency_overrides[get_curriculum_service] = lambda: CurriculumService(
+        fakes.ai,
+        fakes.jobs,
+        fakes.courses,
+        fakes.lessons,
+        fakes.exercises,
+        fakes.quizzes,
+        fakes.languages,
+        fakes.tracks,
+        ExecutionService(fakes.runner),
+        AIUsageGuard(fakes.interactions, _CURRICULUM_SETTINGS),
+        _CURRICULUM_SETTINGS,
     )
     with TestClient(app) as test_client:
         yield test_client

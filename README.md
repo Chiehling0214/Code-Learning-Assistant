@@ -6,7 +6,7 @@ CodePath AI guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
 sandbox.
 
-**Status — Sprints 0–10 complete.**
+**Status — Sprints 0–11 complete.**
 The product is pivoting to AI-generated, personalized curricula (Sprints 9–13,
 see [docs/00_PROJECT.md](docs/00_PROJECT.md)): learners now pick a language on
 first login and hold plan-capped language "tracks". Foundation:
@@ -27,9 +27,11 @@ webhooks, premium gating of the AI Tutor, an in-process rate limiter, and a
 production `docker-compose.prod.yml`), and **onboarding & language tracks**
 (Sprint 9 — first-login language picker, per-user tracks, free-tier cap of 2
 languages), and a **placement test** (Sprint 10 — AI-generated MCQs + coding
-tasks, self-verified, graded into an assessed level on the track/profile). AI
-curriculum generation, continuous learning, and plan-limit refinement follow in
-Sprints 11–13.
+tasks, self-verified, graded into an assessed level on the track/profile), and
+**AI curriculum generation** (Sprint 11 — a background job builds a full
+personalized course of lessons/exercises/quizzes for the track+level; manual
+course authoring is retired). Continuous learning and plan-limit refinement
+follow in Sprints 12–13.
 
 See [`docs/`](docs/) for full design documentation — start with
 [00_PROJECT.md](docs/00_PROJECT.md) and the per-sprint plans
