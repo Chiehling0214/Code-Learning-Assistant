@@ -63,6 +63,8 @@ class Lesson:
     created_at: datetime
     updated_at: datetime
     source: str = "human"
+    # "approved" (default / served) | "pending" (AI, awaiting review) | "hidden".
+    review_status: str = "approved"
 
 
 @dataclass(frozen=True)
@@ -109,6 +111,8 @@ class Question:
     type: str
     order_index: int
     choices: list[Choice]
+    # Shown after grading to explain the correct answer (Sprint 14).
+    explanation: str = ""
 
 
 @dataclass(frozen=True)

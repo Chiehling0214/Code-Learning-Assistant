@@ -142,6 +142,7 @@ def add_question(
             type=payload.type,
             order_index=payload.order_index,
             choices=[c.model_dump() for c in payload.choices],
+            explanation=payload.explanation,
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

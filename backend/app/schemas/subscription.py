@@ -18,6 +18,10 @@ class CheckoutResponse(BaseModel):
     checkout_url: str
 
 
+class ConfirmRequest(BaseModel):
+    session_id: str
+
+
 class WebhookAck(BaseModel):
     received: bool = True
     handled: bool = False

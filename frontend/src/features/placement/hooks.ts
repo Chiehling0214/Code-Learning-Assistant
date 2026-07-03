@@ -28,10 +28,38 @@ export interface Placement {
   coding: PlacementCoding[];
 }
 
+export interface MCQReview {
+  id: string;
+  prompt: string;
+  choices: { id: string; text: string; is_correct: boolean }[];
+  selected_choice_id: string | null;
+  correct_choice_id: string | null;
+  correct: boolean;
+  explanation: string;
+}
+
+export interface CodingReview {
+  id: string;
+  prompt: string;
+  passed: boolean;
+  passed_cases: number;
+  total_cases: number;
+}
+
+export interface PlacementBreakdown {
+  percent: number;
+  correct_mcqs: number;
+  total_mcqs: number;
+  passed_coding: number;
+  total_coding: number;
+  mcqs: MCQReview[];
+  coding: CodingReview[];
+}
+
 export interface PlacementResult {
   level: string;
   percent: number;
-  breakdown: Record<string, unknown>;
+  breakdown: PlacementBreakdown;
 }
 
 /** Generate (idempotent) then load the placement for a track. */

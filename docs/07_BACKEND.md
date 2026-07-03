@@ -38,7 +38,9 @@ backend/
 │   │           ├── webhooks.py      # Stripe webhook receiver (Sprint 8)
 │   │           ├── tracks.py        # language tracks + onboarding (Sprint 9)
 │   │           ├── placement.py     # placement test (Sprint 10)
-│   │           └── curriculum.py    # generation, /me/courses, extend + chat (Sprint 11/12)
+│   │           ├── curriculum.py    # generation, /me/courses, extend + chat (Sprint 11/12)
+│   │           ├── entitlements.py   # GET /me/entitlements (Sprint 13)
+│   │           └── admin_review.py   # admin AI-content review console (Sprint 13)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -67,7 +69,9 @@ backend/
 │   │       ├── track_service.py             # language tracks + caps (Sprint 9)
 │   │       ├── placement_service.py         # placement generate/grade (Sprint 10)
 │   │       ├── curriculum_service.py        # AI course generation + extend (Sprint 11/12)
-│   │       └── course_chat_service.py        # in-course chat → append content (Sprint 12)
+│   │       ├── course_chat_service.py        # in-course chat → append content (Sprint 12)
+│   │       ├── entitlement_service.py        # plan → limits + usage; caps (Sprint 13)
+│   │       └── admin_review_service.py       # AI-content review + hide/approve (Sprint 13)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base

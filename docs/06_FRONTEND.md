@@ -61,7 +61,11 @@ dashboard. The dashboard lists the learner's own generated courses
 (`GET /me/courses`). Inside a course (Sprint 12), a **"Learn more"** button
 appears near completion and a **`CourseChatPanel`** lets the learner ask for a
 topic — the AI appends a matching lesson (+ exercises + quiz) and the lesson list
-refreshes.
+refreshes. The **Subscription** page (Sprint 13) shows plan limits and today's
+usage from `GET /me/entitlements`; an **`UpgradePrompt`** surfaces wherever a plan
+limit is hit (a `402`). The **Admin** page is now an **AI-content review console**
+(`features/admin/hooks.ts`): list generated lessons and approve/hide them (hidden
+lessons are withheld from learners), with a usage summary.
 
 | Path | Page | Access |
 |------|------|--------|

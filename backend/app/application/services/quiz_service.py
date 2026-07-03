@@ -75,6 +75,7 @@ class QuizService:
                     "correct": is_correct,
                     "selected_choice_id": str(selected_id) if selected_id else None,
                     "correct_choice_id": str(correct_id) if correct_id else None,
+                    "explanation": question.explanation,
                 }
             )
 
@@ -117,6 +118,7 @@ class QuizService:
         type: str,
         order_index: int,
         choices: list[dict],
+        explanation: str = "",
     ) -> Question:
         if self._quizzes.get_by_id(quiz_id) is None:
             raise LookupError(f"Quiz {quiz_id} not found")
@@ -130,6 +132,7 @@ class QuizService:
             type=type,
             order_index=order_index,
             choices=choices,
+            explanation=explanation,
         )
 
     def delete_quiz(self, quiz_id: uuid.UUID) -> None:

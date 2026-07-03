@@ -47,7 +47,7 @@
 | POST | `/api/v1/admin/quizzes/{id}/questions` | admin | 5 | Add a question (with choices). |
 | DELETE | `/api/v1/admin/quizzes/{id}` | admin | 5 | Delete a quiz. |
 | POST | `/api/v1/ai/teacher` | bearer | 6 | AI explanation for a lesson/topic/question. |
-| POST | `/api/v1/ai/tutor` | bearer | 6 | AI hint on the submitted code (not the answer). |
+| POST | `/api/v1/ai/tutor` | bearer | 6/13 | AI hint on the submitted code; plan-aware daily cap (over-limit → `402`). |
 | POST | `/api/v1/admin/ai/generate` | admin | 6 | Generate a lesson/exercise into the content tables. |
 | GET | `/api/v1/today` | bearer | 7 | Personalized ordered plan of next items. |
 | GET | `/api/v1/progress` | bearer | 7 | Per-course completion, totals, and streak. |
@@ -60,7 +60,7 @@
 | DELETE | `/api/v1/me/tracks/{id}` | bearer | 9 | Remove a language track. |
 | POST | `/api/v1/me/tracks/{id}/placement` | bearer | 10 | Generate the placement test (idempotent). |
 | GET | `/api/v1/me/tracks/{id}/placement` | bearer | 10 | Read the placement (no answer keys). |
-| POST | `/api/v1/me/tracks/{id}/placement/submit` | bearer | 10 | Grade → level. |
+| POST | `/api/v1/me/tracks/{id}/placement/submit` | bearer | 10/14 | Grade → level; `breakdown` reveals correct answers, explanations, and coding scores for review. |
 | POST | `/api/v1/me/tracks/{id}/generate` | bearer | 11 | Start AI course generation (background job). |
 | GET | `/api/v1/me/tracks/{id}/generation` | bearer | 11 | Poll the generation job. |
 | GET | `/api/v1/me/courses` | bearer | 11 | The learner's own (generated) courses. |
@@ -68,6 +68,15 @@
 | POST | `/api/v1/courses/{id}/extend` | bearer | 12 | Append lessons (optional `topic`, `count`). |
 | GET | `/api/v1/courses/{id}/chat` | bearer | 12 | The in-course chat history. |
 | POST | `/api/v1/courses/{id}/chat` | bearer | 12 | Ask for a topic (+ optional `count`) → AI appends content. |
+| GET | `/api/v1/me/entitlements` | bearer | 13 | Plan limits + current usage (languages, tutor, generation). |
+| GET | `/api/v1/admin/content?source=ai` | admin | 13 | List AI-generated lessons for review. |
+| POST | `/api/v1/admin/content/lessons/{id}/hide` | admin | 13 | Hide a lesson (withheld from serving). |
+| POST | `/api/v1/admin/content/lessons/{id}/approve` | admin | 13 | Approve/restore a lesson. |
+| GET | `/api/v1/admin/usage` | admin | 13 | AI-content review counts. |
+
+> **Sprint 13 limits** — adding a track (`POST /me/tracks`), starting/extending
+> generation (`/generate`, `/extend`, `/chat`), and the AI Tutor enforce plan-aware
+> caps; exceeding a cap returns **`402 Payment Required`** with an upgrade message.
 
 ### `GET /health`
 

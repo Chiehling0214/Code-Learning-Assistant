@@ -54,7 +54,11 @@ class ContentService:
         return course
 
     def list_lessons_for_course(self, course_id: uuid.UUID) -> list[Lesson]:
-        return self._lessons.list_by_course(course_id)
+        # Hidden (admin-review) lessons are withheld from learners (Sprint 13).
+        return [
+            ln for ln in self._lessons.list_by_course(course_id)
+            if ln.review_status != "hidden"
+        ]
 
     def create_course(
         self, *, language_id: uuid.UUID, title: str, slug: str, description: str | None
@@ -83,7 +87,7 @@ class ContentService:
     # ----- Lessons -----
     def get_lesson(self, lesson_id: uuid.UUID) -> Lesson:
         lesson = self._lessons.get_by_id(lesson_id)
-        if lesson is None:
+        if lesson is None or lesson.review_status == "hidden":
             raise LookupError(f"Lesson {lesson_id} not found")
         return lesson
 

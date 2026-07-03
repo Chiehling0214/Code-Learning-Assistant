@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api";
 
@@ -23,6 +23,22 @@ export function useCheckout() {
       apiFetch<{ checkout_url: string }>("/subscription/checkout", { method: "POST" }),
     onSuccess: (data) => {
       window.location.href = data.checkout_url;
+    },
+  });
+}
+
+/** Confirm a completed checkout by session id (webhook-free activation). */
+export function useConfirmCheckout() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      apiFetch<Subscription>("/subscription/confirm", {
+        method: "POST",
+        body: JSON.stringify({ session_id: sessionId }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["entitlements"] });
     },
   });
 }

@@ -100,11 +100,17 @@ class Settings(BaseSettings):
     checkout_success_url: str = "http://localhost:5173/subscription?status=success"
     checkout_cancel_url: str = "http://localhost:5173/subscription?status=cancel"
 
-    # --- Language tracks / entitlements (Sprint 9) ---
+    # --- Language tracks / entitlements (Sprint 9 / 13) ---
     # Max concurrent language tracks. Free users are capped; active subscribers
     # get the higher limit.
     free_max_languages: int = 2
     paid_max_languages: int = 20
+    # Plan-aware daily caps (Sprint 13). AI Tutor hints and curriculum
+    # generation/extend requests per rolling 24h, by plan. Over-limit → 402.
+    free_tutor_daily: int = 5
+    paid_tutor_daily: int = 100
+    free_generations_daily: int = 10
+    paid_generations_daily: int = 100
 
     # --- Hardening (Sprint 8) ---
     # Simple in-process per-client rate limit (off by default so dev/tests are

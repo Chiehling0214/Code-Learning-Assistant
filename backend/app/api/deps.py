@@ -13,12 +13,14 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.application.ports.ai_provider import AIProvider
+from app.application.services.admin_review_service import AdminReviewService
 from app.application.services.ai_teacher_service import AITeacherService
 from app.application.services.ai_tutor_service import AITutorService
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
 from app.application.services.course_chat_service import CourseChatService
 from app.application.services.curriculum_service import CurriculumService
+from app.application.services.entitlement_service import EntitlementService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
@@ -208,16 +210,39 @@ def get_subscription_service(session: DbSession, settings: SettingsDep) -> Subsc
 SubscriptionServiceDep = Annotated[SubscriptionService, Depends(get_subscription_service)]
 
 
-def get_track_service(session: DbSession, settings: SettingsDep) -> TrackService:
-    return TrackService(
-        SqlAlchemyLanguageTrackRepository(session),
-        SqlAlchemyLanguageRepository(session),
+def get_entitlement_service(session: DbSession, settings: SettingsDep) -> EntitlementService:
+    return EntitlementService(
         SubscriptionService(SqlAlchemySubscriptionRepository(session), StripeClient(settings)),
+        SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyAIInteractionRepository(session),
         settings,
     )
 
 
+EntitlementServiceDep = Annotated[EntitlementService, Depends(get_entitlement_service)]
+
+
+def get_track_service(session: DbSession, settings: SettingsDep) -> TrackService:
+    return TrackService(
+        SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyLanguageRepository(session),
+        get_entitlement_service(session, settings),
+    )
+
+
 TrackServiceDep = Annotated[TrackService, Depends(get_track_service)]
+
+
+def get_admin_review_service(session: DbSession) -> AdminReviewService:
+    return AdminReviewService(
+        SqlAlchemyLessonRepository(session),
+        SqlAlchemyExerciseRepository(session),
+        SqlAlchemyQuizRepository(session),
+        SqlAlchemyCourseRepository(session),
+    )
+
+
+AdminReviewServiceDep = Annotated[AdminReviewService, Depends(get_admin_review_service)]
 
 
 def get_placement_service(session: DbSession, settings: SettingsDep) -> PlacementService:

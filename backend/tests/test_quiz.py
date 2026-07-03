@@ -21,6 +21,7 @@ def _seed_quiz(fakes: SimpleNamespace, *, two_questions: bool = False):
         type="single",
         order_index=0,
         choices=[{"text": "4", "is_correct": True}, {"text": "5", "is_correct": False}],
+        explanation="2 + 2 equals 4.",
     )
     if two_questions:
         fakes.quizzes.add_question(
@@ -68,6 +69,8 @@ def test_submit_grades_correct_answer(client: TestClient, fakes: SimpleNamespace
     assert body["total"] == 1
     assert body["results"][0]["correct"] is True
     assert body["results"][0]["correct_choice_id"] == str(correct.id)
+    # The explanation is revealed after grading (for the review UI).
+    assert body["results"][0]["explanation"] == "2 + 2 equals 4."
 
 
 def test_submit_partial_score(client: TestClient, fakes: SimpleNamespace) -> None:

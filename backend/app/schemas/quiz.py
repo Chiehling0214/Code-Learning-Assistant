@@ -63,6 +63,7 @@ class QuestionResult(BaseModel):
     correct: bool
     selected_choice_id: uuid.UUID | None = None
     correct_choice_id: uuid.UUID | None = None
+    explanation: str = ""
 
 
 class QuizSubmitResponse(BaseModel):
@@ -102,3 +103,4 @@ class QuestionCreate(BaseModel):
     type: str = Field(default="single", max_length=16)
     order_index: int = 0
     choices: list[ChoiceCreate] = Field(min_length=2)
+    explanation: str = ""

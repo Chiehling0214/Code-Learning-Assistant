@@ -42,6 +42,28 @@ class SubscriptionService:
         )
         return session.url
 
+    def confirm_checkout(self, *, session_id: str, user_id: uuid.UUID) -> Subscription:
+        """Activate the subscription from a completed Checkout Session.
+
+        A webhook-free path for local use: retrieve the session via the API,
+        verify it belongs to this user and is paid, then activate. Raises
+        ``PermissionError`` if the session isn't the caller's and ``ValueError``
+        if payment isn't complete.
+        """
+        session = self._stripe.retrieve_checkout_session(session_id)
+        if session.client_reference_id != str(user_id):
+            raise PermissionError("This checkout session does not belong to you")
+        paid = session.payment_status == "paid" or session.status == "complete"
+        if not paid:
+            raise ValueError("Payment for this session is not complete")
+        return self._subs.upsert(
+            user_id=user_id,
+            plan="pro",
+            status="active",
+            stripe_customer_id=session.customer,
+            stripe_subscription_id=session.subscription,
+        )
+
     def handle_webhook(self, *, payload: bytes, signature: str) -> dict:
         """Verify and apply a Stripe webhook event; returns a small ack dict."""
         event = self._stripe.construct_event(payload, signature)

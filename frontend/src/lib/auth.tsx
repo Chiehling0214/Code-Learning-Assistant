@@ -7,7 +7,8 @@ import {
   signInWithPopup,
   signOut as firebaseSignOut,
 } from "firebase/auth";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { apiFetch } from "@/lib/api";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
@@ -68,12 +69,22 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const setUser = useSessionStore((s) => s.setUser);
   const clear = useSessionStore((s) => s.clear);
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
+  // Tracks the signed-in Firebase uid so we can drop cached per-user queries
+  // (entitlements, subscription, today, progress…) when the account changes.
+  const lastUidRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
       // Firebase persists auth across refreshes; re-sync our session on change.
       return onAuthStateChanged(auth, async (firebaseUser) => {
+        const uid = firebaseUser?.uid ?? null;
+        if (uid !== lastUidRef.current) {
+          // Different account (incl. sign-out) — wipe the previous user's cache.
+          queryClient.clear();
+          lastUidRef.current = uid;
+        }
         if (firebaseUser) {
           try {
             setUser(await resolveSessionUser());
@@ -96,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setLoading(false);
     }
-  }, [setUser, clear]);
+  }, [setUser, clear, queryClient]);
 
   const value: AuthContextValue = {
     loading,
@@ -121,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(DEV_SESSION_KEY);
       if (auth) await firebaseSignOut(auth);
       clear();
+      queryClient.clear();
     },
   };
 

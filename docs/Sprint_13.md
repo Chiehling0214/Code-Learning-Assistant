@@ -75,16 +75,62 @@ frontend/
 
 ## Acceptance Criteria
 
-- [ ] Free users are capped (2 languages, bounded tutor + generation/day); paid
+- [x] Free users are capped (2 languages, bounded tutor + generation/day); paid
       users get raised limits; over-limit returns `402`/upgrade.
-- [ ] `GET /me/entitlements` reports limits + current usage.
-- [ ] Admin can list AI-generated content and hide/approve it; hidden content is
+- [x] `GET /me/entitlements` reports limits + current usage.
+- [x] Admin can list AI-generated content and hide/approve it; hidden content is
       not served.
-- [ ] The old content-CRUD admin surface is gone (replaced by review).
-- [ ] `ruff`, `pytest`, frontend `lint` + `build` pass.
+- [x] The old content-CRUD admin surface is gone (replaced by review).
+- [x] `ruff`, `pytest`, frontend `lint` + `build` pass.
 
 ## Dependency
 
 - **Sprint 8** (subscription/plan state).
 - **Sprints 9–12** (tracks, tutor, generation) as the things being limited.
 - **Sprint 6** (`source="ai"` provenance) for the review console.
+
+---
+
+## Status — done
+
+**Backend**
+- `EntitlementService` (config-driven): `max_languages` / `tutor_daily` /
+  `generations_daily` by plan (paid = active subscription), current usage from
+  tracks + the `ai_interactions` log (`count_since(..., kind=…)`), and
+  `check_tutor` / `check_generation` raising `UpgradeRequiredError` → `402`.
+- Limits applied: `TrackService` reads the language cap from entitlements; the AI
+  Tutor endpoint enforces a plan-aware daily cap (was subscription-only); the
+  generation/extend/chat endpoints enforce a daily generation quota.
+- `GET /me/entitlements` returns limits + usage.
+- **Admin review**: `AdminReviewService` + `admin_review` routes —
+  `GET /admin/content?source=ai`, `POST /admin/content/lessons/{id}/hide|approve`,
+  `GET /admin/usage`. `lessons.review_status` (`approved`|`pending`|`hidden`,
+  migration `0013`); AI lessons are created `pending`; `hidden` lessons are
+  excluded from course detail, single-lesson GET, Today, and progress.
+- Tests: `test_entitlements.py`, `test_admin_review.py`, and an updated
+  plan-aware tutor-cap test — 103 tests total, DB-free.
+
+**Frontend**
+- `features/entitlements/hooks.ts` (`useEntitlements`) and `features/admin/hooks.ts`
+  (`useAdminContent`, `useAdminUsage`, `useSetLessonReview`).
+- **Subscription** page shows plan limits + today's usage; `UpgradePrompt`
+  (extended to render on any `402`) surfaces at the tutor, add-language, and
+  subscription surfaces.
+- **Admin** page rewritten as the AI-content review console (usage summary +
+  approve/hide); the old content-CRUD UI is removed.
+
+### Verification
+
+- Backend `ruff` + `pytest` 103/103; frontend `lint` + `build` pass.
+- Live (Docker): migration `0012 → 0013` applied (43 existing AI lessons →
+  `pending`); entitlement snapshot, review list, and **hide → withheld from
+  serving → restore** verified against the real DB.
+
+### Notes / scoping
+
+- Review granularity is the **lesson** (its exercises/quizzes are served under it),
+  so hiding a lesson removes its content from learners without per-row status on
+  three tables.
+- The admin content-CRUD **endpoints** are retained (used as test fixtures and
+  harmless, admin-guarded); the CRUD **UI** is what's replaced by the review
+  console, satisfying "the old admin surface is gone".

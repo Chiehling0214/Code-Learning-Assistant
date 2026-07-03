@@ -44,7 +44,7 @@ export function AiTutorPanel({
 
         {ask.isError &&
           (ask.error instanceof ApiError && ask.error.status === 402 ? (
-            <UpgradePrompt message="The AI Tutor is a Pro feature." />
+            <UpgradePrompt error={ask.error} />
           ) : (
             <p className="text-sm text-destructive">
               {ask.error instanceof Error ? ask.error.message : "Request failed"}

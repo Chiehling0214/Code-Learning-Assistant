@@ -2,11 +2,11 @@
 
 import time
 import uuid
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 from app.application.services.subscription_service import SubscriptionService
-from app.core.config import Settings, get_settings
-from app.main import app
+from app.domain.entities import AIInteraction
 from fastapi.testclient import TestClient
 
 from tests.fakes import FakeStripeClient, FakeSubscriptionRepository
@@ -83,14 +83,42 @@ def test_webhook_cancel_deactivates() -> None:
     assert service.is_active(user_id) is False
 
 
-# ----- premium gating (API, billing enabled) -----
+# ----- webhook-free checkout confirmation -----
 
 
-def test_premium_endpoint_gated_by_subscription(
+def test_confirm_checkout_activates(client: TestClient, fakes: SimpleNamespace) -> None:
+    # Checkout records this user as the session's client_reference_id.
+    assert client.post("/api/v1/subscription/checkout").status_code == 200
+    res = client.post("/api/v1/subscription/confirm", json={"session_id": "cs_test_123"})
+    assert res.status_code == 200, res.text
+    assert res.json()["active"] is True
+    assert client.get("/api/v1/subscription").json()["active"] is True
+
+
+def test_confirm_checkout_rejects_unpaid(client: TestClient, fakes: SimpleNamespace) -> None:
+    client.post("/api/v1/subscription/checkout")
+    fakes.stripe.retrieve_payment_status = "unpaid"
+    fakes.stripe.retrieve_status = "open"
+    res = client.post("/api/v1/subscription/confirm", json={"session_id": "cs_test_123"})
+    assert res.status_code == 400
+
+
+def test_confirm_checkout_rejects_other_users_session(
     client: TestClient, fakes: SimpleNamespace
 ) -> None:
-    # Turn billing on for this test only.
-    app.dependency_overrides[get_settings] = lambda: Settings(billing_enabled=True)
+    client.post("/api/v1/subscription/checkout")
+    # The retrieved session belongs to someone else.
+    fakes.stripe.retrieve_client_reference_id = str(uuid.uuid4())
+    res = client.post("/api/v1/subscription/confirm", json={"session_id": "cs_test_123"})
+    assert res.status_code == 403
+
+
+# ----- plan-aware AI Tutor cap (Sprint 13) -----
+
+
+def test_tutor_daily_cap_prompts_upgrade(client: TestClient, fakes: SimpleNamespace) -> None:
+    # Provision the current (stub) user so we can seed usage for them.
+    user = fakes.users.create(firebase_uid="stub-uid", email="dev@codepath.local")
     exercise = fakes.exercises.create(
         lesson_id=uuid.uuid4(),
         language="python",
@@ -102,12 +130,25 @@ def test_premium_endpoint_gated_by_subscription(
     )
     payload = {"exercise_id": str(exercise.id), "code": "x = 1"}
 
-    # No subscription -> 402 Payment Required.
+    # Exhaust the free tutor daily cap (5) → next call is 402 (upgrade prompt).
+    # Backdate the seeded usage so it counts toward the daily cap but not the
+    # per-minute burst guard (which would otherwise mask the 402 with a 429).
+    earlier = datetime.now(UTC) - timedelta(minutes=5)
+    for _ in range(5):
+        fakes.interactions._items.append(
+            AIInteraction(
+                id=uuid.uuid4(),
+                user_id=user.id,
+                kind="tutor",
+                model="m",
+                total_tokens=1,
+                created_at=earlier,
+            )
+        )
     denied = client.post("/api/v1/ai/tutor", json=payload)
-    assert denied.status_code == 402
+    assert denied.status_code == 402, denied.text
 
-    # Activate a subscription for the (now provisioned) user, then retry.
-    user_id = next(iter(fakes.users._by_id.values())).id
-    fakes.subscriptions.upsert(user_id=user_id, plan="pro", status="active")
+    # Upgrading raises the cap, so the same call now succeeds.
+    fakes.subscriptions.upsert(user_id=user.id, plan="pro", status="active")
     allowed = client.post("/api/v1/ai/tutor", json=payload)
     assert allowed.status_code == 200, allowed.text

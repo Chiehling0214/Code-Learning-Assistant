@@ -123,6 +123,11 @@ class Lesson(TimestampMixin, Base):
     content: Mapped[str] = mapped_column(Text, default="", nullable=False)
     # "human" | "ai" — provenance for reviewing AI-authored content (Sprint 6).
     source: Mapped[str] = mapped_column(String(16), default="human", nullable=False)
+    # "approved" | "pending" | "hidden" — admin review state (Sprint 13); hidden
+    # lessons are excluded from learner-facing serving.
+    review_status: Mapped[str] = mapped_column(
+        String(16), default="approved", server_default="approved", nullable=False
+    )
 
     course: Mapped[Course] = relationship(back_populates="lessons")
     exercises: Mapped[list[Exercise]] = relationship(
@@ -204,6 +209,8 @@ class Question(Base):
     # "single" — single correct choice. Extensible to other types later.
     type: Mapped[str] = mapped_column(String(16), default="single", nullable=False)
     order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Revealed after grading to explain the correct answer (Sprint 14).
+    explanation: Mapped[str] = mapped_column(Text, default="", server_default="", nullable=False)
 
     quiz: Mapped[Quiz] = relationship(back_populates="questions")
     choices: Mapped[list[Choice]] = relationship(

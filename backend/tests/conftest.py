@@ -12,12 +12,14 @@ from types import SimpleNamespace
 
 import pytest
 from app.api.deps import (
+    get_admin_review_service,
     get_ai_teacher_service,
     get_ai_tutor_service,
     get_content_service,
     get_course_chat_service,
     get_current_db_user,
     get_curriculum_service,
+    get_entitlement_service,
     get_execution_service,
     get_exercise_service,
     get_generate_content_service,
@@ -30,12 +32,14 @@ from app.api.deps import (
     get_track_service,
     get_user_service,
 )
+from app.application.services.admin_review_service import AdminReviewService
 from app.application.services.ai_teacher_service import AITeacherService
 from app.application.services.ai_tutor_service import AITutorService
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
 from app.application.services.course_chat_service import CourseChatService
 from app.application.services.curriculum_service import CurriculumService
+from app.application.services.entitlement_service import EntitlementService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
@@ -158,11 +162,22 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
     app.dependency_overrides[get_subscription_service] = lambda: SubscriptionService(
         fakes.subscriptions, fakes.stripe
     )
+    def _entitlements() -> EntitlementService:
+        return EntitlementService(
+            SubscriptionService(fakes.subscriptions, fakes.stripe),
+            fakes.tracks,
+            fakes.interactions,
+            _AI_SETTINGS,
+        )
+
+    app.dependency_overrides[get_entitlement_service] = _entitlements
     app.dependency_overrides[get_track_service] = lambda: TrackService(
         fakes.tracks,
         fakes.languages,
-        SubscriptionService(fakes.subscriptions, fakes.stripe),
-        _AI_SETTINGS,
+        _entitlements(),
+    )
+    app.dependency_overrides[get_admin_review_service] = lambda: AdminReviewService(
+        fakes.lessons, fakes.exercises, fakes.quizzes, fakes.courses
     )
     app.dependency_overrides[get_placement_service] = lambda: PlacementService(
         fakes.ai,

@@ -175,6 +175,7 @@ def _to_lesson(model: LessonModel) -> LessonEntity:
         created_at=model.created_at,
         updated_at=model.updated_at,
         source=model.source,
+        review_status=model.review_status,
     )
 
 
@@ -323,6 +324,14 @@ class SqlAlchemyLessonRepository:
         )
         return [_to_lesson(m) for m in self._session.scalars(stmt).all()]
 
+    def list_by_source(self, source: str) -> list[LessonEntity]:
+        stmt = (
+            select(LessonModel)
+            .where(LessonModel.source == source)
+            .order_by(LessonModel.created_at.desc())
+        )
+        return [_to_lesson(m) for m in self._session.scalars(stmt).all()]
+
     def create(
         self,
         *,
@@ -332,6 +341,7 @@ class SqlAlchemyLessonRepository:
         order_index: int,
         content: str,
         source: str = "human",
+        review_status: str = "approved",
     ) -> LessonEntity:
         model = LessonModel(
             course_id=course_id,
@@ -340,8 +350,18 @@ class SqlAlchemyLessonRepository:
             order_index=order_index,
             content=content,
             source=source,
+            review_status=review_status,
         )
         self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_lesson(model)
+
+    def set_review_status(self, lesson_id: uuid.UUID, review_status: str) -> LessonEntity:
+        model = self._session.get(LessonModel, lesson_id)
+        if model is None:
+            raise LookupError(f"Lesson {lesson_id} not found")
+        model.review_status = review_status
         self._session.flush()
         self._session.refresh(model)
         return _to_lesson(model)
@@ -538,6 +558,7 @@ def _to_question(model: QuestionModel) -> QuestionEntity:
         type=model.type,
         order_index=model.order_index,
         choices=[_to_choice(c) for c in model.choices],
+        explanation=model.explanation,
     )
 
 
@@ -601,9 +622,14 @@ class SqlAlchemyQuizRepository:
         type: str,
         order_index: int,
         choices: list[dict],
+        explanation: str = "",
     ) -> QuestionEntity:
         question = QuestionModel(
-            quiz_id=quiz_id, prompt=prompt, type=type, order_index=order_index
+            quiz_id=quiz_id,
+            prompt=prompt,
+            type=type,
+            order_index=order_index,
+            explanation=explanation,
         )
         for idx, choice in enumerate(choices):
             question.choices.append(
@@ -685,11 +711,15 @@ class SqlAlchemyAIInteractionRepository:
         self._session.refresh(record)
         return _to_interaction(record)
 
-    def count_since(self, user_id: uuid.UUID, since: datetime) -> int:
+    def count_since(
+        self, user_id: uuid.UUID, since: datetime, *, kind: str | None = None
+    ) -> int:
         stmt = select(func.count()).where(
             AIInteractionModel.user_id == user_id,
             AIInteractionModel.created_at >= since,
         )
+        if kind is not None:
+            stmt = stmt.where(AIInteractionModel.kind == kind)
         return int(self._session.scalar(stmt) or 0)
 
 

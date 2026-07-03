@@ -36,6 +36,7 @@ export interface QuestionResult {
   correct: boolean;
   selected_choice_id: string | null;
   correct_choice_id: string | null;
+  explanation: string;
 }
 
 export interface QuizSubmitResult {

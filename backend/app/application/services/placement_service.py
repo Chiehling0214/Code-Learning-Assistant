@@ -82,7 +82,12 @@ class PlacementService:
                 for c in (m.get("choices") or [])
             ]
             mcqs.append(
-                {"id": str(uuid.uuid4()), "prompt": str(m.get("prompt", "")), "choices": choices}
+                {
+                    "id": str(uuid.uuid4()),
+                    "prompt": str(m.get("prompt", "")),
+                    "choices": choices,
+                    "explanation": str(m.get("explanation", "")),
+                }
             )
 
         coding = []
@@ -139,8 +144,10 @@ class PlacementService:
         items = self._build_items(generated, language)
         items["coding"] = self._self_verify(items["coding"])
         assessment = self._placements.create(track_id=track_id, user_id=user_id, items=items)
+        # Tagged "placement" (not "generate") so the placement test doesn't consume
+        # the learner's daily content-generation quota.
         self._usage.record(
-            user_id, kind="generate", model=generated.model, total_tokens=generated.total_tokens
+            user_id, kind="placement", model=generated.model, total_tokens=generated.total_tokens
         )
         return assessment
 
@@ -171,8 +178,21 @@ class PlacementService:
             selected = mcq_answers.get(mcq["id"])
             ok = selected is not None and selected == correct_id
             correct_mcq += 1 if ok else 0
+            # The test is over, so it's safe to reveal the full question, the answer
+            # key, and the explanation for the review screen.
             mcq_results.append(
-                {"id": mcq["id"], "correct": ok, "correct_choice_id": correct_id}
+                {
+                    "id": mcq["id"],
+                    "prompt": mcq.get("prompt", ""),
+                    "choices": [
+                        {"id": c["id"], "text": c["text"], "is_correct": bool(c.get("is_correct"))}
+                        for c in mcq["choices"]
+                    ],
+                    "selected_choice_id": selected,
+                    "correct_choice_id": correct_id,
+                    "correct": ok,
+                    "explanation": mcq.get("explanation", ""),
+                }
             )
 
         coding_results = []
@@ -180,13 +200,25 @@ class PlacementService:
         for task in items.get("coding", []):
             source = code.get(task["id"], "")
             passed = False
+            passed_cases = 0
+            total_cases = len((task.get("test_spec") or {}).get("cases") or [])
             if source.strip():
-                verdict, _ = self._execution.grade(
+                verdict, detail = self._execution.grade(
                     code=source, language=task["language"], test_spec=task.get("test_spec") or {}
                 )
                 passed = verdict == "passed"
+                passed_cases = int(detail.get("passed", 0))
+                total_cases = int(detail.get("total", total_cases))
             passed_coding += 1 if passed else 0
-            coding_results.append({"id": task["id"], "passed": passed})
+            coding_results.append(
+                {
+                    "id": task["id"],
+                    "prompt": task.get("prompt", ""),
+                    "passed": passed,
+                    "passed_cases": passed_cases,
+                    "total_cases": total_cases,
+                }
+            )
 
         n_mcq = len(items.get("mcqs", []))
         n_coding = len(items.get("coding", []))

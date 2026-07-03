@@ -71,6 +71,8 @@ implemented yet** — fields will be expanded in later sprints.
 | slug | str | unique per course (`uq_lessons_course_slug`) |
 | order_index | int | ordering within the course |
 | content | text | markdown |
+| source | str | `human` \| `ai` — provenance (Sprint 6) |
+| review_status | str | `approved` \| `pending` \| `hidden` — admin review (Sprint 13); hidden = not served |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
@@ -120,6 +122,7 @@ implemented yet** — fields will be expanded in later sprints.
 | prompt | text | the question |
 | type | str | `single` (single correct choice) |
 | order_index | int | display order |
+| explanation | text | why the answer is correct — revealed after grading (Sprint 14) |
 
 ### `choices` (Sprint 5)
 
@@ -267,6 +270,9 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 - `0010_placement` — placement_assessments table.
 - `0011_curriculum` — `courses.track_id` + generation_jobs table.
 - `0012_course_chat` — course_chat_messages table (in-course chat).
+- `0013_review_status` — `lessons.review_status` (admin AI-content review;
+  existing AI lessons set to `pending`).
+- `0014_quiz_explanation` — `questions.explanation` (shown after grading).
 
 ```bash
 # create/upgrade to latest

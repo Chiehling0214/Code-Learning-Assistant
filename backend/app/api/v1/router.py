@@ -4,9 +4,11 @@ from fastapi import APIRouter
 
 from app.api.v1.routes import (
     admin_content,
+    admin_review,
     ai,
     courses,
     curriculum,
+    entitlements,
     exercises,
     health,
     languages,
@@ -43,3 +45,5 @@ api_router.include_router(webhooks.router)
 api_router.include_router(tracks.router)
 api_router.include_router(placement.router)
 api_router.include_router(curriculum.router)
+api_router.include_router(entitlements.router)
+api_router.include_router(admin_review.router)

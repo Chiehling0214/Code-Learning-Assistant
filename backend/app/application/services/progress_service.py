@@ -84,6 +84,8 @@ class ProgressService:
             total = 0
             completed = 0
             for lesson in self._lessons.list_by_course(course.id):
+                if lesson.review_status == "hidden":
+                    continue
                 total += 1
                 completed += 1 if lesson.id in done["lesson"] else 0
                 for ex in self._exercises.list_by_lesson(lesson.id):

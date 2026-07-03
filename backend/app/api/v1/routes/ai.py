@@ -10,9 +10,9 @@ from app.api.deps import (
     AITeacherServiceDep,
     AITutorServiceDep,
     CurrentDbUser,
+    EntitlementServiceDep,
     GenerateContentServiceDep,
     UserServiceDep,
-    require_active_subscription,
     require_admin,
 )
 from app.application.ports.ai_provider import (
@@ -21,6 +21,7 @@ from app.application.ports.ai_provider import (
     AIQuotaError,
 )
 from app.application.services.ai_usage import RateLimitError
+from app.application.services.entitlement_service import UpgradeRequiredError
 from app.schemas.ai import (
     AIAnswerResponse,
     GeneratedExerciseResponse,
@@ -38,6 +39,8 @@ def _handle_ai_error(exc: Exception) -> HTTPException:
     """Map AI/usage failures to HTTP responses, degrading gracefully."""
     if isinstance(exc, LookupError):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    if isinstance(exc, UpgradeRequiredError):
+        return HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
     if isinstance(exc, RateLimitError):
         return HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc))
     if isinstance(exc, AINotConfiguredError):
@@ -81,19 +84,19 @@ def ask_teacher(
     )
 
 
-@router.post(
-    "/tutor",
-    response_model=AIAnswerResponse,
-    dependencies=[Depends(require_active_subscription)],
-)
+@router.post("/tutor", response_model=AIAnswerResponse)
 def ask_tutor(
     payload: TutorRequest,
     current_user: CurrentDbUser,
     service: AITutorServiceDep,
     users: UserServiceDep,
+    entitlements: EntitlementServiceDep,
 ) -> AIAnswerResponse:
     level = users.get_profile(current_user.id).skill_level
     try:
+        # Plan-aware daily cap: free users get a bounded number of hints, paid
+        # users more; over-limit prompts an upgrade (402).
+        entitlements.check_tutor(current_user.id)
         result = service.tutor(
             user_id=current_user.id,
             exercise_id=payload.exercise_id,

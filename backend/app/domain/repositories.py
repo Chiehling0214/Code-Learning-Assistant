@@ -119,6 +119,8 @@ class LessonRepository(Protocol):
 
     def list_by_course(self, course_id: uuid.UUID) -> list[Lesson]: ...
 
+    def list_by_source(self, source: str) -> list[Lesson]: ...
+
     def create(
         self,
         *,
@@ -128,7 +130,10 @@ class LessonRepository(Protocol):
         order_index: int,
         content: str,
         source: str = "human",
+        review_status: str = "approved",
     ) -> Lesson: ...
+
+    def set_review_status(self, lesson_id: uuid.UUID, review_status: str) -> Lesson: ...
 
     def update(
         self,
@@ -208,6 +213,7 @@ class QuizRepository(Protocol):
         type: str,
         order_index: int,
         choices: list[dict],
+        explanation: str = "",
     ) -> Question: ...
 
     def delete(self, quiz_id: uuid.UUID) -> None: ...
@@ -232,7 +238,9 @@ class AIInteractionRepository(Protocol):
         self, *, user_id: uuid.UUID, kind: str, model: str, total_tokens: int
     ) -> AIInteraction: ...
 
-    def count_since(self, user_id: uuid.UUID, since: datetime) -> int: ...
+    def count_since(
+        self, user_id: uuid.UUID, since: datetime, *, kind: str | None = None
+    ) -> int: ...
 
 
 class ProgressRepository(Protocol):

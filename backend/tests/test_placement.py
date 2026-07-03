@@ -61,6 +61,16 @@ def test_submit_all_correct_is_advanced(client: TestClient, fakes: SimpleNamespa
     assert body["percent"] == 100
     assert body["level"] == "advanced"
 
+    # The breakdown carries review detail: correct answer, explanation, choices,
+    # and the coding score.
+    first_mcq = body["breakdown"]["mcqs"][0]
+    assert first_mcq["correct"] is True
+    assert first_mcq["explanation"]
+    assert first_mcq["correct_choice_id"] == first_mcq["selected_choice_id"]
+    assert any(c["is_correct"] for c in first_mcq["choices"])
+    coding = body["breakdown"]["coding"][0]
+    assert coding["passed_cases"] == coding["total_cases"]
+
     # Level persisted on the track and profile.
     track = next(t for t in client.get("/api/v1/me/tracks").json() if t["id"] == track_id)
     assert track["level"] == "advanced"

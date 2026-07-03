@@ -98,6 +98,12 @@ export function QuizPage() {
                     {result.correct ? "Correct" : "Incorrect"}
                   </p>
                 )}
+                {result?.explanation && (
+                  <div className="rounded-md bg-muted p-3 text-sm">
+                    <span className="font-medium">Explanation. </span>
+                    {result.explanation}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

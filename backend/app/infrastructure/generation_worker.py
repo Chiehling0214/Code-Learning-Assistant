@@ -25,6 +25,7 @@ from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyLanguageRepository,
     SqlAlchemyLanguageTrackRepository,
     SqlAlchemyLessonRepository,
+    SqlAlchemyProgressRepository,
     SqlAlchemyQuizRepository,
 )
 
@@ -49,6 +50,7 @@ def run_generation(job_id: uuid.UUID) -> None:
             ExecutionService(Judge0Client(settings)),
             AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
             settings,
+            SqlAlchemyProgressRepository(session),
         )
         service.generate_course(job_id, commit=session.commit)
     except Exception as exc:  # noqa: BLE001 - never let the background task crash

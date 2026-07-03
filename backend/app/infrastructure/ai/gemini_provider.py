@@ -208,8 +208,10 @@ class GeminiAIProvider:
         prompt = (
             "Generate a placement test as JSON with two keys. "
             f'"mcqs": a list of {request.mcq_count} multiple-choice questions, each '
-            '{"prompt": string, "choices": [{"text": string, "is_correct": boolean}]} '
-            "with exactly one correct choice, ranging from easy to hard. "
+            '{"prompt": string, "choices": [{"text": string, "is_correct": boolean}], '
+            '"explanation": string} with exactly one correct choice, ranging from easy '
+            "to hard; the explanation briefly says why the correct choice is right (and, "
+            "where useful, why the common wrong ones are wrong). "
             '"coding": a list of exactly 2 short coding tasks, each '
             '{"prompt": string, "starter_code": string, "reference_solution": string, '
             '"test_spec": {"cases": [{"input": string, "expected": string}]}} where the '
@@ -262,8 +264,9 @@ class GeminiAIProvider:
             "stdin and prints the answer to stdout, and matches every expected output "
             "exactly), and "
             f'"quiz" ({{"title", "questions": [a list of {request.quiz_question_count} '
-            '{"prompt", "choices": [{"text", "is_correct"}]} with exactly one correct '
-            "choice each]}). "
+            '{"prompt", "choices": [{"text", "is_correct"}], "explanation": string} with '
+            "exactly one correct choice each, where the explanation briefly says why the "
+            "correct choice is right]}). "
             f"Lesson topic: {request.topic}. Language: {request.language}. Level: "
             f"{request.level}. Return ONLY the JSON object."
         )
@@ -312,8 +315,9 @@ class GeminiAIProvider:
             "reference_solution is correct and matches every expected stdout exactly), "
             f'and "quiz" ({{"title", "questions": [a list of '
             f"{request.quiz_question_count} "
-            '{"prompt", "choices": [{"text", "is_correct"}]} with exactly one correct '
-            "choice each]})}. Lessons must be ordered foundational → advanced."
+            '{"prompt", "choices": [{"text", "is_correct"}], "explanation": string} with '
+            "exactly one correct choice each, where the explanation briefly says why the "
+            "correct choice is right]})}. Lessons must be ordered foundational → advanced."
             + focus
             + prior
             + " Return ONLY the JSON object."

@@ -34,7 +34,11 @@ from app.domain.entities import (
     Subscription,
     User,
 )
-from app.infrastructure.billing.stripe_client import CheckoutSession, StripeError
+from app.infrastructure.billing.stripe_client import (
+    CheckoutSession,
+    RetrievedSession,
+    StripeError,
+)
 from app.infrastructure.judge0.client import Judge0Error
 
 
@@ -258,6 +262,10 @@ class FakeLessonRepository:
         items = [x for x in self._items.values() if x.course_id == course_id]
         return sorted(items, key=lambda x: (x.order_index, x.title))
 
+    def list_by_source(self, source: str) -> list[Lesson]:
+        items = [x for x in self._items.values() if x.source == source]
+        return sorted(items, key=lambda x: x.created_at, reverse=True)
+
     def create(
         self,
         *,
@@ -267,6 +275,7 @@ class FakeLessonRepository:
         order_index: int,
         content: str,
         source: str = "human",
+        review_status: str = "approved",
     ) -> Lesson:
         now = _now()
         lesson = Lesson(
@@ -279,6 +288,7 @@ class FakeLessonRepository:
             created_at=now,
             updated_at=now,
             source=source,
+            review_status=review_status,
         )
         self._items[lesson.id] = lesson
         return lesson
@@ -302,6 +312,25 @@ class FakeLessonRepository:
             content=content if content is not None else e.content,
             created_at=e.created_at,
             updated_at=_now(),
+            source=e.source,
+            review_status=e.review_status,
+        )
+        self._items[lesson_id] = updated
+        return updated
+
+    def set_review_status(self, lesson_id: uuid.UUID, review_status: str) -> Lesson:
+        e = self._items[lesson_id]
+        updated = Lesson(
+            id=e.id,
+            course_id=e.course_id,
+            title=e.title,
+            slug=e.slug,
+            order_index=e.order_index,
+            content=e.content,
+            created_at=e.created_at,
+            updated_at=_now(),
+            source=e.source,
+            review_status=review_status,
         )
         self._items[lesson_id] = updated
         return updated
@@ -451,6 +480,7 @@ class FakeQuizRepository:
         type: str,
         order_index: int,
         choices: list[dict],
+        explanation: str = "",
     ) -> Question:
         quiz = self._items[quiz_id]
         question_id = uuid.uuid4()
@@ -460,6 +490,7 @@ class FakeQuizRepository:
             prompt=prompt,
             type=type,
             order_index=order_index,
+            explanation=explanation,
             choices=[
                 Choice(
                     id=uuid.uuid4(),
@@ -592,6 +623,7 @@ class FakeAIProvider:
                             {"text": "A", "is_correct": True},
                             {"text": "B", "is_correct": False},
                         ],
+                        "explanation": "A is correct.",
                     }
                     for _ in range(request.quiz_question_count)
                 ],
@@ -627,6 +659,7 @@ class FakeAIProvider:
                                 {"text": "A", "is_correct": True},
                                 {"text": "B", "is_correct": False},
                             ],
+                            "explanation": "A is correct.",
                         }
                         for _ in range(request.quiz_question_count)
                     ],
@@ -647,6 +680,7 @@ class FakeAIProvider:
                         {"text": "A", "is_correct": True},
                         {"text": "B", "is_correct": False},
                     ],
+                    "explanation": "A is correct because …",
                 },
                 {
                     "prompt": "Q2",
@@ -654,6 +688,7 @@ class FakeAIProvider:
                         {"text": "C", "is_correct": True},
                         {"text": "D", "is_correct": False},
                     ],
+                    "explanation": "C is correct because …",
                 },
             ],
             coding=[
@@ -688,9 +723,15 @@ class FakeAIInteractionRepository:
         self._items.append(record)
         return record
 
-    def count_since(self, user_id: uuid.UUID, since: datetime) -> int:
+    def count_since(
+        self, user_id: uuid.UUID, since: datetime, *, kind: str | None = None
+    ) -> int:
         return sum(
-            1 for r in self._items if r.user_id == user_id and r.created_at >= since
+            1
+            for r in self._items
+            if r.user_id == user_id
+            and r.created_at >= since
+            and (kind is None or r.kind == kind)
         )
 
 
@@ -768,12 +809,28 @@ class FakeStripeClient:
         self.last_client_reference_id: str | None = None
         self.next_event: dict | None = None
         self.raise_on_construct = False
+        # Tunables for retrieve_checkout_session (webhook-free confirm path).
+        self.retrieve_client_reference_id: str | None = None  # None → the last checkout
+        self.retrieve_payment_status = "paid"
+        self.retrieve_status = "complete"
 
     def create_checkout_session(
         self, *, customer_email: str, client_reference_id: str
     ) -> CheckoutSession:
         self.last_client_reference_id = client_reference_id
         return CheckoutSession(id="cs_test_123", url=self.checkout_url)
+
+    def retrieve_checkout_session(self, session_id: str) -> RetrievedSession:
+        ref = self.retrieve_client_reference_id
+        if ref is None:
+            ref = self.last_client_reference_id
+        return RetrievedSession(
+            client_reference_id=ref,
+            payment_status=self.retrieve_payment_status,
+            status=self.retrieve_status,
+            customer="cus_test_1",
+            subscription="sub_test_1",
+        )
 
     def construct_event(self, payload: bytes, signature: str) -> dict:
         if self.raise_on_construct:

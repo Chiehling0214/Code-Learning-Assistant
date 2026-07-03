@@ -57,6 +57,8 @@ class RecommendationService:
         track_ids = [t.id for t in self._tracks.list_by_user(user_id)]
         for course in self._courses.list_by_track_ids(track_ids):
             for lesson in self._lessons.list_by_course(course.id):
+                if lesson.review_status == "hidden":
+                    continue
                 if lesson.id not in done["lesson"]:
                     add("lesson", lesson.id, lesson.title, course.slug)
                 for ex in self._exercises.list_by_lesson(lesson.id):

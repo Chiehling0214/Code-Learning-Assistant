@@ -4,9 +4,15 @@ import uuid
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
-from app.api.deps import CourseChatServiceDep, CurrentDbUser, CurriculumServiceDep
+from app.api.deps import (
+    CourseChatServiceDep,
+    CurrentDbUser,
+    CurriculumServiceDep,
+    EntitlementServiceDep,
+)
 from app.application.ports.ai_provider import AINotConfiguredError, AIProviderError
 from app.application.services.ai_usage import RateLimitError
+from app.application.services.entitlement_service import UpgradeRequiredError
 from app.domain.entities import Lesson
 from app.infrastructure.generation_worker import run_generation
 from app.schemas.content import CourseResponse
@@ -55,6 +61,8 @@ def start_generation(
     service: CurriculumServiceDep,
     background: BackgroundTasks,
 ) -> GenerationJobResponse:
+    # The one-time onboarding course build is not counted against the daily
+    # generation quota (only on-demand "Learn more" / chat is — see extend/chat).
     try:
         job = service.start_generation(user_id=current_user.id, track_id=track_id)
     except LookupError as exc:
@@ -121,13 +129,19 @@ def extend_course(
     body: ExtendRequest,
     current_user: CurrentDbUser,
     service: CurriculumServiceDep,
+    entitlements: EntitlementServiceDep,
 ) -> ExtendResponse:
     try:
+        entitlements.check_generation(current_user.id)
         added = service.extend_course(
             course_id=course_id, user_id=current_user.id, focus=body.topic, count=body.count
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except UpgradeRequiredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc)
+        ) from exc
     except RateLimitError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)
@@ -168,8 +182,10 @@ def send_course_chat(
     body: ChatSendRequest,
     current_user: CurrentDbUser,
     service: CourseChatServiceDep,
+    entitlements: EntitlementServiceDep,
 ) -> ChatSendResponse:
     try:
+        entitlements.check_generation(current_user.id)
         assistant, added = service.send(
             course_id=course_id,
             user_id=current_user.id,
@@ -180,6 +196,10 @@ def send_course_chat(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except UpgradeRequiredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc)
+        ) from exc
     except RateLimitError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)

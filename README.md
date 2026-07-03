@@ -6,7 +6,7 @@ CodePath AI guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
 sandbox.
 
-**Status — Sprints 0–12 complete.**
+**Status — Sprints 0–13 complete.**
 The product is pivoting to AI-generated, personalized curricula (Sprints 9–13,
 see [docs/00_PROJECT.md](docs/00_PROJECT.md)): learners now pick a language on
 first login and hold plan-capped language "tracks". Foundation:
@@ -30,11 +30,13 @@ languages), and a **placement test** (Sprint 10 — AI-generated MCQs + coding
 tasks, self-verified, graded into an assessed level on the track/profile), and
 **AI curriculum generation** (Sprint 11 — a background job builds a full
 personalized course of lessons/exercises/quizzes for the track+level; manual
-course authoring is retired), and **continuous learning** (Sprint 12 — a
+course authoring is retired), **continuous learning** (Sprint 12 — a
 near-completion "Learn more" action and an in-course chat where the learner asks
 for a topic and the AI appends a matching lesson + exercises + quiz, reusing the
-generation pipeline). Plan-limit refinement and admin AI-review follow in
-Sprint 13.
+generation pipeline), and **entitlements & admin review** (Sprint 13 — plan-aware
+limits on languages, AI Tutor hints, and generation quota, exposed via
+`/me/entitlements` with a `402`/upgrade prompt over-limit; the admin surface is
+now an AI-content review console, where hidden lessons are withheld from learners).
 
 See [`docs/`](docs/) for full design documentation — start with
 [00_PROJECT.md](docs/00_PROJECT.md) and the per-sprint plans

@@ -10,8 +10,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.application.services.subscription_service import SubscriptionService
-from app.core.config import Settings
+from app.application.services.entitlement_service import EntitlementService
 from app.domain.entities import LanguageTrack
 from app.domain.repositories import LanguageRepository, LanguageTrackRepository
 
@@ -29,21 +28,17 @@ class TrackService:
         self,
         tracks: LanguageTrackRepository,
         languages: LanguageRepository,
-        subscriptions: SubscriptionService,
-        settings: Settings,
+        entitlements: EntitlementService,
     ) -> None:
         self._tracks = tracks
         self._languages = languages
-        self._subscriptions = subscriptions
-        self._settings = settings
+        self._entitlements = entitlements
 
     def has_tracks(self, user_id: uuid.UUID) -> bool:
         return self._tracks.count_by_user(user_id) > 0
 
     def max_languages(self, user_id: uuid.UUID) -> int:
-        if self._subscriptions.is_active(user_id):
-            return self._settings.paid_max_languages
-        return self._settings.free_max_languages
+        return self._entitlements.max_languages(user_id)
 
     def list_tracks(self, user_id: uuid.UUID) -> list[dict[str, Any]]:
         """Return the user's tracks enriched with language name/slug."""

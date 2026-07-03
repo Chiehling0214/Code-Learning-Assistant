@@ -62,6 +62,20 @@ def test_extend_count_is_bounded(client: TestClient, fakes: SimpleNamespace) -> 
     assert len(res.json()["added"]) == 5
 
 
+def test_onboarding_build_not_counted_but_extend_is(
+    client: TestClient, fakes: SimpleNamespace
+) -> None:
+    user, course, _ = _seed_course(fakes)
+    # The one-time onboarding build + placement do NOT consume the daily quota.
+    fakes.interactions.create(user_id=user.id, kind="generate_course", model="m", total_tokens=1)
+    fakes.interactions.create(user_id=user.id, kind="placement", model="m", total_tokens=1)
+    assert client.get("/api/v1/me/entitlements").json()["generations_used_today"] == 0
+
+    # An on-demand "Learn more" extend does count.
+    client.post(f"/api/v1/courses/{course.id}/extend", json={"count": 1})
+    assert client.get("/api/v1/me/entitlements").json()["generations_used_today"] == 1
+
+
 def test_extend_unknown_course_404(client: TestClient) -> None:
     assert client.post(f"/api/v1/courses/{uuid.uuid4()}/extend", json={}).status_code == 404
 

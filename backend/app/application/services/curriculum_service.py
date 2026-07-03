@@ -129,6 +129,8 @@ class CurriculumService:
         total = 0
         completed = 0
         for lesson in self._lessons.list_by_course(course_id):
+            if lesson.review_status == "hidden":
+                continue
             total += 1
             completed += 1 if lesson.id in done["lesson"] else 0
             for ex in self._exercises.list_by_lesson(lesson.id):
@@ -262,7 +264,8 @@ class CurriculumService:
                 total,
             )
             batch = self._generate_batch_with_retry(
-                language, level, count, prior_titles, job.user_id
+                language, level, count, prior_titles, job.user_id,
+                usage_kind="generate_course",
             )
             for lesson_data in (batch.lessons if batch else [])[:count]:
                 lesson = self._build_lesson_from_data(
@@ -291,8 +294,14 @@ class CurriculumService:
         prior_titles: list[str],
         user_id: uuid.UUID,
         focus: str = "",
+        usage_kind: str = "generate",
     ) -> GeneratedLessonBatch | None:
-        """Generate one batch of lessons, retrying on rate-limit; None on failure."""
+        """Generate one batch of lessons, retrying on rate-limit; None on failure.
+
+        ``usage_kind`` tags the recorded interaction: ``"generate_course"`` for the
+        one-time onboarding build (not counted against the daily generation quota)
+        vs. ``"generate"`` for on-demand extend/chat (counted).
+        """
         attempts = max(1, self._settings.curriculum_retry_attempts)
         for attempt in range(attempts):
             try:
@@ -308,7 +317,7 @@ class CurriculumService:
                     )
                 )
                 self._usage.record(
-                    user_id, kind="generate", model=batch.model, total_tokens=batch.total_tokens
+                    user_id, kind=usage_kind, model=batch.model, total_tokens=batch.total_tokens
                 )
                 return batch
             except AIQuotaError as exc:
@@ -358,6 +367,9 @@ class CurriculumService:
             order_index=order_index,
             content=str(data.get("content", "")),
             source="ai",
+            # AI content enters the admin review queue but still serves to the
+            # learner (only "hidden" is withheld).
+            review_status="pending",
         )
         exercises = data.get("exercises") if isinstance(data.get("exercises"), list) else []
         for ex in exercises:
@@ -423,4 +435,5 @@ class CurriculumService:
                     type="single",
                     order_index=i,
                     choices=choices,
+                    explanation=str(q.get("explanation", "")),
                 )
