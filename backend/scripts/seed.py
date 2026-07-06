@@ -182,7 +182,88 @@ CPP_PACK: dict[str, Any] = {
     },
 }
 
-PACKS: list[dict[str, Any]] = [PYTHON_PACK, CPP_PACK]
+JAVA_PACK: dict[str, Any] = {
+    "language": {"name": "Java", "slug": "java"},
+    "course": {
+        "title": "Java Basics",
+        "slug": "java-basics",
+        "description": "Get started with Java: classes, I/O, variables, and control flow.",
+    },
+    "lessons": [
+        {
+            "title": "Hello, World & I/O",
+            "slug": "hello-world-io",
+            "order_index": 1,
+            "content": (
+                "# Hello, World & I/O\n\n"
+                "A Java program runs from a class's `main` method. Print with "
+                "`System.out.println`:\n\n"
+                '```java\npublic class Main {\n'
+                "    public static void main(String[] args) {\n"
+                '        System.out.println("Hello, World!");\n    }\n}\n```\n'
+            ),
+        },
+        {
+            "title": "Variables & Types",
+            "slug": "variables-and-types",
+            "order_index": 2,
+            "content": (
+                "# Variables & Types\n\n"
+                "Java is statically typed — declare a type with each variable:\n\n"
+                '```java\nint age = 36;\nString name = "Ada";\ndouble pi = 3.14;\n```\n'
+            ),
+        },
+        {
+            "title": "Control Flow",
+            "slug": "control-flow",
+            "order_index": 3,
+            "content": (
+                "# Control Flow\n\n"
+                "Branch with `if`/`else if`/`else`, and loop with `for`/`while`:\n\n"
+                '```java\nif (age >= 18) {\n    System.out.println("adult");\n}\n```\n'
+            ),
+        },
+    ],
+    "exercise": {
+        "lesson_slug": "hello-world-io",
+        "slug": "java-hello-codepath",
+        "title": "Hello, CodePath (Java)",
+        "language": "java",
+        "prompt": 'Print the string "Hello, CodePath!" to standard output.',
+        "starter_code": (
+            "public class Main {\n"
+            "    public static void main(String[] args) {\n"
+            "        // your code here\n    }\n}\n"
+        ),
+        "test_spec": {"cases": [{"input": "", "expected": "Hello, CodePath!"}]},
+    },
+    "quiz": {
+        "lesson_slug": "control-flow",
+        "slug": "java-basics-check",
+        "title": "Java Basics Check",
+        "description": "A quick check on Java fundamentals.",
+        "questions": [
+            {
+                "prompt": "Which call prints a line to standard output in Java?",
+                "choices": [
+                    {"text": "System.out.println(...)", "is_correct": True},
+                    {"text": "print(...)", "is_correct": False},
+                    {"text": "console.log(...)", "is_correct": False},
+                ],
+            },
+            {
+                "prompt": "How do you declare an integer variable?",
+                "choices": [
+                    {"text": "int x = 5;", "is_correct": True},
+                    {"text": "x = 5", "is_correct": False},
+                    {"text": "let x = 5;", "is_correct": False},
+                ],
+            },
+        ],
+    },
+}
+
+PACKS: list[dict[str, Any]] = [PYTHON_PACK, CPP_PACK, JAVA_PACK]
 
 
 # --------------------------------------------------------------------------- #
@@ -290,13 +371,22 @@ def _seed_pack(session: Session, pack: dict) -> tuple[str, int, int, int]:
 
 
 def seed() -> None:
-    """Seed the selectable languages only (courses are AI-generated per learner)."""
+    """Ensure the selectable languages exist (courses are AI-generated per learner).
+
+    Delegates to the canonical list in ``app.core.languages`` — the same one the
+    container ensures on startup — so this stays in sync. Kept as a convenience;
+    a normal deploy no longer needs it.
+    """
+    from app.core.languages import ensure_languages
+    from app.infrastructure.repositories.sqlalchemy_repositories import (
+        SqlAlchemyLanguageRepository,
+    )
+
     session = SessionLocal()
     try:
-        for pack in PACKS:
-            language = _get_or_create_language(session, pack["language"])
-            print(f"Seeded language '{language.slug}'.")
+        created = ensure_languages(SqlAlchemyLanguageRepository(session))
         session.commit()
+        print(f"Languages ensured (created: {created or 'none'}).")
     except Exception:
         session.rollback()
         raise
