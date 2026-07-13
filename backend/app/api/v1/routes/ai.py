@@ -76,6 +76,7 @@ def ask_teacher(
             topic=payload.topic,
             question=payload.question,
             level=level,
+            context=payload.context,
         )
     except Exception as exc:  # noqa: BLE001 - mapped to HTTP below
         raise _handle_ai_error(exc) from exc

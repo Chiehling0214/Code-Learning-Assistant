@@ -25,7 +25,15 @@ class AITeacherService:
         topic: str,
         question: str,
         level: str,
+        context: str = "",
     ) -> AIResponse:
+        """Explain a topic/lesson/question.
+
+        ``context`` is optional caller-supplied material (e.g. the placement or
+        quiz questions under review, plus the learner's answers/code) so the
+        teacher can reference the exact items the learner asks about. The
+        provider fences it like lesson content.
+        """
         lesson_content = ""
         resolved_topic = topic
         if lesson_id is not None:
@@ -34,8 +42,10 @@ class AITeacherService:
                 raise LookupError(f"Lesson {lesson_id} not found")
             lesson_content = lesson.content
             resolved_topic = topic or lesson.title
+        if context.strip():
+            lesson_content = f"{lesson_content}\n\n{context}" if lesson_content else context
 
-        if not resolved_topic and not question:
+        if not resolved_topic and not question and not context.strip():
             raise ValueError("Provide a topic, a lesson, or a question")
 
         self._usage.check(user_id)

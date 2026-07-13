@@ -29,7 +29,7 @@ export interface Progress {
 export function useToday() {
   return useQuery({
     queryKey: ["today"],
-    queryFn: () => apiFetch<{ items: TodayItem[] }>("/today"),
+    queryFn: () => apiFetch<{ items: TodayItem[]; reviews_due: number }>("/today"),
   });
 }
 

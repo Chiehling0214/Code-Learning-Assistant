@@ -11,13 +11,20 @@ export interface AIAnswer {
 /** Ask the AI Teacher to explain a lesson concept (by lesson, topic, or question). */
 export function useAskTeacher() {
   return useMutation({
-    mutationFn: (vars: { lesson_id?: string; topic?: string; question?: string }) =>
+    mutationFn: (vars: {
+      lesson_id?: string;
+      topic?: string;
+      question?: string;
+      /** Material the question refers to (e.g. the test being reviewed). */
+      context?: string;
+    }) =>
       apiFetch<AIAnswer>("/ai/teacher", {
         method: "POST",
         body: JSON.stringify({
           lesson_id: vars.lesson_id ?? null,
           topic: vars.topic ?? "",
           question: vars.question ?? "",
+          context: vars.context ?? "",
         }),
       }),
   });

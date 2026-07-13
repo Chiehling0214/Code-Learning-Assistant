@@ -65,7 +65,10 @@ refreshes. The **Subscription** page (Sprint 13) shows plan limits and today's
 usage from `GET /me/entitlements`; an **`UpgradePrompt`** surfaces wherever a plan
 limit is hit (a `402`). The **Admin** page is now an **AI-content review console**
 (`features/admin/hooks.ts`): list generated lessons and approve/hide them (hidden
-lessons are withheld from learners), with a usage summary.
+lessons are withheld from learners), with a usage summary. The **Review** page
+(Sprint 15, `features/review/hooks.ts`) replays captured mistakes as flashcards on
+a spaced schedule and keeps a mistakes notebook; "Today" surfaces due reviews
+first.
 
 | Path | Page | Access |
 |------|------|--------|

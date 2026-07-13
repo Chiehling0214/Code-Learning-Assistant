@@ -225,6 +225,21 @@ implemented yet** — fields will be expanded in later sprints.
 | level | str, nullable | `beginner` \| `intermediate` \| `advanced` |
 | created_at / updated_at | timestamptz | |
 
+### `review_items` (Sprint 15)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| user_id | UUID (FK → users.id) | cascade delete, indexed |
+| source | str | `quiz` \| `placement` \| `exercise` |
+| item_ref | UUID | the question/MCQ/exercise; unique per user (`uq_review_items_user_ref`) |
+| payload | jsonb | snapshot (prompt/choices/explanation or exercise link) |
+| interval_days | int | current spacing (1 → 2 → 4) |
+| due_at | timestamptz | next review, indexed |
+| lapses / passes | int | misses / consecutive correct answers |
+| retired | bool | mastered after 3 consecutive passes |
+| created_at / updated_at | timestamptz | |
+
 ### `course_chat_messages` (Sprint 12)
 
 | Column | Type | Notes |
@@ -273,6 +288,7 @@ Alembic lives under `backend/alembic/`. Migrations to date:
 - `0013_review_status` — `lessons.review_status` (admin AI-content review;
   existing AI lessons set to `pending`).
 - `0014_quiz_explanation` — `questions.explanation` (shown after grading).
+- `0015_review_items` — review_items table (spaced review of mistakes).
 
 ```bash
 # create/upgrade to latest

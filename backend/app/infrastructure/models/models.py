@@ -360,6 +360,34 @@ class GenerationJob(TimestampMixin, Base):
 
 
 # --------------------------------------------------------------------------- #
+# Spaced review of mistakes (Sprint 15)
+# --------------------------------------------------------------------------- #
+
+
+class ReviewItem(TimestampMixin, Base):
+    __tablename__ = "review_items"
+    __table_args__ = (
+        UniqueConstraint("user_id", "item_ref", name="uq_review_items_user_ref"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # "quiz" | "placement" | "exercise"
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    # The question / MCQ / exercise this snapshot came from.
+    item_ref: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    # Snapshot: prompt, choices (with answer key), explanation, or exercise link.
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    interval_days: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    lapses: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    passes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    retired: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+# --------------------------------------------------------------------------- #
 # In-course chat (Sprint 12)
 # --------------------------------------------------------------------------- #
 

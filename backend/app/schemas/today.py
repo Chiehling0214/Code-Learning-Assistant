@@ -16,3 +16,5 @@ class TodayItem(BaseModel):
 
 class TodayResponse(BaseModel):
     items: list[TodayItem]
+    # Spaced reviews due right now (Sprint 15) — surfaced before new content.
+    reviews_due: int = 0

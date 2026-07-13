@@ -57,8 +57,12 @@ Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
 | **9** | Onboarding & language tracks (pick a language on first login). | ✅ done |
 | **10** | Placement test (MCQ + coding) → assessed level. | ✅ done |
 | **11** | AI curriculum generation (full personalized courses). | ✅ done |
-| 12 | Continuous learning: extend course + in-course chat. | ⬜ planned |
-| 13 | Entitlements (plan limits) & admin AI-content review. | ⬜ planned |
+| **12** | Continuous learning: extend course + in-course chat. | ✅ done |
+| **13** | Entitlements (plan limits) & admin AI-content review. | ✅ done |
+| 14 | Production launch: GCP deployment & CI/CD. | ⬜ planned |
+| **15** | Review & retention: mistakes notebook + spaced review. | ✅ done |
+| 16 | Practice arena: on-demand drills + topic mastery. | ⬜ planned |
+| 17 | Polish & quality: streaming AI, E2E tests, account settings. | ⬜ planned |
 
 > **Direction change from Sprint 9.** The product pivots to **AI-generated,
 > personalized curricula**: on first login the learner picks a language, takes a

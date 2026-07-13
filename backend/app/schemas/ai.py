@@ -11,6 +11,9 @@ class TeacherRequest(BaseModel):
     lesson_id: uuid.UUID | None = None
     topic: str = ""
     question: str = ""
+    # Optional caller-supplied material (e.g. the placement/quiz questions being
+    # reviewed) so the teacher knows exactly what the learner is asking about.
+    context: str = Field(default="", max_length=20000)
 
 
 class TutorRequest(BaseModel):

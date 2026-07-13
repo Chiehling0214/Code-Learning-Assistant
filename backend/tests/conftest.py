@@ -27,6 +27,7 @@ from app.api.deps import (
     get_progress_service,
     get_quiz_service,
     get_recommendation_service,
+    get_review_service,
     get_submission_service,
     get_subscription_service,
     get_track_service,
@@ -47,6 +48,7 @@ from app.application.services.placement_service import PlacementService
 from app.application.services.progress_service import ProgressService
 from app.application.services.quiz_service import QuizService
 from app.application.services.recommendation_service import RecommendationService
+from app.application.services.review_service import ReviewService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.subscription_service import SubscriptionService
 from app.application.services.track_service import TrackService
@@ -71,6 +73,7 @@ from tests.fakes import (
     FakeProgressRepository,
     FakeQuizAttemptRepository,
     FakeQuizRepository,
+    FakeReviewItemRepository,
     FakeStripeClient,
     FakeStudentProfileRepository,
     FakeSubmissionRepository,
@@ -115,6 +118,7 @@ def fakes() -> SimpleNamespace:
         placements=FakePlacementRepository(),
         jobs=FakeGenerationJobRepository(),
         chats=FakeCourseChatRepository(),
+        reviews=FakeReviewItemRepository(),
     )
 
 
@@ -133,8 +137,13 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         fakes.submissions, fakes.exercises
     )
     app.dependency_overrides[get_execution_service] = lambda: ExecutionService(fakes.runner)
+    app.dependency_overrides[get_review_service] = lambda: ReviewService(fakes.reviews)
     app.dependency_overrides[get_quiz_service] = lambda: QuizService(
-        fakes.quizzes, fakes.attempts, fakes.lessons, fakes.progress
+        fakes.quizzes,
+        fakes.attempts,
+        fakes.lessons,
+        fakes.progress,
+        ReviewService(fakes.reviews),
     )
     app.dependency_overrides[get_progress_service] = lambda: ProgressService(
         fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress, fakes.tracks
@@ -188,6 +197,7 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         ExecutionService(fakes.runner),
         AIUsageGuard(fakes.interactions, _AI_SETTINGS),
         _AI_SETTINGS,
+        ReviewService(fakes.reviews),
     )
     def _curriculum() -> CurriculumService:
         return CurriculumService(

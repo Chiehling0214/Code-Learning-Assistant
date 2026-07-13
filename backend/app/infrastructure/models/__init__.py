@@ -19,6 +19,7 @@ from app.infrastructure.models.models import (
     Question,
     Quiz,
     QuizAttempt,
+    ReviewItem,
     StudentProfile,
     Submission,
     Subscription,
@@ -44,4 +45,5 @@ __all__ = [
     "PlacementAssessment",
     "GenerationJob",
     "CourseChatMessage",
+    "ReviewItem",
 ]

@@ -17,6 +17,7 @@ import { PlacementPage } from "@/pages/Placement";
 import { ProfilePage } from "@/pages/Profile";
 import { ProgressPage } from "@/pages/Progress";
 import { QuizPage } from "@/pages/Quiz";
+import { ReviewPage } from "@/pages/Review";
 import { SubscriptionPage } from "@/pages/Subscription";
 import { TodayPage } from "@/pages/Today";
 
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
               { path: "/exercises/:id", element: <CodingExercisePage /> },
               { path: "/quizzes/:id", element: <QuizPage /> },
               { path: "/progress", element: <ProgressPage /> },
+              { path: "/review", element: <ReviewPage /> },
               { path: "/subscription", element: <SubscriptionPage /> },
               { path: "/admin", element: <AdminPage /> },
               { path: "/profile", element: <ProfilePage /> },

@@ -25,6 +25,7 @@ from app.domain.entities import (
     Question,
     Quiz,
     QuizAttempt,
+    ReviewItem,
     StudentProfile,
     Submission,
     Subscription,
@@ -318,6 +319,45 @@ class GenerationJobRepository(Protocol):
         course_id: uuid.UUID | None = None,
         error: str | None = None,
     ) -> GenerationJob: ...
+
+
+class ReviewItemRepository(Protocol):
+    """Captured mistakes scheduled for spaced review (Sprint 15)."""
+
+    def get_by_id(self, item_id: uuid.UUID) -> ReviewItem | None: ...
+
+    def get_by_user_and_ref(
+        self, user_id: uuid.UUID, item_ref: uuid.UUID
+    ) -> ReviewItem | None: ...
+
+    def list_due(self, user_id: uuid.UUID, now: datetime) -> list[ReviewItem]: ...
+
+    def count_due(self, user_id: uuid.UUID, now: datetime) -> int: ...
+
+    def list_all(self, user_id: uuid.UUID) -> list[ReviewItem]: ...
+
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        source: str,
+        item_ref: uuid.UUID,
+        payload: dict,
+        interval_days: int,
+        due_at: datetime,
+    ) -> ReviewItem: ...
+
+    def update(
+        self,
+        item_id: uuid.UUID,
+        *,
+        payload: dict | None = None,
+        interval_days: int | None = None,
+        due_at: datetime | None = None,
+        lapses: int | None = None,
+        passes: int | None = None,
+        retired: bool | None = None,
+    ) -> ReviewItem: ...
 
 
 class CourseChatRepository(Protocol):

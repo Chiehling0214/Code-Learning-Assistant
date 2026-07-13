@@ -198,6 +198,28 @@ class GenerationJob:
 
 
 @dataclass(frozen=True)
+class ReviewItem:
+    """A captured mistake scheduled for spaced review (Sprint 15).
+
+    ``payload`` is a snapshot (prompt/choices/explanation or exercise link) so
+    the review survives later content edits or hiding.
+    """
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    source: str  # "quiz" | "placement" | "exercise"
+    item_ref: uuid.UUID
+    payload: dict
+    interval_days: int
+    due_at: datetime
+    lapses: int
+    passes: int
+    retired: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
 class CourseChatMessage:
     id: uuid.UUID
     course_id: uuid.UUID

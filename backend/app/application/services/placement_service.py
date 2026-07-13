@@ -15,6 +15,7 @@ from typing import Any
 from app.application.ports.ai_provider import AIProvider, GeneratePlacementRequest
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.execution_service import ExecutionService
+from app.application.services.review_service import ReviewService
 from app.core.config import Settings
 from app.domain.entities import PlacementAssessment
 from app.domain.repositories import (
@@ -48,6 +49,7 @@ class PlacementService:
         execution: ExecutionService,
         usage: AIUsageGuard,
         settings: Settings,
+        reviews: ReviewService | None = None,
     ) -> None:
         self._provider = provider
         self._placements = placements
@@ -57,6 +59,7 @@ class PlacementService:
         self._execution = execution
         self._usage = usage
         self._settings = settings
+        self._reviews = reviews
 
     # ----- helpers -----
 
@@ -178,6 +181,25 @@ class PlacementService:
             selected = mcq_answers.get(mcq["id"])
             ok = selected is not None and selected == correct_id
             correct_mcq += 1 if ok else 0
+            if not ok and self._reviews is not None:
+                self._reviews.capture_miss(
+                    user_id=user_id,
+                    source="placement",
+                    item_ref=uuid.UUID(mcq["id"]),
+                    payload={
+                        "kind": "mcq",
+                        "prompt": mcq.get("prompt", ""),
+                        "choices": [
+                            {
+                                "id": c["id"],
+                                "text": c["text"],
+                                "is_correct": bool(c.get("is_correct")),
+                            }
+                            for c in mcq["choices"]
+                        ],
+                        "explanation": mcq.get("explanation", ""),
+                    },
+                )
             # The test is over, so it's safe to reveal the full question, the answer
             # key, and the explanation for the review screen.
             mcq_results.append(
@@ -192,6 +214,8 @@ class PlacementService:
                     "correct_choice_id": correct_id,
                     "correct": ok,
                     "explanation": mcq.get("explanation", ""),
+                    "points_earned": _MCQ_WEIGHT if ok else 0,
+                    "points_possible": _MCQ_WEIGHT,
                 }
             )
 
@@ -202,6 +226,7 @@ class PlacementService:
             passed = False
             passed_cases = 0
             total_cases = len((task.get("test_spec") or {}).get("cases") or [])
+            tests: list[dict[str, Any]] = []
             if source.strip():
                 verdict, detail = self._execution.grade(
                     code=source, language=task["language"], test_spec=task.get("test_spec") or {}
@@ -209,6 +234,7 @@ class PlacementService:
                 passed = verdict == "passed"
                 passed_cases = int(detail.get("passed", 0))
                 total_cases = int(detail.get("total", total_cases))
+                tests = detail.get("tests", [])
             passed_coding += 1 if passed else 0
             coding_results.append(
                 {
@@ -217,6 +243,15 @@ class PlacementService:
                     "passed": passed,
                     "passed_cases": passed_cases,
                     "total_cases": total_cases,
+                    # Review detail: the learner's submission, per-case results
+                    # (expected vs actual for failures), and — now that the test
+                    # is over — the reference solution.
+                    "code": source,
+                    "language": task.get("language", ""),
+                    "tests": tests,
+                    "reference_solution": task.get("reference_solution", ""),
+                    "points_earned": _CODING_WEIGHT if passed else 0,
+                    "points_possible": _CODING_WEIGHT,
                 }
             )
 
@@ -233,6 +268,12 @@ class PlacementService:
             "total_mcqs": n_mcq,
             "passed_coding": passed_coding,
             "total_coding": n_coding,
+            # Weighted points, so the review can show exactly where the score
+            # came from (MCQs are worth 1 point each, coding tasks 3).
+            "earned_points": earned,
+            "total_points": total,
+            "mcq_weight": _MCQ_WEIGHT,
+            "coding_weight": _CODING_WEIGHT,
             "mcqs": mcq_results,
             "coding": coding_results,
         }

@@ -26,6 +26,7 @@ from app.domain.entities import ProgressEvent as ProgressEventEntity
 from app.domain.entities import Question as QuestionEntity
 from app.domain.entities import Quiz as QuizEntity
 from app.domain.entities import QuizAttempt as QuizAttemptEntity
+from app.domain.entities import ReviewItem as ReviewItemEntity
 from app.domain.entities import StudentProfile as ProfileEntity
 from app.domain.entities import Submission as SubmissionEntity
 from app.domain.entities import Subscription as SubscriptionEntity
@@ -44,6 +45,7 @@ from app.infrastructure.models.models import ProgressEvent as ProgressEventModel
 from app.infrastructure.models.models import Question as QuestionModel
 from app.infrastructure.models.models import Quiz as QuizModel
 from app.infrastructure.models.models import QuizAttempt as QuizAttemptModel
+from app.infrastructure.models.models import ReviewItem as ReviewItemModel
 from app.infrastructure.models.models import StudentProfile as ProfileModel
 from app.infrastructure.models.models import Submission as SubmissionModel
 from app.infrastructure.models.models import Subscription as SubscriptionModel
@@ -1015,6 +1017,124 @@ class SqlAlchemyGenerationJobRepository:
         self._session.flush()
         self._session.refresh(model)
         return _to_job(model)
+
+
+def _to_review(model: ReviewItemModel) -> ReviewItemEntity:
+    return ReviewItemEntity(
+        id=model.id,
+        user_id=model.user_id,
+        source=model.source,
+        item_ref=model.item_ref,
+        payload=model.payload or {},
+        interval_days=model.interval_days,
+        due_at=model.due_at,
+        lapses=model.lapses,
+        passes=model.passes,
+        retired=model.retired,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyReviewItemRepository:
+    """Concrete :class:`~app.domain.repositories.ReviewItemRepository`."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_by_id(self, item_id: uuid.UUID) -> ReviewItemEntity | None:
+        model = self._session.get(ReviewItemModel, item_id)
+        return _to_review(model) if model else None
+
+    def get_by_user_and_ref(
+        self, user_id: uuid.UUID, item_ref: uuid.UUID
+    ) -> ReviewItemEntity | None:
+        stmt = select(ReviewItemModel).where(
+            ReviewItemModel.user_id == user_id, ReviewItemModel.item_ref == item_ref
+        )
+        model = self._session.scalars(stmt).first()
+        return _to_review(model) if model else None
+
+    def list_due(self, user_id: uuid.UUID, now: datetime) -> list[ReviewItemEntity]:
+        stmt = (
+            select(ReviewItemModel)
+            .where(
+                ReviewItemModel.user_id == user_id,
+                ReviewItemModel.retired.is_(False),
+                ReviewItemModel.due_at <= now,
+            )
+            .order_by(ReviewItemModel.due_at)
+        )
+        return [_to_review(m) for m in self._session.scalars(stmt).all()]
+
+    def count_due(self, user_id: uuid.UUID, now: datetime) -> int:
+        stmt = select(func.count()).where(
+            ReviewItemModel.user_id == user_id,
+            ReviewItemModel.retired.is_(False),
+            ReviewItemModel.due_at <= now,
+        )
+        return int(self._session.scalar(stmt) or 0)
+
+    def list_all(self, user_id: uuid.UUID) -> list[ReviewItemEntity]:
+        stmt = (
+            select(ReviewItemModel)
+            .where(ReviewItemModel.user_id == user_id)
+            .order_by(ReviewItemModel.retired, ReviewItemModel.due_at)
+        )
+        return [_to_review(m) for m in self._session.scalars(stmt).all()]
+
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        source: str,
+        item_ref: uuid.UUID,
+        payload: dict,
+        interval_days: int,
+        due_at: datetime,
+    ) -> ReviewItemEntity:
+        model = ReviewItemModel(
+            user_id=user_id,
+            source=source,
+            item_ref=item_ref,
+            payload=payload,
+            interval_days=interval_days,
+            due_at=due_at,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_review(model)
+
+    def update(
+        self,
+        item_id: uuid.UUID,
+        *,
+        payload: dict | None = None,
+        interval_days: int | None = None,
+        due_at: datetime | None = None,
+        lapses: int | None = None,
+        passes: int | None = None,
+        retired: bool | None = None,
+    ) -> ReviewItemEntity:
+        model = self._session.get(ReviewItemModel, item_id)
+        if model is None:
+            raise LookupError(f"Review item {item_id} not found")
+        if payload is not None:
+            model.payload = payload
+        if interval_days is not None:
+            model.interval_days = interval_days
+        if due_at is not None:
+            model.due_at = due_at
+        if lapses is not None:
+            model.lapses = lapses
+        if passes is not None:
+            model.passes = passes
+        if retired is not None:
+            model.retired = retired
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_review(model)
 
 
 def _to_chat(model: CourseChatMessageModel) -> CourseChatMessageEntity:

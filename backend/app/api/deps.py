@@ -28,6 +28,7 @@ from app.application.services.placement_service import PlacementService
 from app.application.services.progress_service import ProgressService
 from app.application.services.quiz_service import QuizService
 from app.application.services.recommendation_service import RecommendationService
+from app.application.services.review_service import ReviewService
 from app.application.services.submission_service import SubmissionService
 from app.application.services.subscription_service import SubscriptionService
 from app.application.services.track_service import TrackService
@@ -52,6 +53,7 @@ from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyProgressRepository,
     SqlAlchemyQuizAttemptRepository,
     SqlAlchemyQuizRepository,
+    SqlAlchemyReviewItemRepository,
     SqlAlchemyStudentProfileRepository,
     SqlAlchemySubmissionRepository,
     SqlAlchemySubscriptionRepository,
@@ -158,12 +160,20 @@ def get_execution_service(settings: SettingsDep) -> ExecutionService:
 ExecutionServiceDep = Annotated[ExecutionService, Depends(get_execution_service)]
 
 
+def get_review_service(session: DbSession) -> ReviewService:
+    return ReviewService(SqlAlchemyReviewItemRepository(session))
+
+
+ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
+
+
 def get_quiz_service(session: DbSession) -> QuizService:
     return QuizService(
         SqlAlchemyQuizRepository(session),
         SqlAlchemyQuizAttemptRepository(session),
         SqlAlchemyLessonRepository(session),
         SqlAlchemyProgressRepository(session),
+        get_review_service(session),
     )
 
 
@@ -255,6 +265,7 @@ def get_placement_service(session: DbSession, settings: SettingsDep) -> Placemen
         ExecutionService(Judge0Client(settings)),
         AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
         settings,
+        get_review_service(session),
     )
 
 

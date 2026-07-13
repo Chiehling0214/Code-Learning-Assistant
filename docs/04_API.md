@@ -73,6 +73,9 @@
 | POST | `/api/v1/admin/content/lessons/{id}/hide` | admin | 13 | Hide a lesson (withheld from serving). |
 | POST | `/api/v1/admin/content/lessons/{id}/approve` | admin | 13 | Approve/restore a lesson. |
 | GET | `/api/v1/admin/usage` | admin | 13 | AI-content review counts. |
+| GET | `/api/v1/me/review` | bearer | 15 | Spaced reviews due now (+ count). |
+| GET | `/api/v1/me/review/all` | bearer | 15 | The full mistakes notebook. |
+| POST | `/api/v1/me/review/{id}/answer` | bearer | 15 | Report a review outcome; schedule advances/resets. |
 
 > **Sprint 13 limits** — adding a track (`POST /me/tracks`), starting/extending
 > generation (`/generate`, `/extend`, `/chat`), and the AI Tutor enforce plan-aware

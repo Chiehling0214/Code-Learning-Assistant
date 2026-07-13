@@ -10,14 +10,17 @@ from __future__ import annotations
 import uuid
 
 from app.application.services.execution_service import ExecutionService
+from app.application.services.review_service import ReviewService
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.domain.entities import Exercise
 from app.domain.repositories import ProgressRepository
 from app.infrastructure.db.session import SessionLocal
 from app.infrastructure.judge0.client import Judge0Client
 from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyExerciseRepository,
     SqlAlchemyProgressRepository,
+    SqlAlchemyReviewItemRepository,
     SqlAlchemySubmissionRepository,
 )
 
@@ -44,6 +47,36 @@ def record_exercise_progress(
         user_id=user_id, item_type="exercise", item_id=exercise_id, status=verdict
     )
     return True
+
+
+def sync_exercise_review(
+    reviews: ReviewService,
+    *,
+    user_id: uuid.UUID,
+    exercise: Exercise,
+    verdict: str,
+) -> None:
+    """Keep the spaced-review notebook in sync with a grading verdict.
+
+    A ``failed`` submission captures (or lapse-resets) a review item for the
+    exercise; a ``passed`` one records a pass on any active item, so solving it
+    for real also advances the review schedule. Infrastructure errors do nothing.
+    """
+    if verdict == "failed":
+        reviews.capture_miss(
+            user_id=user_id,
+            source="exercise",
+            item_ref=exercise.id,
+            payload={
+                "kind": "exercise",
+                "exercise_id": str(exercise.id),
+                "title": exercise.title,
+                "language": exercise.language,
+                "prompt": exercise.prompt[:2000],
+            },
+        )
+    elif verdict == "passed":
+        reviews.record_pass(user_id=user_id, item_ref=exercise.id)
 
 
 def grade_submission(submission_id: uuid.UUID) -> None:
@@ -73,6 +106,12 @@ def grade_submission(submission_id: uuid.UUID) -> None:
             SqlAlchemyProgressRepository(session),
             user_id=submission.user_id,
             exercise_id=submission.exercise_id,
+            verdict=status,
+        )
+        sync_exercise_review(
+            ReviewService(SqlAlchemyReviewItemRepository(session)),
+            user_id=submission.user_id,
+            exercise=exercise,
             verdict=status,
         )
         session.commit()

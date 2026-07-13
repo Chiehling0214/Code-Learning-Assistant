@@ -6,15 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAskTeacher } from "@/features/ai/hooks";
 
 /**
- * A lightweight "ask the AI Teacher" panel. Optionally seeds a `topic` (e.g. the
- * question being reviewed) so the learner can ask about its details.
+ * A lightweight "ask the AI Teacher" panel. Pass `context` (e.g. the questions
+ * being reviewed, the learner's answers/code) so the AI knows exactly what the
+ * learner is referring to — no copy-pasting needed.
  */
 export function AskTeacherPanel({
   topic,
+  context,
   title = "Ask the AI Teacher",
   placeholder = "Ask about any of these questions…",
 }: {
   topic?: string;
+  context?: string;
   title?: string;
   placeholder?: string;
 }) {
@@ -24,7 +27,7 @@ export function AskTeacherPanel({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || ask.isPending) return;
-    ask.mutate({ topic: topic ?? "", question });
+    ask.mutate({ topic: topic ?? "", question, context: context ?? "" });
   };
 
   return (

@@ -70,6 +70,13 @@ def test_submit_all_correct_is_advanced(client: TestClient, fakes: SimpleNamespa
     assert any(c["is_correct"] for c in first_mcq["choices"])
     coding = body["breakdown"]["coding"][0]
     assert coding["passed_cases"] == coding["total_cases"]
+    # The learner's submission, the reference solution, and per-item points are
+    # revealed for the review screen.
+    assert coding["code"] == "print('ok')"
+    assert coding["reference_solution"]
+    assert coding["points_earned"] == coding["points_possible"] == 3
+    assert first_mcq["points_earned"] == first_mcq["points_possible"] == 1
+    assert body["breakdown"]["earned_points"] == body["breakdown"]["total_points"]
 
     # Level persisted on the track and profile.
     track = next(t for t in client.get("/api/v1/me/tracks").json() if t["id"] == track_id)

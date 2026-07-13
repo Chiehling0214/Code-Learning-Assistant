@@ -1,5 +1,5 @@
 import Editor from "@monaco-editor/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { AskTeacherPanel } from "@/components/AskTeacherPanel";
@@ -26,6 +26,42 @@ export function PlacementPage() {
       setCode(seeded);
     }
   }, [placement]);
+
+  // Full review context for the AI Teacher, so "why is question 2 correct?"
+  // works without the learner pasting anything.
+  const reviewContext = useMemo(() => {
+    const b = submit.data?.breakdown;
+    if (!b) return "";
+    const lines: string[] = ["The learner just completed this placement test:"];
+    b.mcqs.forEach((m, i) => {
+      lines.push(`\nQuestion ${i + 1}: ${m.prompt}`);
+      m.choices.forEach((c) => {
+        const marks = [
+          c.is_correct ? "correct answer" : "",
+          c.id === m.selected_choice_id ? "learner's pick" : "",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        lines.push(`- ${c.text}${marks ? ` (${marks})` : ""}`);
+      });
+      lines.push(`Result: ${m.correct ? "correct" : "incorrect"}.`);
+      if (m.explanation) lines.push(`Explanation: ${m.explanation}`);
+    });
+    b.coding.forEach((t, i) => {
+      lines.push(`\nCoding task ${i + 1}: ${t.prompt}`);
+      lines.push(`Tests passed: ${t.passed_cases}/${t.total_cases}.`);
+      lines.push(`Learner's code:\n${t.code || "(none submitted)"}`);
+      t.tests
+        .filter((x) => !x.passed && x.expected !== undefined)
+        .forEach((x) =>
+          lines.push(
+            `Failing test — input: ${x.input ?? ""} expected: ${x.expected} got: ${x.actual ?? ""}`,
+          ),
+        );
+      if (t.reference_solution) lines.push(`Reference solution:\n${t.reference_solution}`);
+    });
+    return lines.join("\n").slice(0, 18000);
+  }, [submit.data]);
 
   if (isLoading) return <p className="p-6 text-muted-foreground">Building your placement test…</p>;
   if (isError || !placement) return <p className="p-6 text-destructive">Could not load the test.</p>;
@@ -55,6 +91,33 @@ export function PlacementPage() {
                 . Look over the answers and explanations below.
               </p>
             </CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Multiple choice ({result.breakdown.mcq_weight} pt each)
+                </span>
+                <span className="font-medium">
+                  {result.breakdown.correct_mcqs * result.breakdown.mcq_weight} /{" "}
+                  {result.breakdown.total_mcqs * result.breakdown.mcq_weight} pts
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Coding ({result.breakdown.coding_weight} pts each)
+                </span>
+                <span className="font-medium">
+                  {result.breakdown.passed_coding * result.breakdown.coding_weight} /{" "}
+                  {result.breakdown.total_coding * result.breakdown.coding_weight} pts
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-1">
+                <span className="font-medium">Total</span>
+                <span className="font-semibold">
+                  {result.breakdown.earned_points} / {result.breakdown.total_points} pts (
+                  {result.percent}%)
+                </span>
+              </div>
+            </CardContent>
           </Card>
 
           {result.breakdown.mcqs.map((mcq, i) => (
@@ -64,6 +127,9 @@ export function PlacementPage() {
                   Question {i + 1}
                   <span className={cn("text-sm", mcq.correct ? "text-green-600" : "text-destructive")}>
                     {mcq.correct ? "✓ Correct" : "✗ Incorrect"}
+                  </span>
+                  <span className="ml-auto text-sm font-normal text-muted-foreground">
+                    {mcq.points_earned} / {mcq.points_possible} pts
                   </span>
                 </CardTitle>
                 <Markdown content={mcq.prompt} />
@@ -97,28 +163,89 @@ export function PlacementPage() {
             </Card>
           ))}
 
-          {result.breakdown.coding.map((task, i) => (
-            <Card key={task.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  Coding task {i + 1}
-                  <span
-                    className={cn(
-                      "text-sm",
-                      task.passed ? "text-green-600" : "text-muted-foreground",
+          {result.breakdown.coding.map((task, i) => {
+            const failed = task.tests.filter((t) => !t.passed && t.expected !== undefined);
+            return (
+              <Card key={task.id}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    Coding task {i + 1}
+                    <span
+                      className={cn(
+                        "text-sm",
+                        task.passed ? "text-green-600" : "text-destructive",
+                      )}
+                    >
+                      {task.passed_cases}/{task.total_cases} tests passed
+                    </span>
+                    <span className="ml-auto text-sm font-normal text-muted-foreground">
+                      {task.points_earned} / {task.points_possible} pts
+                    </span>
+                  </CardTitle>
+                  <Markdown content={task.prompt} />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="mb-1 text-sm font-medium">Your code</p>
+                    {task.code.trim() ? (
+                      <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
+                        <code>{task.code}</code>
+                      </pre>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No code submitted.</p>
                     )}
-                  >
-                    {task.passed_cases}/{task.total_cases} tests passed
-                  </span>
-                </CardTitle>
-                <Markdown content={task.prompt} />
-              </CardHeader>
-            </Card>
-          ))}
+                  </div>
+
+                  {failed.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-sm font-medium text-destructive">
+                        What to fix — failing tests
+                      </p>
+                      <div className="space-y-2">
+                        {failed.map((t) => (
+                          <div key={t.index} className="rounded-md border border-destructive/40 p-2 text-xs">
+                            {t.input ? (
+                              <p>
+                                <span className="text-muted-foreground">Input:</span>{" "}
+                                <code className="rounded bg-muted px-1">{t.input}</code>
+                              </p>
+                            ) : null}
+                            <p>
+                              <span className="text-muted-foreground">Expected:</span>{" "}
+                              <code className="rounded bg-muted px-1">{t.expected}</code>
+                            </p>
+                            <p>
+                              <span className="text-muted-foreground">Your output:</span>{" "}
+                              <code className="rounded bg-muted px-1">{t.actual || "(empty)"}</code>
+                            </p>
+                            {t.stderr ? (
+                              <p className="text-destructive">stderr: {t.stderr}</p>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {task.reference_solution && (
+                    <details className="rounded-md border">
+                      <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
+                        Reference solution
+                      </summary>
+                      <pre className="overflow-x-auto border-t bg-muted p-3 text-xs">
+                        <code>{task.reference_solution}</code>
+                      </pre>
+                    </details>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
 
           <AskTeacherPanel
             title="Ask about a question"
             placeholder="e.g. Why is the answer to question 2 correct?"
+            context={reviewContext}
           />
 
           <Card className="border-primary/40">

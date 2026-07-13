@@ -29,6 +29,7 @@ from app.domain.entities import (
     Question,
     Quiz,
     QuizAttempt,
+    ReviewItem,
     StudentProfile,
     Submission,
     Subscription,
@@ -997,6 +998,98 @@ class FakePlacementRepository:
             updated_at=_now(),
         )
         self._items[assessment_id] = updated
+        return updated
+
+
+class FakeReviewItemRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, ReviewItem] = {}
+
+    def get_by_id(self, item_id: uuid.UUID) -> ReviewItem | None:
+        return self._items.get(item_id)
+
+    def get_by_user_and_ref(
+        self, user_id: uuid.UUID, item_ref: uuid.UUID
+    ) -> ReviewItem | None:
+        return next(
+            (
+                i
+                for i in self._items.values()
+                if i.user_id == user_id and i.item_ref == item_ref
+            ),
+            None,
+        )
+
+    def list_due(self, user_id: uuid.UUID, now: datetime) -> list[ReviewItem]:
+        items = [
+            i
+            for i in self._items.values()
+            if i.user_id == user_id and not i.retired and i.due_at <= now
+        ]
+        return sorted(items, key=lambda i: i.due_at)
+
+    def count_due(self, user_id: uuid.UUID, now: datetime) -> int:
+        return len(self.list_due(user_id, now))
+
+    def list_all(self, user_id: uuid.UUID) -> list[ReviewItem]:
+        items = [i for i in self._items.values() if i.user_id == user_id]
+        return sorted(items, key=lambda i: (i.retired, i.due_at))
+
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        source: str,
+        item_ref: uuid.UUID,
+        payload: dict,
+        interval_days: int,
+        due_at: datetime,
+    ) -> ReviewItem:
+        now = _now()
+        item = ReviewItem(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            source=source,
+            item_ref=item_ref,
+            payload=payload,
+            interval_days=interval_days,
+            due_at=due_at,
+            lapses=0,
+            passes=0,
+            retired=False,
+            created_at=now,
+            updated_at=now,
+        )
+        self._items[item.id] = item
+        return item
+
+    def update(
+        self,
+        item_id: uuid.UUID,
+        *,
+        payload: dict | None = None,
+        interval_days: int | None = None,
+        due_at: datetime | None = None,
+        lapses: int | None = None,
+        passes: int | None = None,
+        retired: bool | None = None,
+    ) -> ReviewItem:
+        e = self._items[item_id]
+        updated = ReviewItem(
+            id=e.id,
+            user_id=e.user_id,
+            source=e.source,
+            item_ref=e.item_ref,
+            payload=payload if payload is not None else e.payload,
+            interval_days=interval_days if interval_days is not None else e.interval_days,
+            due_at=due_at if due_at is not None else e.due_at,
+            lapses=lapses if lapses is not None else e.lapses,
+            passes=passes if passes is not None else e.passes,
+            retired=retired if retired is not None else e.retired,
+            created_at=e.created_at,
+            updated_at=_now(),
+        )
+        self._items[item_id] = updated
         return updated
 
 

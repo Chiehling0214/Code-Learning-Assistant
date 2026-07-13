@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
+import { AskTeacherPanel } from "@/components/AskTeacherPanel";
 import { Markdown } from "@/components/Markdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,32 @@ export function QuizPage() {
     for (const r of submit.data?.results ?? []) map[r.question_id] = r;
     return map;
   }, [submit.data]);
+
+  // After grading, give the AI Teacher the full quiz (questions, choices, the
+  // learner's picks, correct answers, explanations) so follow-up questions work
+  // without copy-pasting.
+  const reviewContext = useMemo(() => {
+    if (!quiz || !submit.data) return "";
+    const byQ: Record<string, QuestionResult> = {};
+    for (const r of submit.data.results) byQ[r.question_id] = r;
+    const lines: string[] = [`The learner just took the quiz "${quiz.title}":`];
+    quiz.questions.forEach((q, i) => {
+      const r = byQ[q.id];
+      lines.push(`\nQuestion ${i + 1}: ${q.prompt}`);
+      q.choices.forEach((c) => {
+        const marks = [
+          r?.correct_choice_id === c.id ? "correct answer" : "",
+          r?.selected_choice_id === c.id ? "learner's pick" : "",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        lines.push(`- ${c.text}${marks ? ` (${marks})` : ""}`);
+      });
+      if (r) lines.push(`Result: ${r.correct ? "correct" : "incorrect"}.`);
+      if (r?.explanation) lines.push(`Explanation: ${r.explanation}`);
+    });
+    return lines.join("\n").slice(0, 18000);
+  }, [quiz, submit.data]);
 
   if (isLoading) return <p className="text-muted-foreground">Loading quiz…</p>;
   if (isError || !quiz) return <p className="text-destructive">Quiz not found.</p>;
@@ -125,6 +152,14 @@ export function QuizPage() {
           </Button>
         )}
       </form>
+
+      {graded && (
+        <AskTeacherPanel
+          title="Ask about a question"
+          placeholder="e.g. Why is my answer to question 1 wrong?"
+          context={reviewContext}
+        />
+      )}
     </div>
   );
 }

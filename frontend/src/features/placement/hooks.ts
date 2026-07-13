@@ -36,6 +36,18 @@ export interface MCQReview {
   correct_choice_id: string | null;
   correct: boolean;
   explanation: string;
+  points_earned: number;
+  points_possible: number;
+}
+
+export interface CodingTestResult {
+  index: number;
+  passed: boolean;
+  status?: string;
+  input?: string;
+  expected?: string;
+  actual?: string;
+  stderr?: string;
 }
 
 export interface CodingReview {
@@ -44,6 +56,12 @@ export interface CodingReview {
   passed: boolean;
   passed_cases: number;
   total_cases: number;
+  code: string;
+  language: string;
+  tests: CodingTestResult[];
+  reference_solution: string;
+  points_earned: number;
+  points_possible: number;
 }
 
 export interface PlacementBreakdown {
@@ -52,6 +70,10 @@ export interface PlacementBreakdown {
   total_mcqs: number;
   passed_coding: number;
   total_coding: number;
+  earned_points: number;
+  total_points: number;
+  mcq_weight: number;
+  coding_weight: number;
   mcqs: MCQReview[];
   coding: CodingReview[];
 }

@@ -37,14 +37,22 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Shared formatting rule: our frontend renders Markdown (marked), NOT LaTeX —
+# "$N!$" style math comes out as literal dollar signs.
+_NO_LATEX = (
+    " Formatting: use Markdown with fenced code blocks for code; NEVER use LaTeX "
+    "or math notation like $...$ or \\( \\) — write math in plain text or inline "
+    "code (e.g. `N!`, `2^n`, `O(n log n)`)."
+)
+
 _TEACHER_SYSTEM = (
     "You are an encouraging programming teacher. Explain concepts clearly for a "
-    "{level} learner. Use short paragraphs and Markdown. Be concise."
+    "{level} learner. Use short paragraphs and Markdown. Be concise." + _NO_LATEX
 )
 _TUTOR_SYSTEM = (
     "You are a programming tutor helping a {level} learner who is stuck. Give a "
     "hint and point at the bug or next step. Do NOT provide the full solution; "
-    "guide them to it. Reference their actual code. Keep it short."
+    "guide them to it. Reference their actual code. Keep it short." + _NO_LATEX
 )
 
 
@@ -222,7 +230,7 @@ class GeminiAIProvider:
             "in prose. Keep tasks simple and self-contained, and make sure each "
             "reference_solution actually produces the expected output for every test "
             "case (expected is the exact stdout, no trailing spaces). "
-            f"Language: {request.language}. Return ONLY the JSON object."
+            f"Language: {request.language}.{_NO_LATEX} Return ONLY the JSON object."
         )
         data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
         mcqs = data.get("mcqs") if isinstance(data.get("mcqs"), list) else []
@@ -268,7 +276,7 @@ class GeminiAIProvider:
             "exactly one correct choice each, where the explanation briefly says why the "
             "correct choice is right]}). "
             f"Lesson topic: {request.topic}. Language: {request.language}. Level: "
-            f"{request.level}. Return ONLY the JSON object."
+            f"{request.level}.{_NO_LATEX} Return ONLY the JSON object."
         )
         data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
         exercises = data.get("exercises") if isinstance(data.get("exercises"), list) else []
@@ -320,6 +328,7 @@ class GeminiAIProvider:
             "correct choice is right]})}. Lessons must be ordered foundational → advanced."
             + focus
             + prior
+            + _NO_LATEX
             + " Return ONLY the JSON object."
         )
         data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)

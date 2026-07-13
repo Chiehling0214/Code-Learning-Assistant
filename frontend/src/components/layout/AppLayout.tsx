@@ -8,6 +8,7 @@ import { useSessionStore } from "@/store/session";
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/today", label: "Today" },
+  { to: "/review", label: "Review" },
   { to: "/progress", label: "Progress" },
   { to: "/subscription", label: "Subscription" },
   { to: "/admin", label: "Admin" },

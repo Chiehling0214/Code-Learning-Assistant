@@ -11,6 +11,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from app.application.services.review_service import ReviewService
 from app.domain.entities import Question, Quiz, QuizAttempt
 from app.domain.repositories import (
     LessonRepository,
@@ -27,11 +28,13 @@ class QuizService:
         attempts: QuizAttemptRepository,
         lessons: LessonRepository,
         progress: ProgressRepository | None = None,
+        reviews: ReviewService | None = None,
     ) -> None:
         self._quizzes = quizzes
         self._attempts = attempts
         self._lessons = lessons
         self._progress = progress
+        self._reviews = reviews
 
     # ----- reads -----
 
@@ -69,6 +72,25 @@ class QuizService:
             is_correct = selected_id is not None and selected_id == correct_id
             if is_correct:
                 score += 1
+            elif self._reviews is not None:
+                # A miss enters the spaced-review notebook (snapshot survives
+                # later content edits/hiding).
+                self._reviews.capture_miss(
+                    user_id=user_id,
+                    source="quiz",
+                    item_ref=question.id,
+                    payload={
+                        "kind": "mcq",
+                        "prompt": question.prompt,
+                        "choices": [
+                            {"id": str(c.id), "text": c.text, "is_correct": c.is_correct}
+                            for c in question.choices
+                        ],
+                        "explanation": question.explanation,
+                        "quiz_id": str(quiz.id),
+                        "quiz_title": quiz.title,
+                    },
+                )
             results.append(
                 {
                     "question_id": str(question.id),
