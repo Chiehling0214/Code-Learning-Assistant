@@ -1,6 +1,6 @@
 # 00 — Project Overview
 
-## What is CodePath AI?
+## What is CodePath AI??
 
 CodePath AI is an AI-powered, personalized programming learning platform. It
 guides each learner through a structured path of lessons, coding exercises, and
