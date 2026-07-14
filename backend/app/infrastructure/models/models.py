@@ -100,6 +100,11 @@ class Course(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255))
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # "course" | "practice" — practice containers hold on-demand drills and are
+    # excluded from the dashboard/Today/progress (Sprint 16).
+    kind: Mapped[str] = mapped_column(
+        String(16), default="course", server_default="course", nullable=False
+    )
 
     language: Mapped[ProgrammingLanguage] = relationship(back_populates="courses")
     lessons: Mapped[list[Lesson]] = relationship(

@@ -14,6 +14,7 @@ import { NotFoundPage } from "@/pages/NotFound";
 import { GeneratingPage } from "@/pages/Generating";
 import { OnboardingPage } from "@/pages/Onboarding";
 import { PlacementPage } from "@/pages/Placement";
+import { PracticePage } from "@/pages/Practice";
 import { ProfilePage } from "@/pages/Profile";
 import { ProgressPage } from "@/pages/Progress";
 import { QuizPage } from "@/pages/Quiz";
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
               { path: "/quizzes/:id", element: <QuizPage /> },
               { path: "/progress", element: <ProgressPage /> },
               { path: "/review", element: <ReviewPage /> },
+              { path: "/practice", element: <PracticePage /> },
               { path: "/subscription", element: <SubscriptionPage /> },
               { path: "/admin", element: <AdminPage /> },
               { path: "/profile", element: <ProfilePage /> },

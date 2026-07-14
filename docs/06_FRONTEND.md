@@ -68,7 +68,10 @@ limit is hit (a `402`). The **Admin** page is now an **AI-content review console
 lessons are withheld from learners), with a usage summary. The **Review** page
 (Sprint 15, `features/review/hooks.ts`) replays captured mistakes as flashcards on
 a spaced schedule and keeps a mistakes notebook; "Today" surfaces due reviews
-first.
+first. The **Practice** page (Sprint 16, `features/practice/hooks.ts`) generates
+on-demand drills — on a chosen topic or the learner's weakest — and Progress
+gains a per-topic **mastery** panel (`features/mastery/hooks.ts`) with practice
+shortcuts.
 
 | Path | Page | Access |
 |------|------|--------|

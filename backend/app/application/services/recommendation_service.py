@@ -56,6 +56,8 @@ class RecommendationService:
         # Only the learner's own (track-scoped) courses — never global content.
         track_ids = [t.id for t in self._tracks.list_by_user(user_id)]
         for course in self._courses.list_by_track_ids(track_ids):
+            if course.kind == "practice":
+                continue  # drills are on-demand, never part of the daily plan
             for lesson in self._lessons.list_by_course(course.id):
                 if lesson.review_status == "hidden":
                     continue

@@ -99,6 +99,7 @@ class CourseRepository(Protocol):
         slug: str,
         description: str | None,
         track_id: uuid.UUID | None = None,
+        kind: str = "course",
     ) -> Course: ...
 
     def update(

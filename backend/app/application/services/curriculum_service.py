@@ -92,9 +92,11 @@ class CurriculumService:
         )
 
     def list_courses(self, user_id: uuid.UUID):
-        """The learner's own (track-scoped) courses."""
+        """The learner's own (track-scoped) courses, minus practice containers."""
         track_ids = [t.id for t in self._tracks.list_by_user(user_id)]
-        return self._courses.list_by_track_ids(track_ids)
+        return [
+            c for c in self._courses.list_by_track_ids(track_ids) if c.kind != "practice"
+        ]
 
     def get_status(self, *, user_id: uuid.UUID, track_id: uuid.UUID) -> GenerationJob:
         track = self._tracks.get_by_id(track_id)

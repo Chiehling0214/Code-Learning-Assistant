@@ -66,15 +66,62 @@ frontend/
 
 ## Acceptance Criteria
 
-- [ ] A learner can generate and solve a topic drill end-to-end (run, submit,
+- [x] A learner can generate and solve a topic drill end-to-end (run, submit,
       tutor hint) outside any course.
-- [ ] "Train my weak spots" picks a genuinely weak topic from real history.
-- [ ] Practice drills respect the daily generation entitlement (402 over cap).
-- [ ] Practice items never pollute course progress or the Today plan.
-- [ ] Mastery view shows per-topic strength per language.
-- [ ] `ruff`, `pytest`, frontend `lint` + `build` pass.
+- [x] "Train my weak spots" picks a genuinely weak topic from real history.
+- [x] Practice drills respect the daily generation entitlement (402 over cap).
+- [x] Practice items never pollute course progress or the Today plan.
+- [x] Mastery view shows per-topic strength per language.
+- [x] `ruff`, `pytest`, frontend `lint` + `build` pass.
 
 ## Dependency
 
 - **Sprint 6** (`generate_exercise`), **Sprint 4** (grading), **Sprint 13**
   (entitlements), **Sprint 15** (review history enriches mastery — soft dep).
+
+---
+
+## Status — done
+
+**Backend**
+- `courses.kind` (`course` | `practice`, migration `0016`): drills live in a
+  hidden per-track "Practice — {language}" container with **one lesson per
+  topic** (the mastery bucket key), so run/submit/tutor/grading work unchanged
+  while dashboard (`/me/courses`), Today, and progress all skip practice
+  containers.
+- `PracticeService`: `generate(language, topic?, difficulty?)` — no topic →
+  `MasteryService.weakest_topic` (fallback "{language} fundamentals");
+  difficulty defaults to the track's assessed level; counts as `generate` usage
+  (burst-guarded + plan-capped at the route → 402). `history` returns past
+  drills with the latest submission verdict.
+- `MasteryService.snapshot(user, language)`: per-topic `attempts/correct/rate/
+  level` (weak < 0.5 ≤ ok < 0.8 ≤ strong) aggregated from exercise progress
+  events and quiz attempts, bucketed by lesson title; weakest first.
+- Endpoints: `POST /practice/generate`, `GET /practice/history`,
+  `GET /me/mastery?language=…`.
+- `tests/test_practice.py` (end-to-end drill, exclusion from courses/Today/
+  progress, no-track 404, 402 cap, weakest-topic selection, mastery math) —
+  124 tests total, DB-free.
+
+**Frontend**
+- **Practice** page (`/practice`, in the nav): language/topic/difficulty pickers,
+  "Generate drill" → the standard exercise page, "🎯 Train my weak spots",
+  history list with verdicts, `UpgradePrompt` on 402. Reads `?language=&topic=`
+  for deep links.
+- **Topic mastery** panel on Progress: per-language colored bars (weak/ok/strong)
+  with a "Practice" shortcut per topic.
+- `features/practice/hooks.ts`, `features/mastery/hooks.ts`.
+
+### Verification
+
+- Backend `ruff` + `pytest` 124/124; frontend `lint` + `build` pass.
+- Live (Docker): migration `0015 → 0016` applied on startup; a **real** Gemini
+  drill ("list slicing" → "Middle Slice Extraction") generated into the hidden
+  container, listed in history with its topic, and cleaned up.
+
+### Notes
+
+- Mastery ignores topics with zero attempts, so the panel starts empty and
+  fills in as the learner answers quizzes / solves exercises.
+- Practice drills feed the same mastery buckets (their lesson title is the
+  requested topic), so drilling a weak topic visibly moves its bar.

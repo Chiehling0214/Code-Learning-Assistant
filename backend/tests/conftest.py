@@ -23,7 +23,9 @@ from app.api.deps import (
     get_execution_service,
     get_exercise_service,
     get_generate_content_service,
+    get_mastery_service,
     get_placement_service,
+    get_practice_service,
     get_progress_service,
     get_quiz_service,
     get_recommendation_service,
@@ -44,7 +46,9 @@ from app.application.services.entitlement_service import EntitlementService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
+from app.application.services.mastery_service import MasteryService
 from app.application.services.placement_service import PlacementService
+from app.application.services.practice_service import PracticeService
 from app.application.services.progress_service import ProgressService
 from app.application.services.quiz_service import QuizService
 from app.application.services.recommendation_service import RecommendationService
@@ -138,6 +142,30 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
     )
     app.dependency_overrides[get_execution_service] = lambda: ExecutionService(fakes.runner)
     app.dependency_overrides[get_review_service] = lambda: ReviewService(fakes.reviews)
+    def _mastery() -> MasteryService:
+        return MasteryService(
+            fakes.courses,
+            fakes.lessons,
+            fakes.exercises,
+            fakes.quizzes,
+            fakes.progress,
+            fakes.attempts,
+            fakes.tracks,
+            fakes.languages,
+        )
+
+    app.dependency_overrides[get_mastery_service] = _mastery
+    app.dependency_overrides[get_practice_service] = lambda: PracticeService(
+        fakes.ai,
+        fakes.courses,
+        fakes.lessons,
+        fakes.exercises,
+        fakes.submissions,
+        fakes.languages,
+        fakes.tracks,
+        _mastery(),
+        AIUsageGuard(fakes.interactions, _AI_SETTINGS),
+    )
     app.dependency_overrides[get_quiz_service] = lambda: QuizService(
         fakes.quizzes,
         fakes.attempts,

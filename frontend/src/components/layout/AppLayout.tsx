@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/today", label: "Today" },
   { to: "/review", label: "Review" },
+  { to: "/practice", label: "Practice" },
   { to: "/progress", label: "Progress" },
   { to: "/subscription", label: "Subscription" },
   { to: "/admin", label: "Admin" },

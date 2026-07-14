@@ -78,9 +78,12 @@ class ProgressService:
         total_all = 0
         completed_all = 0
 
-        # Only the learner's own (track-scoped) courses — never global content.
+        # Only the learner's own (track-scoped) courses — never global content,
+        # and practice drill containers don't count toward course progress.
         track_ids = [t.id for t in self._tracks.list_by_user(user_id)]
         for course in self._courses.list_by_track_ids(track_ids):
+            if course.kind == "practice":
+                continue
             total = 0
             completed = 0
             for lesson in self._lessons.list_by_course(course.id):

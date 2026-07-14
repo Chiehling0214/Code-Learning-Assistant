@@ -210,6 +210,8 @@ implemented yet** — fields will be expanded in later sprints.
 
 > **Sprint 11 also adds** a nullable `track_id` (FK → language_tracks) to
 > `courses` so AI-generated courses belong to a learner's track (null = shared).
+> **Sprint 16 adds** `courses.kind` (`course` | `practice`): practice containers
+> hold on-demand drills and are excluded from the dashboard/Today/progress.
 
 ### `placement_assessments` (Sprint 10)
 
@@ -289,6 +291,7 @@ Alembic lives under `backend/alembic/`. Migrations to date:
   existing AI lessons set to `pending`).
 - `0014_quiz_explanation` — `questions.explanation` (shown after grading).
 - `0015_review_items` — review_items table (spaced review of mistakes).
+- `0016_course_kind` — `courses.kind` (practice drill containers).
 
 ```bash
 # create/upgrade to latest

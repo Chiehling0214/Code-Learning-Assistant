@@ -210,6 +210,7 @@ class FakeCourseRepository:
         slug: str,
         description: str | None,
         track_id: uuid.UUID | None = None,
+        kind: str = "course",
     ) -> Course:
         now = _now()
         course = Course(
@@ -221,6 +222,7 @@ class FakeCourseRepository:
             created_at=now,
             updated_at=now,
             track_id=track_id,
+            kind=kind,
         )
         self._items[course.id] = course
         return course

@@ -24,7 +24,9 @@ from app.application.services.entitlement_service import EntitlementService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
+from app.application.services.mastery_service import MasteryService
 from app.application.services.placement_service import PlacementService
+from app.application.services.practice_service import PracticeService
 from app.application.services.progress_service import ProgressService
 from app.application.services.quiz_service import QuizService
 from app.application.services.recommendation_service import RecommendationService
@@ -165,6 +167,39 @@ def get_review_service(session: DbSession) -> ReviewService:
 
 
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
+
+
+def get_mastery_service(session: DbSession) -> MasteryService:
+    return MasteryService(
+        SqlAlchemyCourseRepository(session),
+        SqlAlchemyLessonRepository(session),
+        SqlAlchemyExerciseRepository(session),
+        SqlAlchemyQuizRepository(session),
+        SqlAlchemyProgressRepository(session),
+        SqlAlchemyQuizAttemptRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyLanguageRepository(session),
+    )
+
+
+MasteryServiceDep = Annotated[MasteryService, Depends(get_mastery_service)]
+
+
+def get_practice_service(session: DbSession, settings: SettingsDep) -> PracticeService:
+    return PracticeService(
+        GeminiAIProvider(settings),
+        SqlAlchemyCourseRepository(session),
+        SqlAlchemyLessonRepository(session),
+        SqlAlchemyExerciseRepository(session),
+        SqlAlchemySubmissionRepository(session),
+        SqlAlchemyLanguageRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
+        get_mastery_service(session),
+        AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
+    )
+
+
+PracticeServiceDep = Annotated[PracticeService, Depends(get_practice_service)]
 
 
 def get_quiz_service(session: DbSession) -> QuizService:

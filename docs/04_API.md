@@ -76,6 +76,9 @@
 | GET | `/api/v1/me/review` | bearer | 15 | Spaced reviews due now (+ count). |
 | GET | `/api/v1/me/review/all` | bearer | 15 | The full mistakes notebook. |
 | POST | `/api/v1/me/review/{id}/answer` | bearer | 15 | Report a review outcome; schedule advances/resets. |
+| POST | `/api/v1/practice/generate` | bearer | 16 | Generate a drill (topic optional → weakest); plan-capped. |
+| GET | `/api/v1/practice/history` | bearer | 16 | Past drills with latest verdicts. |
+| GET | `/api/v1/me/mastery?language=…` | bearer | 16 | Per-topic mastery for a studied language. |
 
 > **Sprint 13 limits** — adding a track (`POST /me/tracks`), starting/extending
 > generation (`/generate`, `/extend`, `/chat`), and the AI Tutor enforce plan-aware

@@ -50,6 +50,8 @@ class Course:
     created_at: datetime
     updated_at: datetime
     track_id: uuid.UUID | None = None
+    # "course" (a real curriculum) | "practice" (hidden drill container, Sprint 16).
+    kind: str = "course"
 
 
 @dataclass(frozen=True)

@@ -41,7 +41,8 @@ backend/
 │   │           ├── curriculum.py    # generation, /me/courses, extend + chat (Sprint 11/12)
 │   │           ├── entitlements.py   # GET /me/entitlements (Sprint 13)
 │   │           ├── admin_review.py   # admin AI-content review console (Sprint 13)
-│   │           └── review.py         # spaced review: due queue + notebook (Sprint 15)
+│   │           ├── review.py         # spaced review: due queue + notebook (Sprint 15)
+│   │           └── practice.py       # drills + mastery (Sprint 16)
 │   ├── core/
 │   │   ├── config.py           # Settings (pydantic-settings)
 │   │   ├── logging.py          # JSON logging setup
@@ -73,7 +74,9 @@ backend/
 │   │       ├── course_chat_service.py        # in-course chat → append content (Sprint 12)
 │   │       ├── entitlement_service.py        # plan → limits + usage; caps (Sprint 13)
 │   │       ├── admin_review_service.py       # AI-content review + hide/approve (Sprint 13)
-│   │       └── review_service.py             # spaced review of mistakes (Sprint 15)
+│   │       ├── review_service.py             # spaced review of mistakes (Sprint 15)
+│   │       ├── practice_service.py           # on-demand drills (Sprint 16)
+│   │       └── mastery_service.py            # per-topic mastery (Sprint 16)
 │   ├── infrastructure/
 │   │   ├── db/
 │   │   │   ├── base.py         # Declarative Base

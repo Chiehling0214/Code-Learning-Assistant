@@ -163,6 +163,7 @@ def _to_course(model: CourseModel) -> CourseEntity:
         created_at=model.created_at,
         updated_at=model.updated_at,
         track_id=model.track_id,
+        kind=model.kind,
     )
 
 
@@ -266,6 +267,7 @@ class SqlAlchemyCourseRepository:
         slug: str,
         description: str | None,
         track_id: uuid.UUID | None = None,
+        kind: str = "course",
     ) -> CourseEntity:
         model = CourseModel(
             language_id=language_id,
@@ -273,6 +275,7 @@ class SqlAlchemyCourseRepository:
             slug=slug,
             description=description,
             track_id=track_id,
+            kind=kind,
         )
         self._session.add(model)
         self._session.flush()

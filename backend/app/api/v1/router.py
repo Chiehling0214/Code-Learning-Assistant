@@ -15,6 +15,7 @@ from app.api.v1.routes import (
     lessons,
     me,
     placement,
+    practice,
     profile,
     progress,
     quizzes,
@@ -49,3 +50,4 @@ api_router.include_router(curriculum.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(admin_review.router)
 api_router.include_router(review.router)
+api_router.include_router(practice.router)

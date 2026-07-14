@@ -61,7 +61,7 @@ Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
 | **13** | Entitlements (plan limits) & admin AI-content review. | ✅ done |
 | 14 | Production launch: GCP deployment & CI/CD. | ⬜ planned |
 | **15** | Review & retention: mistakes notebook + spaced review. | ✅ done |
-| 16 | Practice arena: on-demand drills + topic mastery. | ⬜ planned |
+| **16** | Practice arena: on-demand drills + topic mastery. | ✅ done |
 | 17 | Polish & quality: streaming AI, E2E tests, account settings. | ⬜ planned |
 
 > **Direction change from Sprint 9.** The product pivots to **AI-generated,
