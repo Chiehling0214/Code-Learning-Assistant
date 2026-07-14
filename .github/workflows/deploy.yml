@@ -1,0 +1,27 @@
+# Manual deploy to the production VM (Settings → Actions → Deploy → Run workflow).
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   VM_HOST     — the VM's external IP or domain
+#   VM_USER     — the SSH user (e.g. your GCP username)
+#   VM_SSH_KEY  — a private key whose public half is in the VM's ~/.ssh/authorized_keys
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull latest and restart the stack on the VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/codepath
+            git pull --ff-only origin main
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker image prune -f

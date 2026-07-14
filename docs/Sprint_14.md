@@ -71,3 +71,17 @@ frontend/.firebaserc / firebase.json      (new; hosting config)
 
 - **Sprint 8** (prod compose, rate limiting), **docs/08** target architecture.
 - Stripe stays in test mode; Gemini free tier (documented limits).
+
+---
+
+## Status — repo artifacts done; console deploy = follow the runbook
+
+Implemented in-repo: Caddy TLS front (`deploy/Caddyfile` + caddy service in
+`docker-compose.prod.yml`), frontend prod build now receives `VITE_*` build args
+(the API is same-origin `/api/v1` behind Caddy — previously the prod bundle
+hard-coded localhost), `deploy/backup.sh` (nightly pg_dump, keep-7, optional
+GCS), `.env.prod.example`, and a manual SSH **Deploy** workflow. CI existed
+since Sprint 0 and gates every push. The remaining steps are console-side
+(project, VM, DuckDNS, secrets) — see the runbook in
+[08_DEPLOYMENT.md](08_DEPLOYMENT.md). Judge0 stays on RapidAPI for v1 (smaller,
+cheaper VM); self-hosting it is a later upgrade.

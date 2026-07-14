@@ -137,3 +137,53 @@ Hardening checklist (Sprint 8):
 
 `.github/workflows/ci.yml` lints and builds the frontend and runs backend
 checks/tests on every push and PR. See [09_TESTING.md](09_TESTING.md).
+
+---
+
+## Production runbook — single GCE VM + Caddy (Sprint 14)
+
+One VM runs everything behind Caddy with automatic HTTPS:
+
+```text
+https://$DOMAIN/        -> frontend (nginx static build)
+https://$DOMAIN/api/*   -> backend (FastAPI + gunicorn)
+postgres                -> internal only
+Judge0                  -> RapidAPI (no local containers)
+```
+
+Repo artifacts: `docker-compose.prod.yml` (caddy + build args),
+`deploy/Caddyfile`, `deploy/backup.sh`, `.env.prod.example`,
+`.github/workflows/deploy.yml` (manual SSH deploy; needs `VM_HOST`/`VM_USER`/
+`VM_SSH_KEY` secrets). CI (`ci.yml`) already gates every push.
+
+### One-time setup
+
+1. **gcloud CLI** (Windows): install from
+   <https://cloud.google.com/sdk/docs/install>, then `gcloud init`.
+2. **Project + budget**: create a project, link billing, and set a budget alert
+   (Billing → Budgets & alerts, e.g. US$10/mo).
+3. **VM** (≈US$15/mo, stop it when idle):
+   ```bash
+   gcloud compute instances create codepath --zone=asia-east1-b      --machine-type=e2-small --image-family=ubuntu-2404-lts-amd64      --image-project=ubuntu-os-cloud --boot-disk-size=30GB --tags=http-server,https-server
+   gcloud compute firewall-rules create allow-http --allow tcp:80,tcp:443      --target-tags=http-server,https-server
+   ```
+4. **On the VM** (`gcloud compute ssh codepath --zone=asia-east1-b`): install
+   Docker (`curl -fsSL https://get.docker.com | sudo sh`), add 2 GB swap (the
+   frontend build needs it on 2 GB RAM), clone the repo to `/opt/codepath`.
+5. **Domain**: point a (free) DuckDNS subdomain at the VM's external IP.
+6. **Secrets**: copy `.env.prod.example` → `.env` on the VM and fill it in;
+   `scp` the Firebase service-account key to `/opt/codepath/firebase-key.json`.
+7. **Firebase Console**: add the domain to Auth → Authorized domains.
+8. **Start**: `docker compose -f docker-compose.prod.yml up -d --build`.
+9. **Backups**: `crontab -e` →
+   `0 3 * * * cd /opt/codepath && ./deploy/backup.sh >> backups/backup.log 2>&1`.
+
+### Day-2 operations
+
+- **Update**: `git pull && docker compose -f docker-compose.prod.yml up -d --build`
+  (or the manual **Deploy** GitHub Action once the SSH secrets are set).
+- **Stop/start to save money**: `gcloud compute instances stop|start codepath
+  --zone=asia-east1-b` (billed only while running; the IP changes unless you
+  reserve a static one — update DuckDNS after each start, or reserve).
+- **Logs**: `docker compose -f docker-compose.prod.yml logs -f backend`.
+- **Restore**: see the comment at the bottom of `deploy/backup.sh`.

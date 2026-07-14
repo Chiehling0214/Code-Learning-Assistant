@@ -59,7 +59,7 @@ Detailed per-sprint plans live in [Sprint_01.md](Sprint_01.md) …
 | **11** | AI curriculum generation (full personalized courses). | ✅ done |
 | **12** | Continuous learning: extend course + in-course chat. | ✅ done |
 | **13** | Entitlements (plan limits) & admin AI-content review. | ✅ done |
-| 14 | Production launch: GCP deployment & CI/CD. | ⬜ planned |
+| **14** | Production launch: GCP deployment & CI/CD. | 🔶 repo-ready (runbook in 08) |
 | **15** | Review & retention: mistakes notebook + spaced review. | ✅ done |
 | **16** | Practice arena: on-demand drills + topic mastery. | ✅ done |
 | **17** | Polish & quality: streaming AI, account settings, mobile. | ✅ done (E2E → 14) |

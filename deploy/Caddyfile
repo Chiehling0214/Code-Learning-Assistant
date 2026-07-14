@@ -1,0 +1,20 @@
+# Caddy fronts the whole app on one domain with automatic HTTPS (Let's Encrypt).
+#
+#   https://$DOMAIN/            -> frontend (nginx, static SPA)
+#   https://$DOMAIN/api/*       -> backend (FastAPI)
+#   https://$DOMAIN/health      -> backend liveness (for uptime checks)
+#   https://$DOMAIN/docs        -> backend Swagger UI
+#
+# DOMAIN comes from the environment (see docker-compose.prod.yml / .env).
+{$DOMAIN} {
+	encode gzip
+
+	@backend path /api/* /health /docs /redoc
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}

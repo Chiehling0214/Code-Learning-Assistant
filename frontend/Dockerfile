@@ -16,6 +16,15 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ---- build (production static assets) ----
 FROM deps AS build
+# Vite bakes VITE_* at build time — pass the real values as build args.
+# In the single-VM deploy the API is same-origin behind Caddy, so the base URL
+# is the relative "/api/v1".
+ARG VITE_API_BASE_URL=/api/v1
+ARG VITE_FIREBASE_API_KEY=""
+ARG VITE_FIREBASE_AUTH_DOMAIN=""
+ARG VITE_FIREBASE_PROJECT_ID=""
+ARG VITE_FIREBASE_APP_ID=""
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL     VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY     VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN     VITE_FIREBASE_PROJECT_ID=$VITE_FIREBASE_PROJECT_ID     VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
 COPY . .
 RUN npm run build
 

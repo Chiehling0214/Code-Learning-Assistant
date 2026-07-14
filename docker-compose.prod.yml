@@ -48,7 +48,7 @@ services:
       JUDGE0_RAPIDAPI_KEY: ${JUDGE0_RAPIDAPI_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       # Billing + hardening on in production.
-      BILLING_ENABLED: "true"
+      BILLING_ENABLED: ${BILLING_ENABLED:-false}
       STRIPE_API_KEY: ${STRIPE_API_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
@@ -67,11 +67,36 @@ services:
     build:
       context: ./frontend
       target: prod
-    ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      args:
+        # Same-origin API behind Caddy; Firebase web config is public by design.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
     depends_on:
+      - backend
+    restart: unless-stopped
+
+  # TLS termination + routing: / -> frontend, /api -> backend. Automatic
+  # Let's Encrypt certificates for $DOMAIN (ports 80/443 must be open).
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN (e.g. codepath.duckdns.org)}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
       - backend
     restart: unless-stopped
 
 volumes:
   postgres-data:
+  caddy-data:
+  caddy-config:
