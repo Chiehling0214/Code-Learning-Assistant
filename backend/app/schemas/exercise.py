@@ -13,8 +13,16 @@ from pydantic import BaseModel, Field
 # --------------------------------------------------------------------------- #
 
 
+class SampleCase(BaseModel):
+    """A visible example test (input → expected stdout) shown to the learner."""
+
+    input: str = ""
+    expected: str = ""
+
+
 class ExerciseResponse(BaseModel):
-    """Learner-facing exercise. Excludes ``test_spec`` (hidden test cases)."""
+    """Learner-facing exercise. ``test_spec`` stays hidden; only a few
+    non-hidden cases are surfaced as samples so the learner knows the I/O shape."""
 
     id: uuid.UUID
     lesson_id: uuid.UUID
@@ -23,6 +31,7 @@ class ExerciseResponse(BaseModel):
     slug: str
     prompt: str
     starter_code: str
+    sample_cases: list[SampleCase] = []
 
 
 class ExerciseSummary(BaseModel):

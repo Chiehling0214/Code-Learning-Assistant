@@ -21,6 +21,20 @@ class CodeRunner(Protocol):
     def execute(self, source_code: str, language: str, stdin: str = "") -> dict: ...
 
 
+def normalize_case_text(text: str) -> str:
+    """Repair AI-double-escaped whitespace in test-case strings.
+
+    Generation sometimes emits a literal backslash-n (two characters) instead of
+    a real newline, which breaks both the sample display and stdin piping. When a
+    string contains escape sequences but no real newline, decode them; strings
+    that already contain real newlines are left untouched (an intentional
+    literal ``\\n`` there stays literal).
+    """
+    if "\\n" in text and "\n" not in text:
+        text = text.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", "\t")
+    return text
+
+
 class ExecutionService:
     def __init__(self, runner: CodeRunner) -> None:
         self._runner = runner
@@ -63,8 +77,8 @@ class ExecutionService:
         had_runtime_error = False
 
         for index, case in enumerate(cases):
-            stdin = str(case.get("input", ""))
-            expected = str(case.get("expected", "")).strip()
+            stdin = normalize_case_text(str(case.get("input", "")))
+            expected = normalize_case_text(str(case.get("expected", ""))).strip()
             hidden = bool(case.get("hidden", False))
 
             try:

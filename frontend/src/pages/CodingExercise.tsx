@@ -24,6 +24,7 @@ export function CodingExercisePage() {
   const run = useRun(id);
 
   const [code, setCode] = useState("");
+  const [stdin, setStdin] = useState("");
   const [activeSubmissionId, setActiveSubmissionId] = useState<string>();
   const { data: activeSubmission } = useSubmission(activeSubmissionId, id);
 
@@ -49,7 +50,7 @@ export function CodingExercisePage() {
         <div className="flex shrink-0 gap-2">
           <Button
             variant="outline"
-            onClick={() => run.mutate({ code })}
+            onClick={() => run.mutate({ code, stdin })}
             disabled={run.isPending || code.trim().length === 0}
           >
             {run.isPending ? "Running…" : "Run"}
@@ -65,6 +66,43 @@ export function CodingExercisePage() {
         </div>
       </div>
 
+      {exercise.sample_cases.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Sample tests</CardTitle>
+            <CardDescription>
+              Your program reads from stdin and must print exactly the expected output.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {exercise.sample_cases.map((sample, i) => (
+              <div key={i} className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Example {i + 1}</span>
+                  {sample.input.trim() && (
+                    <Button variant="ghost" size="sm" onClick={() => setStdin(sample.input)}>
+                      Use as input
+                    </Button>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Input</p>
+                  <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
+                    <code>{sample.input || "(no input)"}</code>
+                  </pre>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Expected output</p>
+                  <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
+                    <code>{sample.expected}</code>
+                  </pre>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Editor</CardTitle>
@@ -72,7 +110,7 @@ export function CodingExercisePage() {
             Language: <span className="font-mono">{exercise.language}</span>
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <div className="overflow-hidden rounded-md border">
             <Editor
               height="360px"
@@ -81,6 +119,17 @@ export function CodingExercisePage() {
               value={code}
               onChange={(value) => setCode(value ?? "")}
               options={{ minimap: { enabled: false }, fontSize: 14 }}
+            />
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-medium">
+              Input (stdin) <span className="font-normal text-muted-foreground">— sent to your program on Run</span>
+            </p>
+            <textarea
+              className="min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Type the input your program should read…"
+              value={stdin}
+              onChange={(e) => setStdin(e.target.value)}
             />
           </div>
         </CardContent>

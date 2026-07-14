@@ -2,6 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api";
 
+export interface SampleCase {
+  input: string;
+  expected: string;
+}
+
 export interface Exercise {
   id: string;
   lesson_id: string;
@@ -10,6 +15,7 @@ export interface Exercise {
   slug: string;
   prompt: string;
   starter_code: string;
+  sample_cases: SampleCase[];
 }
 
 export interface ExerciseSummary {

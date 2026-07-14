@@ -17,6 +17,7 @@ from app.api.deps import (
     SubmissionServiceDep,
     require_admin,
 )
+from app.application.services.execution_service import normalize_case_text
 from app.infrastructure.grading import grade_submission
 from app.schemas.exercise import (
     ExerciseCreate,
@@ -24,12 +25,31 @@ from app.schemas.exercise import (
     ExerciseSummary,
     RunRequest,
     RunResponse,
+    SampleCase,
     SubmissionResponse,
     SubmitRequest,
 )
 
 router = APIRouter(tags=["exercises"])
 admin_router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
+
+
+# How many visible test cases to surface as examples on the exercise page.
+_MAX_SAMPLE_CASES = 3
+
+
+def _sample_cases(test_spec: dict) -> list[SampleCase]:
+    """The first few non-hidden cases (grading already reveals these in results)."""
+    cases = (test_spec or {}).get("cases") or []
+    samples = [
+        SampleCase(
+            input=normalize_case_text(str(c.get("input", ""))),
+            expected=normalize_case_text(str(c.get("expected", ""))),
+        )
+        for c in cases
+        if not c.get("hidden")
+    ]
+    return samples[:_MAX_SAMPLE_CASES]
 
 
 def _exercise_response(ex) -> ExerciseResponse:  # noqa: ANN001 - domain entity
@@ -41,6 +61,7 @@ def _exercise_response(ex) -> ExerciseResponse:  # noqa: ANN001 - domain entity
         slug=ex.slug,
         prompt=ex.prompt,
         starter_code=ex.starter_code,
+        sample_cases=_sample_cases(ex.test_spec),
     )
 
 

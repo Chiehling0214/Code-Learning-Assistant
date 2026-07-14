@@ -36,6 +36,30 @@ def test_grade_fails_on_mismatch() -> None:
     assert result["passed"] == 0
 
 
+def test_grade_normalizes_double_escaped_newlines() -> None:
+    """AI sometimes stores a literal backslash-n; grading must treat it as a
+    real newline in both the stdin piped to the program and the expected output."""
+    runner = Runner()
+    runner.set(stdout="142\n", status_id=3, status="Accepted")
+    service = ExecutionService(runner)
+    spec = {"cases": [{"input": "[10, 12, 20]\\n[34, 8, 50]", "expected": "142"}]}
+    status, result = service.grade(code="...", language="python", test_spec=spec)
+    assert status == "passed"
+    # The visible test detail shows the repaired input with a real newline.
+    assert result["tests"][0]["input"] == "[10, 12, 20]\n[34, 8, 50]"
+
+
+def test_normalize_leaves_real_newlines_alone() -> None:
+    from app.application.services.execution_service import normalize_case_text
+
+    # Repaired: escapes only, no real newline.
+    assert normalize_case_text("a\\nb") == "a\nb"
+    assert normalize_case_text("a\\r\\nb\\tc") == "a\nb\tc"
+    # Untouched: already contains a real newline (the literal may be intended).
+    assert normalize_case_text("a\nliteral \\n here") == "a\nliteral \\n here"
+    assert normalize_case_text("plain") == "plain"
+
+
 def test_grade_error_on_runtime_error() -> None:
     runner = Runner()
     runner.set(stdout="", status_id=11, status="Runtime Error (NZEC)")

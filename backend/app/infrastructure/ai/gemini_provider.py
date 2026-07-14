@@ -45,6 +45,19 @@ _NO_LATEX = (
     "code (e.g. `N!`, `2^n`, `O(n log n)`)."
 )
 
+# Shared test_spec contract: inputs are stdin DATA (never code), with real
+# newlines — a literal backslash-n breaks both display and piping.
+_TEST_SPEC_RULES = (
+    " test_spec rules: each case's \"input\" is EXACTLY the text piped to the "
+    "program's stdin — plain data only (one value per line, separated by real "
+    "newline characters — never write a backslash followed by the letter n as "
+    "two literal characters, and never put code, function calls, or "
+    'descriptions in "input"); use "" when the program reads no input. '
+    '"expected" is the exact stdout the reference_solution prints for that '
+    "input. starter_code must be a runnable program skeleton that reads stdin "
+    "the same way the reference_solution does."
+)
+
 _TEACHER_SYSTEM = (
     "You are an encouraging programming teacher. Explain concepts clearly for a "
     "{level} learner. Use short paragraphs and Markdown. Be concise." + _NO_LATEX
@@ -196,7 +209,8 @@ class GeminiAIProvider:
             'answer to stdout), and "test_spec" (object with key "cases", a list '
             'of {"input": string, "expected": string}). '
             f"Topic: {request.topic}. Language: {request.language}. "
-            f"Target level: {request.level}. Return ONLY the JSON object."
+            f"Target level: {request.level}.{_TEST_SPEC_RULES}{_NO_LATEX} "
+            "Return ONLY the JSON object."
         )
         data, tokens = self._generate_json(model=self._model, prompt=prompt)
         test_spec = data.get("test_spec") or {}
@@ -230,7 +244,8 @@ class GeminiAIProvider:
             "in prose. Keep tasks simple and self-contained, and make sure each "
             "reference_solution actually produces the expected output for every test "
             "case (expected is the exact stdout, no trailing spaces). "
-            f"Language: {request.language}.{_NO_LATEX} Return ONLY the JSON object."
+            f"Language: {request.language}.{_TEST_SPEC_RULES}{_NO_LATEX} "
+            "Return ONLY the JSON object."
         )
         data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
         mcqs = data.get("mcqs") if isinstance(data.get("mcqs"), list) else []
@@ -276,7 +291,7 @@ class GeminiAIProvider:
             "exactly one correct choice each, where the explanation briefly says why the "
             "correct choice is right]}). "
             f"Lesson topic: {request.topic}. Language: {request.language}. Level: "
-            f"{request.level}.{_NO_LATEX} Return ONLY the JSON object."
+            f"{request.level}.{_TEST_SPEC_RULES}{_NO_LATEX} Return ONLY the JSON object."
         )
         data, tokens = self._generate_json(model=self._teacher_model, prompt=prompt)
         exercises = data.get("exercises") if isinstance(data.get("exercises"), list) else []
@@ -328,6 +343,7 @@ class GeminiAIProvider:
             "correct choice is right]})}. Lessons must be ordered foundational → advanced."
             + focus
             + prior
+            + _TEST_SPEC_RULES
             + _NO_LATEX
             + " Return ONLY the JSON object."
         )

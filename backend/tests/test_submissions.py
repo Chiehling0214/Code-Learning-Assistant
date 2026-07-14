@@ -33,6 +33,31 @@ def test_get_exercise_returns_starter_code_without_test_spec(
     assert "test_spec" not in body  # hidden test cases never leak
 
 
+def test_get_exercise_exposes_sample_cases_but_not_hidden_ones(
+    client: TestClient, fakes: SimpleNamespace
+) -> None:
+    exercise = fakes.exercises.create(
+        lesson_id=uuid.uuid4(),
+        language="python",
+        title="Sum",
+        slug="sum",
+        prompt="Add two numbers",
+        starter_code="",
+        test_spec={
+            "cases": [
+                {"input": "1 2", "expected": "3"},
+                {"input": "5 5", "expected": "10"},
+                {"input": "9 9", "expected": "18", "hidden": True},
+            ]
+        },
+    )
+    body = client.get(f"/api/v1/exercises/{exercise.id}").json()
+    assert body["sample_cases"] == [
+        {"input": "1 2", "expected": "3"},
+        {"input": "5 5", "expected": "10"},
+    ]
+
+
 def test_get_exercise_404_when_missing(client: TestClient) -> None:
     assert client.get(f"/api/v1/exercises/{uuid.uuid4()}").status_code == 404
 
