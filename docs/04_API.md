@@ -79,6 +79,9 @@
 | POST | `/api/v1/practice/generate` | bearer | 16 | Generate a drill (topic optional → weakest); plan-capped. |
 | GET | `/api/v1/practice/history` | bearer | 16 | Past drills with latest verdicts. |
 | GET | `/api/v1/me/mastery?language=…` | bearer | 16 | Per-topic mastery for a studied language. |
+| POST | `/api/v1/ai/teacher/stream` | bearer | 17 | SSE-streamed teacher answer. |
+| POST | `/api/v1/ai/tutor/stream` | bearer | 17 | SSE-streamed tutor hint (plan-capped). |
+| DELETE | `/api/v1/me` | bearer | 17 | Delete the account + all learner data (cascade). |
 
 > **Sprint 13 limits** — adding a track (`POST /me/tracks`), starting/extending
 > generation (`/generate`, `/extend`, `/chat`), and the AI Tutor enforce plan-aware

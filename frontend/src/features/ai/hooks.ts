@@ -1,11 +1,61 @@
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
+import { streamSSE } from "@/lib/sse";
 
 export interface AIAnswer {
   answer: string;
   model: string;
   total_tokens: number;
+}
+
+/**
+ * Streaming AI answer with graceful fallback: tries `{path}/stream` (SSE) and
+ * renders progressively; on transport failures it retries the non-stream
+ * endpoint once. Server rejections (`ApiError`, e.g. 402/429) surface as-is.
+ */
+export function useStreamingAnswer(path: string) {
+  const [answer, setAnswer] = useState("");
+  const [isPending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  const ask = async (body: Record<string, unknown>) => {
+    setPending(true);
+    setError(null);
+    setAnswer("");
+    let received = false;
+    try {
+      await streamSSE(`${path}/stream`, body, (text) => {
+        received = true;
+        setAnswer((a) => a + text);
+      });
+    } catch (err) {
+      if (err instanceof ApiError || received) {
+        setError(err);
+      } else {
+        // Transport hiccup before any chunk — fall back to the plain endpoint.
+        try {
+          const res = await apiFetch<AIAnswer>(path, {
+            method: "POST",
+            body: JSON.stringify(body),
+          });
+          setAnswer(res.answer);
+        } catch (fallbackErr) {
+          setError(fallbackErr);
+        }
+      }
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const reset = () => {
+    setAnswer("");
+    setError(null);
+  };
+
+  return { answer, isPending, error, ask, reset };
 }
 
 /** Ask the AI Teacher to explain a lesson concept (by lesson, topic, or question). */

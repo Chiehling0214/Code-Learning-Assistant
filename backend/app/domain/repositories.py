@@ -51,6 +51,8 @@ class UserRepository(Protocol):
 
     def update_display_name(self, user_id: uuid.UUID, display_name: str | None) -> User: ...
 
+    def delete(self, user_id: uuid.UUID) -> None: ...
+
 
 class StudentProfileRepository(Protocol):
     """Persistence operations for :class:`~app.domain.entities.StudentProfile`."""

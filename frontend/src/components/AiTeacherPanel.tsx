@@ -2,15 +2,15 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAskTeacher } from "@/features/ai/hooks";
+import { useStreamingAnswer } from "@/features/ai/hooks";
 import { renderMarkdown } from "@/lib/markdown";
 
 const inputClass =
   "min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-/** "Ask AI Teacher" panel — explains/expands the current lesson for the learner. */
+/** "Ask AI Teacher" panel — streams an explanation of the current lesson. */
 export function AiTeacherPanel({ lessonId }: { lessonId: string | undefined }) {
-  const ask = useAskTeacher();
+  const teacher = useStreamingAnswer("/ai/teacher");
   const [question, setQuestion] = useState("");
 
   return (
@@ -27,21 +27,21 @@ export function AiTeacherPanel({ lessonId }: { lessonId: string | undefined }) {
         />
         <Button
           size="sm"
-          disabled={ask.isPending}
-          onClick={() => ask.mutate({ lesson_id: lessonId, question })}
+          disabled={teacher.isPending}
+          onClick={() => teacher.ask({ lesson_id: lessonId ?? null, question })}
         >
-          {ask.isPending ? "Thinking…" : "Ask"}
+          {teacher.isPending ? "Answering…" : "Ask"}
         </Button>
 
-        {ask.isError && (
+        {teacher.error != null && (
           <p className="text-sm text-destructive">
-            {ask.error instanceof Error ? ask.error.message : "Request failed"}
+            {teacher.error instanceof Error ? teacher.error.message : "Request failed"}
           </p>
         )}
-        {ask.data && (
+        {teacher.answer && (
           <div
             className="prose-sm max-w-none rounded-md bg-muted p-3 [&_code]:rounded [&_code]:bg-background [&_code]:px-1 [&_p]:my-2 [&_pre]:overflow-x-auto"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(ask.data.answer) }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(teacher.answer) }}
           />
         )}
       </CardContent>

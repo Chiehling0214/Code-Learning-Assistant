@@ -71,7 +71,11 @@ a spaced schedule and keeps a mistakes notebook; "Today" surfaces due reviews
 first. The **Practice** page (Sprint 16, `features/practice/hooks.ts`) generates
 on-demand drills — on a chosen topic or the learner's weakest — and Progress
 gains a per-topic **mastery** panel (`features/mastery/hooks.ts`) with practice
-shortcuts.
+shortcuts. AI answers **stream** token-by-token (Sprint 17, `lib/sse.ts` +
+`useStreamingAnswer`, with graceful fallback); the **Profile** page carries the
+account settings — display name, skill level, plan link, and a danger zone that
+deletes the account (typed-email confirm). The **Admin** nav entry and page are
+only visible/reachable for admins (backend 403s enforce it regardless).
 
 | Path | Page | Access |
 |------|------|--------|
@@ -88,7 +92,7 @@ shortcuts.
 | `/quizzes/:id` | Quiz (take + score + per-question result) | private |
 | `/progress` | Progress (completion bars + streak) | private |
 | `/subscription` | Subscription (Sprint 8 placeholder) | private |
-| `/admin` | Admin (languages/courses/lessons/quizzes CRUD) | private (admin) |
+| `/admin` | Admin — AI-content review console | private (admin only; hidden otherwise) |
 | `/profile` | Profile (view/edit display name & skill level) | private |
 
 ## Content (Sprint 2)

@@ -109,6 +109,7 @@ def get_mastery(
                 correct=t.correct,
                 correct_rate=t.correct_rate,
                 level=t.level,
+                lesson_id=t.lesson_id,
             )
             for t in topics
         ],

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { AiTeacherPanel } from "@/components/AiTeacherPanel";
+import { SkeletonCards } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLesson } from "@/features/content/hooks";
@@ -20,7 +21,7 @@ export function LessonPage() {
   const html = useMemo(() => (lesson ? renderMarkdown(lesson.content) : ""), [lesson]);
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading lesson…</p>;
+    return <SkeletonCards count={3} />;
   }
   if (isError || !lesson) {
     return <p className="text-destructive">Lesson not found.</p>;

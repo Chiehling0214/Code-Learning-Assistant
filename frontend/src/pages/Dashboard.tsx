@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { SkeletonCards } from "@/components/Skeleton";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,7 +146,7 @@ export function DashboardPage() {
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Courses</h2>
         {coursesLoading ? (
-          <p className="text-sm text-muted-foreground">Loading courses…</p>
+          <SkeletonCards count={2} />
         ) : myCourses.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No courses yet — they'll appear here as your curriculum is built.

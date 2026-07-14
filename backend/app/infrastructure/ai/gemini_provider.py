@@ -138,7 +138,8 @@ class GeminiAIProvider:
 
     # ----- teaching / tutoring -----
 
-    def teach(self, request: TeachRequest) -> AIResponse:
+    @staticmethod
+    def _teach_prompt(request: TeachRequest) -> str:
         system = _TEACHER_SYSTEM.format(level=request.level)
         parts = [system, f"\nTopic: {request.topic}"]
         if request.lesson_content:
@@ -147,10 +148,10 @@ class GeminiAIProvider:
             parts.append(f"\nLearner's question:\n{_fence(request.question)}")
         else:
             parts.append("\nExplain this topic for the learner.")
-        text, tokens = self._generate(model=self._teacher_model, prompt="\n".join(parts))
-        return AIResponse(text=text, model=self._teacher_model, total_tokens=tokens)
+        return "\n".join(parts)
 
-    def tutor(self, request: TutorRequest) -> AIResponse:
+    @staticmethod
+    def _tutor_prompt(request: TutorRequest) -> str:
         system = _TUTOR_SYSTEM.format(level=request.level)
         parts = [system, f"\nLanguage: {request.language}"]
         if request.prompt:
@@ -158,8 +159,43 @@ class GeminiAIProvider:
         parts.append(f"\nLearner's current code:\n{_fence(request.code)}")
         if request.question:
             parts.append(f"\nLearner's question:\n{_fence(request.question)}")
-        text, tokens = self._generate(model=self._model, prompt="\n".join(parts))
+        return "\n".join(parts)
+
+    def _generate_stream(self, *, model: str, prompt: str):
+        """Yield response text chunks; normalizes SDK errors like `_generate`."""
+        client = self._ensure_client()
+        try:
+            stream = client.models.generate_content_stream(model=model, contents=prompt)
+            for chunk in stream:
+                text = getattr(chunk, "text", None)
+                if text:
+                    yield text
+        except Exception as exc:  # noqa: BLE001 - normalize SDK errors
+            message = str(exc)
+            lowered = message.lower()
+            if "429" in message or "resource_exhausted" in lowered or "quota" in lowered:
+                logger.warning("Gemini quota exceeded (stream): %s", message)
+                raise AIQuotaError("AI quota exceeded; try again later") from exc
+            logger.warning("Gemini stream failed: %s", message)
+            raise AIProviderError(f"AI request failed: {message}") from exc
+
+    def teach(self, request: TeachRequest) -> AIResponse:
+        text, tokens = self._generate(
+            model=self._teacher_model, prompt=self._teach_prompt(request)
+        )
+        return AIResponse(text=text, model=self._teacher_model, total_tokens=tokens)
+
+    def teach_stream(self, request: TeachRequest):
+        yield from self._generate_stream(
+            model=self._teacher_model, prompt=self._teach_prompt(request)
+        )
+
+    def tutor(self, request: TutorRequest) -> AIResponse:
+        text, tokens = self._generate(model=self._model, prompt=self._tutor_prompt(request))
         return AIResponse(text=text, model=self._model, total_tokens=tokens)
+
+    def tutor_stream(self, request: TutorRequest):
+        yield from self._generate_stream(model=self._model, prompt=self._tutor_prompt(request))
 
     # ----- content generation -----
 

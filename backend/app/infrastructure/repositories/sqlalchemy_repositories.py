@@ -117,6 +117,14 @@ class SqlAlchemyUserRepository:
         self._session.refresh(model)
         return _to_user(model)
 
+    def delete(self, user_id: uuid.UUID) -> None:
+        """Delete the user; FK ``ON DELETE CASCADE`` removes all learner data."""
+        model = self._session.get(UserModel, user_id)
+        if model is None:
+            raise LookupError(f"User {user_id} not found")
+        self._session.delete(model)
+        self._session.flush()
+
 
 class SqlAlchemyStudentProfileRepository:
     """Concrete :class:`~app.domain.repositories.StudentProfileRepository`."""

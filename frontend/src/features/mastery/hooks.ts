@@ -8,6 +8,8 @@ export interface TopicMastery {
   correct: number;
   correct_rate: number;
   level: "weak" | "ok" | "strong";
+  /** The course lesson teaching this topic (null for drill-only topics). */
+  lesson_id: string | null;
 }
 
 /** Per-topic mastery for one of the learner's languages (weakest first). */

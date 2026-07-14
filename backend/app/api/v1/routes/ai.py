@@ -1,10 +1,16 @@
-"""AI endpoints: Teacher, Tutor, and admin content generation.
+"""AI endpoints: Teacher, Tutor (plain + SSE streaming), and admin generation.
 
 All model access happens behind ``AIProvider`` (wired in ``deps.py``); this layer
-only orchestrates and maps errors to HTTP status codes.
+only orchestrates and maps errors to HTTP status codes. The ``/stream`` variants
+send Server-Sent Events: ``data: {"text": …}`` chunks, then ``data: [DONE]``
+(mid-stream failures emit ``data: {"error": …}``).
 """
 
+import json
+from collections.abc import Iterator
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import (
     AITeacherServiceDep,
@@ -83,6 +89,61 @@ def ask_teacher(
     return AIAnswerResponse(
         answer=result.text, model=result.model, total_tokens=result.total_tokens
     )
+
+
+def _sse(chunks: Iterator[str]):
+    """Wrap text chunks as SSE events, ending with [DONE] or an error event."""
+    try:
+        for chunk in chunks:
+            yield f"data: {json.dumps({'text': chunk})}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception as exc:  # noqa: BLE001 - already streaming; emit an error event
+        yield f"data: {json.dumps({'error': str(exc) or 'stream failed'})}\n\n"
+
+
+@router.post("/teacher/stream")
+def ask_teacher_stream(
+    payload: TeacherRequest,
+    current_user: CurrentDbUser,
+    service: AITeacherServiceDep,
+    users: UserServiceDep,
+) -> StreamingResponse:
+    level = users.get_profile(current_user.id).skill_level
+    try:
+        chunks = service.teach_stream(
+            user_id=current_user.id,
+            lesson_id=payload.lesson_id,
+            topic=payload.topic,
+            question=payload.question,
+            level=level,
+            context=payload.context,
+        )
+    except Exception as exc:  # noqa: BLE001 - mapped to HTTP below
+        raise _handle_ai_error(exc) from exc
+    return StreamingResponse(_sse(chunks), media_type="text/event-stream")
+
+
+@router.post("/tutor/stream")
+def ask_tutor_stream(
+    payload: TutorRequest,
+    current_user: CurrentDbUser,
+    service: AITutorServiceDep,
+    users: UserServiceDep,
+    entitlements: EntitlementServiceDep,
+) -> StreamingResponse:
+    level = users.get_profile(current_user.id).skill_level
+    try:
+        entitlements.check_tutor(current_user.id)
+        chunks = service.tutor_stream(
+            user_id=current_user.id,
+            exercise_id=payload.exercise_id,
+            code=payload.code,
+            question=payload.question,
+            level=level,
+        )
+    except Exception as exc:  # noqa: BLE001 - mapped to HTTP below
+        raise _handle_ai_error(exc) from exc
+    return StreamingResponse(_sse(chunks), media_type="text/event-stream")
 
 
 @router.post("/tutor", response_model=AIAnswerResponse)

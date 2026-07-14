@@ -35,6 +35,8 @@ class TopicMasteryResponse(BaseModel):
     correct: int
     correct_rate: float
     level: str  # "weak" | "ok" | "strong"
+    # The course lesson teaching this topic (None for drill-only topics).
+    lesson_id: uuid.UUID | None = None
 
 
 class MasteryResponse(BaseModel):

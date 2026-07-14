@@ -1,3 +1,5 @@
+import { Navigate } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminContent, useAdminUsage, useSetLessonReview } from "@/features/admin/hooks";
@@ -92,6 +94,10 @@ function ReviewList() {
 export function AdminPage() {
   const user = useSessionStore((s) => s.user);
 
+  // Admin-only: everyone else is sent back to their dashboard (the backend
+  // enforces this with 403s regardless).
+  if (!user?.isAdmin) return <Navigate to="/dashboard" replace />;
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -101,15 +107,6 @@ export function AdminPage() {
         </p>
       </div>
 
-      {!user?.isAdmin && (
-        <Card className="border-amber-500/40">
-          <CardContent className="py-4 text-sm text-muted-foreground">
-            Your account is not an admin, so these actions will return 403. Grant admin with{" "}
-            <code className="rounded bg-muted px-1">python -m scripts.set_admin {user?.email}</code>{" "}
-            in the backend container, then sign out and back in.
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>

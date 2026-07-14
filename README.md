@@ -6,7 +6,7 @@ CodePath AI guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
 sandbox.
 
-**Status — Sprints 0–13, 15, and 16 complete** (14 — GCP deployment — designed, deferred to avoid hosting costs; see [docs/Sprint_14.md](docs/Sprint_14.md)).
+**Status — Sprints 0–13 and 15–17 complete** (14 — GCP deployment — designed, deferred to avoid hosting costs; see [docs/Sprint_14.md](docs/Sprint_14.md)).
 The platform also includes **spaced review** (Sprint 15 — every wrong quiz/placement
 answer and failed exercise lands in a mistakes notebook and comes back on a
 1→2→4-day schedule until mastered, surfaced first in "Today") and a **practice

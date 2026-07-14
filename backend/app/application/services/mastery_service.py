@@ -33,6 +33,9 @@ class TopicMastery:
     correct: int
     correct_rate: float
     level: str  # "weak" | "ok" | "strong"
+    # The course lesson this topic lives in (None when it only exists as
+    # practice drills) — lets the UI link back to the lesson for revision.
+    lesson_id: uuid.UUID | None = None
 
 
 def _level_for(rate: float) -> str:
@@ -79,6 +82,7 @@ class MasteryService:
                 exercise_events.setdefault(event.item_id, []).append(event.status)
 
         buckets: dict[str, dict[str, int]] = {}
+        lesson_ids: dict[str, uuid.UUID] = {}
 
         def bucket(topic: str) -> dict[str, int]:
             return buckets.setdefault(topic, {"attempts": 0, "correct": 0})
@@ -88,6 +92,10 @@ class MasteryService:
                 continue
             for lesson in self._lessons.list_by_course(course.id):
                 topic = lesson.title
+                # Remember where the topic is taught (real courses only —
+                # practice containers are empty shells not worth linking to).
+                if course.kind != "practice" and topic not in lesson_ids:
+                    lesson_ids[topic] = lesson.id
                 for ex in self._exercises.list_by_lesson(lesson.id):
                     for status in exercise_events.get(ex.id, []):
                         b = bucket(topic)
@@ -109,6 +117,7 @@ class MasteryService:
                 correct=b["correct"],
                 correct_rate=round(b["correct"] / b["attempts"], 2),
                 level=_level_for(b["correct"] / b["attempts"]),
+                lesson_id=lesson_ids.get(topic),
             )
             for topic, b in buckets.items()
             if b["attempts"] > 0

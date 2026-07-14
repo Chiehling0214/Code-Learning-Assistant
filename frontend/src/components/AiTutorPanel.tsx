@@ -3,14 +3,14 @@ import { useState } from "react";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAskTutor } from "@/features/ai/hooks";
+import { useStreamingAnswer } from "@/features/ai/hooks";
 import { ApiError } from "@/lib/api";
 import { renderMarkdown } from "@/lib/markdown";
 
 const inputClass =
   "min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-/** AI Tutor panel — sends the current editor code and returns a hint, not the answer. */
+/** AI Tutor panel — streams a hint on the current editor code (never the answer). */
 export function AiTutorPanel({
   exerciseId,
   code,
@@ -18,7 +18,7 @@ export function AiTutorPanel({
   exerciseId: string | undefined;
   code: string;
 }) {
-  const ask = useAskTutor(exerciseId);
+  const tutor = useStreamingAnswer("/ai/tutor");
   const [question, setQuestion] = useState("");
 
   return (
@@ -36,24 +36,24 @@ export function AiTutorPanel({
         <Button
           size="sm"
           variant="outline"
-          disabled={ask.isPending || code.trim().length === 0}
-          onClick={() => ask.mutate({ code, question })}
+          disabled={tutor.isPending || code.trim().length === 0}
+          onClick={() => tutor.ask({ exercise_id: exerciseId, code, question })}
         >
-          {ask.isPending ? "Thinking…" : "Get a hint"}
+          {tutor.isPending ? "Thinking…" : "Get a hint"}
         </Button>
 
-        {ask.isError &&
-          (ask.error instanceof ApiError && ask.error.status === 402 ? (
-            <UpgradePrompt error={ask.error} />
+        {tutor.error != null &&
+          (tutor.error instanceof ApiError && tutor.error.status === 402 ? (
+            <UpgradePrompt error={tutor.error} />
           ) : (
             <p className="text-sm text-destructive">
-              {ask.error instanceof Error ? ask.error.message : "Request failed"}
+              {tutor.error instanceof Error ? tutor.error.message : "Request failed"}
             </p>
           ))}
-        {ask.data && (
+        {tutor.answer && (
           <div
             className="prose-sm max-w-none rounded-md bg-muted p-3 [&_code]:rounded [&_code]:bg-background [&_code]:px-1 [&_p]:my-2 [&_pre]:overflow-x-auto"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(ask.data.answer) }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(tutor.answer) }}
           />
         )}
       </CardContent>

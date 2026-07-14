@@ -12,8 +12,9 @@ const NAV_ITEMS = [
   { to: "/practice", label: "Practice" },
   { to: "/progress", label: "Progress" },
   { to: "/subscription", label: "Subscription" },
-  { to: "/admin", label: "Admin" },
 ];
+// Only shown (and reachable) for admins.
+const ADMIN_ITEM = { to: "/admin", label: "Admin" };
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -28,12 +29,12 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b">
-        <div className="container flex h-14 items-center justify-between">
+        <div className="container flex h-14 items-center justify-between gap-2">
           <NavLink to="/dashboard" className="font-semibold tracking-tight">
             CodePath AI
           </NavLink>
-          <nav className="flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
+          <nav className="flex items-center gap-1 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {[...NAV_ITEMS, ...(user?.isAdmin ? [ADMIN_ITEM] : [])].map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -49,7 +50,7 @@ export function AppLayout() {
             ))}
             <NavLink
               to="/profile"
-              className="ml-2 max-w-[12rem] truncate text-sm text-muted-foreground hover:text-foreground"
+              className="ml-2 hidden max-w-[12rem] truncate text-sm text-muted-foreground hover:text-foreground sm:block"
               title="Profile"
             >
               {user?.displayName || user?.email || "Profile"}

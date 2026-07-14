@@ -15,6 +15,42 @@ const LEVEL_STYLE: Record<string, string> = {
   strong: "bg-green-500/70",
 };
 
+function TopicRow({ topic, language }: { topic: import("@/features/mastery/hooks").TopicMastery; language: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2 text-sm">
+        {topic.lesson_id ? (
+          <Link
+            to={`/lessons/${topic.lesson_id}`}
+            className="truncate font-medium hover:underline"
+            title="Open the lesson"
+          >
+            {topic.topic}
+          </Link>
+        ) : (
+          <span className="truncate font-medium">{topic.topic}</span>
+        )}
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {topic.correct}/{topic.attempts} · {Math.round(topic.correct_rate * 100)}%
+          </span>
+          <Button asChild variant="ghost" size="sm">
+            <Link to={`/practice?language=${language}&topic=${encodeURIComponent(topic.topic)}`}>
+              Practice
+            </Link>
+          </Button>
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full", LEVEL_STYLE[topic.level])}
+          style={{ width: `${Math.max(6, Math.round(topic.correct_rate * 100))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function MasteryPanel() {
   const { data: tracks = [] } = useTracks();
   const [language, setLanguage] = useState("");
@@ -23,6 +59,9 @@ function MasteryPanel() {
   }, [tracks, language]);
   const { data } = useMastery(language || undefined);
   const topics = data?.topics ?? [];
+  // Course topics (taught in a lesson) vs. topics you drilled yourself.
+  const courseTopics = topics.filter((t) => t.lesson_id);
+  const drillTopics = topics.filter((t) => !t.lesson_id);
 
   if (tracks.length === 0) return null;
   return (
@@ -46,33 +85,32 @@ function MasteryPanel() {
           No history yet — answer quizzes and solve exercises to build your mastery picture.
         </p>
       ) : (
-        <Card>
-          <CardContent className="space-y-3 py-4">
-            {topics.map((t) => (
-              <div key={t.topic} className="space-y-1">
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate font-medium">{t.topic}</span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {t.correct}/{t.attempts} · {Math.round(t.correct_rate * 100)}%
-                    </span>
-                    <Button asChild variant="ghost" size="sm">
-                      <Link to={`/practice?language=${language}&topic=${encodeURIComponent(t.topic)}`}>
-                        Practice
-                      </Link>
-                    </Button>
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={cn("h-full rounded-full", LEVEL_STYLE[t.level])}
-                    style={{ width: `${Math.max(6, Math.round(t.correct_rate * 100))}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <>
+          {courseTopics.length > 0 && (
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-base">Course topics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pb-4">
+                {courseTopics.map((t) => (
+                  <TopicRow key={t.topic} topic={t} language={language} />
+                ))}
+              </CardContent>
+            </Card>
+          )}
+          {drillTopics.length > 0 && (
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-base">My practice topics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pb-4">
+                {drillTopics.map((t) => (
+                  <TopicRow key={t.topic} topic={t} language={language} />
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );

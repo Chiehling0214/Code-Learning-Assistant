@@ -114,6 +114,11 @@ class FakeUserRepository:
         self._by_id[user_id] = updated
         return updated
 
+    def delete(self, user_id: uuid.UUID) -> None:
+        if user_id not in self._by_id:
+            raise LookupError(f"User {user_id} not found")
+        del self._by_id[user_id]
+
 
 class FakeStudentProfileRepository:
     def __init__(self) -> None:
@@ -573,12 +578,20 @@ class FakeAIProvider:
             total_tokens=5,
         )
 
+    def teach_stream(self, request):
+        yield f"Explanation of {request.topic}. "
+        yield request.question
+
     def tutor(self, request) -> AIResponse:
         return AIResponse(
             text=f"Hint for your {request.language} code: {request.code}",
             model=self.model,
             total_tokens=5,
         )
+
+    def tutor_stream(self, request):
+        yield f"Hint for your {request.language} code: "
+        yield request.code
 
     def generate_lesson(self, request) -> GeneratedLesson:
         return GeneratedLesson(

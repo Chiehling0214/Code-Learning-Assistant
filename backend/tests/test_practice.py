@@ -149,6 +149,8 @@ def test_mastery_snapshot_math(client: TestClient, fakes: SimpleNamespace) -> No
     assert (topic["attempts"], topic["correct"]) == (3, 2)
     assert topic["correct_rate"] == 0.67
     assert topic["level"] == "ok"
+    # Course topics link back to the lesson that teaches them.
+    assert topic["lesson_id"] == str(lesson.id)
 
 
 def test_mastery_unknown_language_404(client: TestClient) -> None:

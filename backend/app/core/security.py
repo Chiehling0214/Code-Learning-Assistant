@@ -97,3 +97,21 @@ def verify_token(token: str | None, settings: Settings) -> Identity:
         email=decoded.get("email"),
         is_admin=bool(decoded.get("admin", False)),
     )
+
+def delete_firebase_user(uid: str, settings: Settings) -> bool:
+    """Best-effort deletion of the Firebase Auth account (no-op in stub mode).
+
+    Returns whether the Firebase user was deleted. Failures are logged and
+    swallowed — the app account is the source of truth and is deleted anyway.
+    """
+    if settings.auth_stub_enabled:
+        return False
+    try:
+        from firebase_admin import auth as fb_auth
+
+        _ensure_firebase(settings)
+        fb_auth.delete_user(uid)
+        return True
+    except Exception as exc:  # noqa: BLE001 - best effort only
+        logger.warning("Firebase user deletion failed for %s: %s", uid, exc)
+        return False

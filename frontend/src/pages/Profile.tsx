@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { useSessionStore } from "@/store/session";
 
 interface Profile {
   display_name: string | null;
@@ -16,6 +19,10 @@ const SKILL_LEVELS = ["beginner", "intermediate", "advanced"];
 
 export function ProfilePage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const user = useSessionStore((s) => s.user);
+  const setUser = useSessionStore((s) => s.setUser);
   const { data, isLoading } = useQuery({
     queryKey: ["profile"],
     queryFn: () => apiFetch<Profile>("/me/profile"),
@@ -24,6 +31,25 @@ export function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [skillLevel, setSkillLevel] = useState("beginner");
   const [saved, setSaved] = useState(false);
+
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await apiFetch<void>("/me", { method: "DELETE" });
+      await signOut();
+      navigate("/login", { replace: true });
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Could not delete the account");
+      setDeleting(false);
+    }
+  };
+
+  const emailMatches = confirmEmail.trim().toLowerCase() === (data?.email ?? "").toLowerCase();
 
   useEffect(() => {
     if (data) {
@@ -40,6 +66,8 @@ export function ProfilePage() {
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(["profile"], updated);
+      // Keep the header's name in sync.
+      if (user) setUser({ ...user, displayName: updated.display_name });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
@@ -106,6 +134,49 @@ export function ProfilePage() {
               )}
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Plan</CardTitle>
+          <CardDescription>
+            Limits and usage live on the{" "}
+            <Link to="/subscription" className="text-primary underline">
+              Subscription page
+            </Link>
+            .
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-lg text-destructive">Danger zone</CardTitle>
+          <CardDescription>
+            Deleting your account permanently removes all your data — languages, courses,
+            submissions, quiz attempts, reviews, and chats. This cannot be undone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Type your email (<span className="font-mono">{data?.email}</span>) to confirm:
+          </p>
+          <input
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="you@example.com"
+            value={confirmEmail}
+            onChange={(e) => setConfirmEmail(e.target.value)}
+          />
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={!emailMatches || deleting}
+            onClick={deleteAccount}
+          >
+            {deleting ? "Deleting…" : "Delete my account"}
+          </Button>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
         </CardContent>
       </Card>
     </div>

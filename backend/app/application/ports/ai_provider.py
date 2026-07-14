@@ -11,6 +11,7 @@ prompt injection.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -196,7 +197,15 @@ class GeneratedPlacement:
 class AIProvider(Protocol):
     def teach(self, request: TeachRequest) -> AIResponse: ...
 
+    def teach_stream(self, request: TeachRequest) -> Iterator[str]:
+        """Yield the teacher's answer as text chunks (SSE streaming)."""
+        ...
+
     def tutor(self, request: TutorRequest) -> AIResponse: ...
+
+    def tutor_stream(self, request: TutorRequest) -> Iterator[str]:
+        """Yield the tutor's hint as text chunks (SSE streaming)."""
+        ...
 
     def generate_lesson(self, request: GenerateLessonRequest) -> GeneratedLesson: ...
 

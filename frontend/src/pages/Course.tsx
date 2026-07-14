@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CourseChatPanel } from "@/components/CourseChatPanel";
+import { SkeletonCards } from "@/components/Skeleton";
 import { LessonCountSelect } from "@/components/LessonCountSelect";
 import { useCourse } from "@/features/content/hooks";
 import { useCourseExtension, useExtendCourse } from "@/features/curriculum/hooks";
@@ -18,7 +19,7 @@ export function CoursePage() {
   const [count, setCount] = useState(2);
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading course…</p>;
+    return <SkeletonCards count={4} />;
   }
   if (isError || !course) {
     return <p className="text-destructive">Course not found.</p>;

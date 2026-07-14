@@ -36,6 +36,10 @@ class UserService:
         self._profiles.create(user_id=user.id)
         return user
 
+    def delete_account(self, user_id: uuid.UUID) -> None:
+        """Delete the user; the database cascades all learner data with it."""
+        self._users.delete(user_id)
+
     def get_profile(self, user_id: uuid.UUID) -> StudentProfile:
         """Return the user's profile, creating a default one if absent."""
         profile = self._profiles.get_by_user_id(user_id)
