@@ -1,16 +1,27 @@
-# Manual deploy to the production VM (Settings → Actions → Deploy → Run workflow).
+# Deploy to the production VM.
+#
+# Triggers:
+#   - Automatically after CI (`ci.yml`) succeeds on `main` — SSH into the VM,
+#     git pull, docker compose up -d --build.
+#   - Or manually via Actions → Deploy → Run workflow.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
-#   VM_HOST     — the VM's external IP or domain
-#   VM_USER     — the SSH user (e.g. your GCP username)
+#   VM_HOST     — the VM's external IP (e.g. 35.201.240.19)
+#   VM_USER     — the SSH user on the VM (e.g. beard)
 #   VM_SSH_KEY  — a private key whose public half is in the VM's ~/.ssh/authorized_keys
 name: Deploy
 
 on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
   deploy:
+    # Skip auto-deploy if CI failed (the manual trigger has no workflow_run to check).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Pull latest and restart the stack on the VM
