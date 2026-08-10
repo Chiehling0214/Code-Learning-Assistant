@@ -16,6 +16,25 @@ export interface CourseProgress {
   total: number;
   completed: number;
   percent: number;
+  next_item: LearningItem | null;
+  completed_items: Array<{
+    item_type: "lesson" | "exercise" | "quiz";
+    item_id: string;
+  }>;
+}
+
+export interface LearningItem {
+  item_type: "course" | "lesson" | "exercise" | "quiz";
+  item_id: string;
+  title: string;
+  path: string;
+}
+
+export interface ResumePoint extends LearningItem {
+  course_id: string;
+  course_title: string;
+  course_slug: string;
+  updated_at: string | null;
 }
 
 export interface Progress {
@@ -24,6 +43,7 @@ export interface Progress {
   completed: number;
   percent: number;
   streak: number;
+  resume: ResumePoint | null;
 }
 
 export function useToday() {
@@ -37,6 +57,22 @@ export function useProgress() {
   return useQuery({
     queryKey: ["progress"],
     queryFn: () => apiFetch<Progress>("/progress"),
+  });
+}
+
+export function useRecordLearningActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (item: { item_type: LearningItem["item_type"]; item_id: string }) =>
+      apiFetch<ResumePoint>("/progress/activity", {
+        method: "POST",
+        body: JSON.stringify(item),
+      }),
+    onSuccess: (resume) => {
+      queryClient.setQueryData<Progress>(["progress"], (current) =>
+        current ? { ...current, resume } : current,
+      );
+    },
   });
 }
 

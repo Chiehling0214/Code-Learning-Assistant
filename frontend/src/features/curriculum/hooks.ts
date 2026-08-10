@@ -11,6 +11,44 @@ export interface GenerationJob {
   completed: number;
   course_id: string | null;
   error: string | null;
+  created_at: string;
+  updated_at: string;
+  seen_at: string | null;
+}
+
+export interface GenerationNotifications {
+  unread_count: number;
+  jobs: GenerationJob[];
+}
+
+export function useGenerationNotifications() {
+  return useQuery({
+    queryKey: ["generation-notifications"],
+    queryFn: () => apiFetch<GenerationNotifications>("/me/generation-jobs"),
+    refetchInterval: (query) =>
+      query.state.data?.jobs.some((job) => job.status === "pending" || job.status === "running")
+        ? 3000
+        : 30000,
+  });
+}
+
+export function useMarkGenerationSeen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: string) =>
+      apiFetch<GenerationJob>(`/me/generation-jobs/${jobId}/seen`, { method: "POST" }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<GenerationNotifications>(
+        ["generation-notifications"],
+        (current) => current
+          ? {
+              unread_count: Math.max(0, current.unread_count - 1),
+              jobs: current.jobs.map((job) => (job.id === updated.id ? updated : job)),
+            }
+          : current,
+      );
+    },
+  });
 }
 
 /** Kick off (or re-attach to) curriculum generation for a track. */
@@ -49,9 +87,13 @@ export function useMyCourses() {
 
 /** Reassess a completed track and automatically build its next three courses. */
 export function useAdvanceCurriculum(courseId: string | undefined) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () =>
       apiFetch<GenerationJob | null>(`/courses/${courseId}/advance`, { method: "POST" }),
+    onSuccess: (job) => {
+      if (job) queryClient.invalidateQueries({ queryKey: ["generation", job.track_id] });
+    },
   });
 }
 

@@ -85,6 +85,14 @@ class ReviewService:
     def notebook(self, user_id: uuid.UUID) -> list[ReviewItem]:
         return self._items.list_all(user_id)
 
+    def save_note(
+        self, *, user_id: uuid.UUID, item_id: uuid.UUID, note: str
+    ) -> ReviewItem:
+        item = self._items.get_by_id(item_id)
+        if item is None or item.user_id != user_id:
+            raise LookupError("Review item not found")
+        return self._items.update(item.id, note=note.strip())
+
     def answer(self, *, user_id: uuid.UUID, item_id: uuid.UUID, correct: bool) -> ReviewItem:
         item = self._items.get_by_id(item_id)
         if item is None or item.user_id != user_id:

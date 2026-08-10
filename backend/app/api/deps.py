@@ -20,6 +20,7 @@ from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
 from app.application.services.course_chat_service import CourseChatService
 from app.application.services.curriculum_service import CurriculumService
+from app.application.services.draft_service import DraftService
 from app.application.services.entitlement_service import EntitlementService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
@@ -44,6 +45,7 @@ from app.infrastructure.db.session import get_session
 from app.infrastructure.judge0.client import Judge0Client
 from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyAIInteractionRepository,
+    SqlAlchemyCodeDraftRepository,
     SqlAlchemyCourseChatRepository,
     SqlAlchemyCourseRepository,
     SqlAlchemyExerciseRepository,
@@ -155,6 +157,16 @@ def get_submission_service(session: DbSession) -> SubmissionService:
 SubmissionServiceDep = Annotated[SubmissionService, Depends(get_submission_service)]
 
 
+def get_draft_service(session: DbSession) -> DraftService:
+    return DraftService(
+        SqlAlchemyCodeDraftRepository(session),
+        SqlAlchemyExerciseRepository(session),
+    )
+
+
+DraftServiceDep = Annotated[DraftService, Depends(get_draft_service)]
+
+
 def get_execution_service(settings: SettingsDep) -> ExecutionService:
     return ExecutionService(Judge0Client(settings))
 
@@ -223,6 +235,7 @@ def get_progress_service(session: DbSession) -> ProgressService:
         SqlAlchemyQuizRepository(session),
         SqlAlchemyProgressRepository(session),
         SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyStudentProfileRepository(session),
     )
 
 

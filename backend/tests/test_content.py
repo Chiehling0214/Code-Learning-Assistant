@@ -35,8 +35,9 @@ def test_course_detail_returns_ordered_lessons(admin_client: TestClient) -> None
     lang = _create_language(admin_client)
     course = _create_course(admin_client, lang["id"])
     # Insert lessons out of order; the API should return them sorted.
+    lessons = {}
     for title, slug, order in [("Second", "second", 2), ("First", "first", 1)]:
-        admin_client.post(
+        lessons[slug] = admin_client.post(
             "/api/v1/admin/lessons",
             json={
                 "course_id": course["id"],
@@ -45,7 +46,24 @@ def test_course_detail_returns_ordered_lessons(admin_client: TestClient) -> None
                 "order_index": order,
                 "content": f"# {title}",
             },
-        )
+        ).json()
+    admin_client.post(
+        "/api/v1/admin/exercises",
+        json={
+            "lesson_id": lessons["first"]["id"],
+            "language": "python",
+            "title": "First exercise",
+            "slug": "first-exercise",
+        },
+    )
+    admin_client.post(
+        "/api/v1/admin/quizzes",
+        json={
+            "lesson_id": lessons["first"]["id"],
+            "title": "First quiz",
+            "slug": "first-quiz",
+        },
+    )
 
     res = admin_client.get("/api/v1/courses/python-basics")
     assert res.status_code == 200
@@ -53,6 +71,8 @@ def test_course_detail_returns_ordered_lessons(admin_client: TestClient) -> None
     assert body["slug"] == "python-basics"
     assert [ln["order_index"] for ln in body["lessons"]] == [1, 2]
     assert body["lessons"][0]["title"] == "First"
+    assert body["lessons"][0]["exercises"][0]["title"] == "First exercise"
+    assert body["lessons"][0]["quizzes"][0]["title"] == "First quiz"
 
 
 def test_course_detail_404_when_missing(client: TestClient) -> None:

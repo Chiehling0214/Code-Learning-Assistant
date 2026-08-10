@@ -178,3 +178,31 @@ def test_today_surfaces_due_reviews(client: TestClient, fakes: SimpleNamespace) 
     assert client.get("/api/v1/today").json()["reviews_due"] == 0
     _make_due(fakes)
     assert client.get("/api/v1/today").json()["reviews_due"] == 1
+
+
+def test_notebook_note_is_saved_and_owned(
+    client: TestClient, fakes: SimpleNamespace
+) -> None:
+    quiz, question = _seed_quiz(fakes)
+    wrong = next(choice for choice in question.choices if not choice.is_correct)
+    client.post(
+        f"/api/v1/quizzes/{quiz.id}/submit",
+        json={"answers": {str(question.id): str(wrong.id)}},
+    )
+    item = client.get("/api/v1/me/review/all").json()["items"][0]
+
+    saved = client.patch(
+        f"/api/v1/me/review/{item['id']}/note",
+        json={"note": "Remember to evaluate the expression before choosing."},
+    )
+    assert saved.status_code == 200
+    assert saved.json()["note"].startswith("Remember")
+    assert client.get("/api/v1/me/review/all").json()["items"][0]["note"].startswith(
+        "Remember"
+    )
+
+    missing = client.patch(
+        f"/api/v1/me/review/{uuid.uuid4()}/note",
+        json={"note": "not mine"},
+    )
+    assert missing.status_code == 404

@@ -221,3 +221,23 @@ def test_my_courses_lists_only_owned(client: TestClient, fakes: SimpleNamespace)
     assert res.status_code == 200
     slugs = [c["slug"] for c in res.json()]
     assert slugs == ["mine"]
+
+
+def test_generation_notifications_can_be_marked_seen(
+    client: TestClient, fakes: SimpleNamespace
+) -> None:
+    user_id = uuid.UUID(client.get("/api/v1/me").json()["id"])
+    language, track = _track(fakes, user_id)
+    assert language.slug == "python"
+    job = fakes.jobs.create(track_id=track.id, user_id=user_id, total=3)
+    fakes.jobs.update(job.id, status="done", completed=3)
+
+    notifications = client.get("/api/v1/me/generation-jobs")
+    assert notifications.status_code == 200
+    assert notifications.json()["unread_count"] == 1
+    assert notifications.json()["jobs"][0]["seen_at"] is None
+
+    seen = client.post(f"/api/v1/me/generation-jobs/{job.id}/seen")
+    assert seen.status_code == 200
+    assert seen.json()["seen_at"] is not None
+    assert client.get("/api/v1/me/generation-jobs").json()["unread_count"] == 0

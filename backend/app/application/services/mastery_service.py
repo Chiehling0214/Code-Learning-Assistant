@@ -38,6 +38,17 @@ class TopicMastery:
     lesson_id: uuid.UUID | None = None
 
 
+@dataclass(frozen=True)
+class AbilityAssessment:
+    current_level: str
+    evidence_level: str
+    attempts: int
+    correct: int
+    accuracy: int | None
+    source: str
+    next_evaluation: str
+
+
 def _level_for(rate: float) -> str:
     if rate < _WEAK_BELOW:
         return "weak"
@@ -131,3 +142,44 @@ class MasteryService:
             if entry.level != "strong":
                 return entry.topic
         return snapshot[0].topic if snapshot else None
+
+    def ability_assessment(
+        self, *, user_id: uuid.UUID, language_slug: str
+    ) -> AbilityAssessment:
+        """Explain the evidence behind the system-owned skill level.
+
+        This is intentionally read-only. The official track level is updated by
+        the placement flow and again when a full course cycle is completed.
+        """
+        language = self._languages.get_by_slug(language_slug)
+        if language is None:
+            raise LookupError(f"Language '{language_slug}' not found")
+        track = self._tracks.get_by_user_and_language(user_id, language.id)
+        if track is None:
+            raise LookupError("Language track not found")
+
+        topics = self.snapshot(user_id=user_id, language_slug=language_slug)
+        attempts = sum(topic.attempts for topic in topics)
+        correct = sum(topic.correct for topic in topics)
+        accuracy = round(correct / attempts * 100) if attempts else None
+        if accuracy is None:
+            evidence_level = track.level or "beginner"
+        elif accuracy >= 85:
+            evidence_level = "advanced"
+        elif accuracy >= 60:
+            evidence_level = "intermediate"
+        else:
+            evidence_level = "beginner"
+
+        return AbilityAssessment(
+            current_level=track.level or "beginner",
+            evidence_level=evidence_level,
+            attempts=attempts,
+            correct=correct,
+            accuracy=accuracy,
+            source="course performance" if attempts else "placement assessment",
+            next_evaluation=(
+                "Your level is recalculated after every current course is completed; "
+                "the next three courses use that result."
+            ),
+        )

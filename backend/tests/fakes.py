@@ -17,6 +17,7 @@ from app.application.ports.ai_provider import (
 from app.domain.entities import (
     AIInteraction,
     Choice,
+    CodeDraft,
     Course,
     CourseChatMessage,
     Exercise,
@@ -147,6 +148,33 @@ class FakeStudentProfileRepository:
             skill_level=skill_level,
             created_at=existing.created_at,
             updated_at=_now(),
+            last_course_id=existing.last_course_id,
+            last_item_type=existing.last_item_type,
+            last_item_id=existing.last_item_id,
+            last_learning_at=existing.last_learning_at,
+        )
+        self._by_user[user_id] = updated
+        return updated
+
+    def update_resume(
+        self,
+        user_id: uuid.UUID,
+        *,
+        course_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+    ) -> StudentProfile:
+        existing = self._by_user.get(user_id) or self.create(user_id=user_id)
+        updated = StudentProfile(
+            id=existing.id,
+            user_id=existing.user_id,
+            skill_level=existing.skill_level,
+            created_at=existing.created_at,
+            updated_at=_now(),
+            last_course_id=course_id,
+            last_item_type=item_type,
+            last_item_id=item_id,
+            last_learning_at=_now(),
         )
         self._by_user[user_id] = updated
         return updated
@@ -927,6 +955,10 @@ class FakeGenerationJobRepository:
         items = [j for j in self._items.values() if j.track_id == track_id]
         return max(items, key=lambda j: j.created_at) if items else None
 
+    def list_for_user(self, user_id: uuid.UUID) -> list[GenerationJob]:
+        items = [job for job in self._items.values() if job.user_id == user_id]
+        return sorted(items, key=lambda job: job.created_at, reverse=True)
+
     def create(self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int) -> GenerationJob:
         now = _now()
         job = GenerationJob(
@@ -965,6 +997,27 @@ class FakeGenerationJobRepository:
             error=error if error is not None else e.error,
             created_at=e.created_at,
             updated_at=_now(),
+            seen_at=e.seen_at,
+        )
+        self._items[job_id] = updated
+        return updated
+
+    def mark_seen(self, job_id: uuid.UUID, user_id: uuid.UUID) -> GenerationJob:
+        e = self._items.get(job_id)
+        if e is None or e.user_id != user_id:
+            raise LookupError("Generation job not found")
+        updated = GenerationJob(
+            id=e.id,
+            track_id=e.track_id,
+            user_id=e.user_id,
+            status=e.status,
+            total=e.total,
+            completed=e.completed,
+            course_id=e.course_id,
+            error=e.error,
+            created_at=e.created_at,
+            updated_at=_now(),
+            seen_at=_now(),
         )
         self._items[job_id] = updated
         return updated
@@ -1088,6 +1141,7 @@ class FakeReviewItemRepository:
         lapses: int | None = None,
         passes: int | None = None,
         retired: bool | None = None,
+        note: str | None = None,
     ) -> ReviewItem:
         e = self._items[item_id]
         updated = ReviewItem(
@@ -1103,9 +1157,38 @@ class FakeReviewItemRepository:
             retired=retired if retired is not None else e.retired,
             created_at=e.created_at,
             updated_at=_now(),
+            note=note if note is not None else e.note,
         )
         self._items[item_id] = updated
         return updated
+
+
+class FakeCodeDraftRepository:
+    def __init__(self) -> None:
+        self._items: dict[tuple[uuid.UUID, uuid.UUID], CodeDraft] = {}
+
+    def get(self, user_id: uuid.UUID, exercise_id: uuid.UUID) -> CodeDraft | None:
+        return self._items.get((user_id, exercise_id))
+
+    def upsert(
+        self, *, user_id: uuid.UUID, exercise_id: uuid.UUID, code: str
+    ) -> CodeDraft:
+        key = (user_id, exercise_id)
+        existing = self._items.get(key)
+        now = _now()
+        draft = CodeDraft(
+            id=existing.id if existing else uuid.uuid4(),
+            user_id=user_id,
+            exercise_id=exercise_id,
+            code=code,
+            created_at=existing.created_at if existing else now,
+            updated_at=now,
+        )
+        self._items[key] = draft
+        return draft
+
+    def delete(self, user_id: uuid.UUID, exercise_id: uuid.UUID) -> None:
+        self._items.pop((user_id, exercise_id), None)
 
 
 class FakeCourseChatRepository:

@@ -13,6 +13,7 @@ from typing import Protocol
 
 from app.domain.entities import (
     AIInteraction,
+    CodeDraft,
     Course,
     CourseChatMessage,
     Exercise,
@@ -62,6 +63,15 @@ class StudentProfileRepository(Protocol):
     def create(self, *, user_id: uuid.UUID, skill_level: str = "beginner") -> StudentProfile: ...
 
     def update_skill_level(self, user_id: uuid.UUID, skill_level: str) -> StudentProfile: ...
+
+    def update_resume(
+        self,
+        user_id: uuid.UUID,
+        *,
+        course_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+    ) -> StudentProfile: ...
 
 
 class LanguageRepository(Protocol):
@@ -309,6 +319,8 @@ class GenerationJobRepository(Protocol):
 
     def get_latest_for_track(self, track_id: uuid.UUID) -> GenerationJob | None: ...
 
+    def list_for_user(self, user_id: uuid.UUID) -> list[GenerationJob]: ...
+
     def create(
         self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int
     ) -> GenerationJob: ...
@@ -322,6 +334,8 @@ class GenerationJobRepository(Protocol):
         course_id: uuid.UUID | None = None,
         error: str | None = None,
     ) -> GenerationJob: ...
+
+    def mark_seen(self, job_id: uuid.UUID, user_id: uuid.UUID) -> GenerationJob: ...
 
 
 class ReviewItemRepository(Protocol):
@@ -360,7 +374,18 @@ class ReviewItemRepository(Protocol):
         lapses: int | None = None,
         passes: int | None = None,
         retired: bool | None = None,
+        note: str | None = None,
     ) -> ReviewItem: ...
+
+
+class CodeDraftRepository(Protocol):
+    """Cross-device editor drafts."""
+
+    def get(self, user_id: uuid.UUID, exercise_id: uuid.UUID) -> CodeDraft | None: ...
+
+    def upsert(self, *, user_id: uuid.UUID, exercise_id: uuid.UUID, code: str) -> CodeDraft: ...
+
+    def delete(self, user_id: uuid.UUID, exercise_id: uuid.UUID) -> None: ...
 
 
 class CourseChatRepository(Protocol):

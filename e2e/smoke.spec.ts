@@ -17,9 +17,9 @@ test("learner can sign in and open a course", async ({ page }) => {
 
   // Lands on the dashboard once the session is established.
   await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Good to see you/ })).toBeVisible();
 
   // Open the seeded course.
-  await page.getByText("Python Basics").click();
-  await expect(page.getByRole("heading", { name: "Lessons" })).toBeVisible();
+  await page.getByRole("link", { name: /COURSE 01/i }).click();
+  await expect(page.getByRole("heading", { name: "Course outline" })).toBeVisible();
 });

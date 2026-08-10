@@ -10,9 +10,9 @@ import { useTracks } from "@/features/tracks/hooks";
 import { cn } from "@/lib/utils";
 
 const LEVEL_STYLE: Record<string, string> = {
-  weak: "bg-destructive/70",
-  ok: "bg-amber-500/70",
-  strong: "bg-green-500/70",
+  weak: "bg-[#9a5f5a]",
+  ok: "bg-[#94754c]",
+  strong: "bg-[#557665]",
 };
 
 function TopicRow({ topic, language }: { topic: import("@/features/mastery/hooks").TopicMastery; language: string }) {
@@ -45,6 +45,11 @@ function TopicRow({ topic, language }: { topic: import("@/features/mastery/hooks
         <div
           className={cn("h-full rounded-full", LEVEL_STYLE[topic.level])}
           style={{ width: `${Math.max(6, Math.round(topic.correct_rate * 100))}%` }}
+          role="progressbar"
+          aria-label={`${topic.topic} mastery`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(topic.correct_rate * 100)}
         />
       </div>
     </div>
@@ -59,6 +64,7 @@ function MasteryPanel() {
   }, [tracks, language]);
   const { data } = useMastery(language || undefined);
   const topics = data?.topics ?? [];
+  const assessment = data?.assessment;
   // Course topics (taught in a lesson) vs. topics you drilled yourself.
   const courseTopics = topics.filter((t) => t.lesson_id);
   const drillTopics = topics.filter((t) => !t.lesson_id);
@@ -66,20 +72,66 @@ function MasteryPanel() {
   if (tracks.length === 0) return null;
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Topic mastery</h2>
-        <select
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-        >
-          {tracks.map((t) => (
-            <option key={t.id} value={t.language_slug}>
-              {t.language_name}
-            </option>
-          ))}
-        </select>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Language</span>
+          <select
+            className="min-h-10 rounded-md border border-input bg-background px-2 py-1 text-foreground"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+          >
+            {tracks.map((t) => (
+              <option key={t.id} value={t.language_slug}>
+                {t.language_name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
+      {assessment && (
+        <Card>
+          <CardContent className="space-y-4 py-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">AI-assessed level</p>
+                <p className="mt-1 text-2xl font-semibold capitalize">
+                  {assessment.current_level}
+                </p>
+              </div>
+              <div className="rounded-lg bg-secondary/60 px-3 py-2 text-right">
+                <p className="text-xs text-muted-foreground">Recent performance</p>
+                <p className="mt-0.5 text-sm font-semibold">
+                  {assessment.accuracy === null
+                    ? "Waiting for course answers"
+                    : `${assessment.correct}/${assessment.attempts} · ${assessment.accuracy}%`}
+                </p>
+              </div>
+            </div>
+            {assessment.attempts > 0 && (
+              <p className="text-sm leading-6 text-muted-foreground">
+                Your recent work currently points to{" "}
+                <span className="font-semibold capitalize text-foreground">
+                  {assessment.evidence_level}
+                </span>
+                . This is evidence for the next assessment, not a setting you need to manage.
+              </p>
+            )}
+            <details className="group rounded-lg border bg-background/40 px-3 py-2.5">
+              <summary className="cursor-pointer text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                How the level is decided
+              </summary>
+              <div className="mt-2 space-y-2 text-sm leading-6 text-muted-foreground">
+                <p>
+                  Exercises and quiz questions are counted as evidence. Below 60% maps to
+                  Beginner, 60–84% to Intermediate, and 85% or higher to Advanced.
+                </p>
+                <p>{assessment.next_evaluation}</p>
+              </div>
+            </details>
+          </CardContent>
+        </Card>
+      )}
       {topics.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No history yet — answer quizzes and solve exercises to build your mastery picture.

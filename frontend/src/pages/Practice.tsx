@@ -43,7 +43,7 @@ export function PracticePage() {
         topic: withTopic ? topic.trim() || undefined : undefined,
         difficulty: difficulty || undefined,
       },
-      { onSuccess: (drill) => navigate(`/exercises/${drill.exercise_id}`) },
+      { onSuccess: (drill) => navigate(`/exercises/${drill.exercise_id}?practice=1`) },
     );
   };
 
@@ -125,7 +125,7 @@ export function PracticePage() {
         ) : (
           history.map((drill) => (
             <Card key={drill.exercise_id} className="transition-colors hover:bg-accent">
-              <Link to={`/exercises/${drill.exercise_id}`}>
+              <Link to={`/exercises/${drill.exercise_id}?practice=1`}>
                 <CardContent className="flex items-center justify-between py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{drill.title}</p>

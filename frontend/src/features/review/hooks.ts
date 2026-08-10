@@ -30,6 +30,7 @@ export interface ReviewItem {
   lapses: number;
   passes: number;
   retired: boolean;
+  note: string;
 }
 
 /** Reviews due right now. */
@@ -62,6 +63,22 @@ export function useAnswerReview() {
       // explanation. DueQueue removes it only when they explicitly press Next.
       queryClient.invalidateQueries({ queryKey: ["reviews-all"] });
       queryClient.invalidateQueries({ queryKey: ["today"] });
+    },
+  });
+}
+
+export function useSaveReviewNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, note }: { itemId: string; note: string }) =>
+      apiFetch<ReviewItem>(`/me/review/${itemId}/note`, {
+        method: "PATCH",
+        body: JSON.stringify({ note }),
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<ReviewItem[]>(["reviews-all"], (items = []) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
     },
   });
 }

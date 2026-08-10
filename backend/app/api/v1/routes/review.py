@@ -10,6 +10,7 @@ from app.schemas.review import (
     DueReviewsResponse,
     NotebookResponse,
     ReviewItemResponse,
+    ReviewNoteRequest,
 )
 
 router = APIRouter(tags=["review"])
@@ -25,6 +26,7 @@ def _item(entity) -> ReviewItemResponse:  # noqa: ANN001 - domain entity
         lapses=entity.lapses,
         passes=entity.passes,
         retired=entity.retired,
+        note=entity.note,
     )
 
 
@@ -48,6 +50,24 @@ def answer_review(
 ) -> ReviewItemResponse:
     try:
         item = service.answer(user_id=current_user.id, item_id=item_id, correct=body.correct)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _item(item)
+
+
+@router.patch("/me/review/{item_id}/note", response_model=ReviewItemResponse)
+def save_review_note(
+    item_id: uuid.UUID,
+    body: ReviewNoteRequest,
+    current_user: CurrentDbUser,
+    service: ReviewServiceDep,
+) -> ReviewItemResponse:
+    try:
+        item = service.save_note(
+            user_id=current_user.id,
+            item_id=item_id,
+            note=body.note,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return _item(item)

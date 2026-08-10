@@ -30,6 +30,10 @@ class StudentProfile:
     skill_level: str
     created_at: datetime
     updated_at: datetime
+    last_course_id: uuid.UUID | None = None
+    last_item_type: str | None = None
+    last_item_id: uuid.UUID | None = None
+    last_learning_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -197,6 +201,7 @@ class GenerationJob:
     error: str | None
     created_at: datetime
     updated_at: datetime
+    seen_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -217,6 +222,17 @@ class ReviewItem:
     lapses: int
     passes: int
     retired: bool
+    created_at: datetime
+    updated_at: datetime
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class CodeDraft:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    exercise_id: uuid.UUID
+    code: str
     created_at: datetime
     updated_at: datetime
 

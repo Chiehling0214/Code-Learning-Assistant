@@ -63,11 +63,48 @@ export interface RunResult {
   error: string | null;
 }
 
+export interface ExerciseDraft {
+  exercise_id: string;
+  code: string;
+  updated_at: string;
+}
+
 export function useExercise(id: string | undefined) {
   return useQuery({
     queryKey: ["exercise", id],
     queryFn: () => apiFetch<Exercise>(`/exercises/${id}`),
     enabled: Boolean(id),
+  });
+}
+
+export function useExerciseDraft(exerciseId: string | undefined) {
+  return useQuery({
+    queryKey: ["exercise-draft", exerciseId],
+    queryFn: () => apiFetch<ExerciseDraft | undefined>(`/exercises/${exerciseId}/draft`),
+    enabled: Boolean(exerciseId),
+    staleTime: Infinity,
+  });
+}
+
+export function useSaveExerciseDraft(exerciseId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) =>
+      apiFetch<ExerciseDraft>(`/exercises/${exerciseId}/draft`, {
+        method: "PUT",
+        body: JSON.stringify({ code }),
+      }),
+    onSuccess: (draft) => {
+      queryClient.setQueryData(["exercise-draft", exerciseId], draft);
+    },
+  });
+}
+
+export function useDeleteExerciseDraft(exerciseId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/exercises/${exerciseId}/draft`, { method: "DELETE" }),
+    onSuccess: () => queryClient.setQueryData(["exercise-draft", exerciseId], undefined),
   });
 }
 

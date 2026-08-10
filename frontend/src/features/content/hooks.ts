@@ -21,6 +21,14 @@ export interface LessonSummary {
   title: string;
   slug: string;
   order_index: number;
+  exercises: CourseItemSummary[];
+  quizzes: CourseItemSummary[];
+}
+
+export interface CourseItemSummary {
+  id: string;
+  title: string;
+  slug: string;
 }
 
 export interface CourseDetail extends Course {

@@ -68,6 +68,14 @@ class StudentProfile(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
     )
     skill_level: Mapped[str] = mapped_column(String(32), default="beginner", nullable=False)
+    last_course_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="SET NULL"), nullable=True
+    )
+    last_item_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    last_item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    last_learning_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     user: Mapped[User] = relationship(back_populates="profile")
 
@@ -362,6 +370,8 @@ class GenerationJob(TimestampMixin, Base):
     completed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     course_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Persist notification read state so it stays consistent across devices.
+    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -390,6 +400,25 @@ class ReviewItem(TimestampMixin, Base):
     lapses: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     passes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     retired: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    note: Mapped[str] = mapped_column(Text, default="", server_default="", nullable=False)
+
+
+class CodeDraft(TimestampMixin, Base):
+    """The latest editor draft for one learner and exercise."""
+
+    __tablename__ = "code_drafts"
+    __table_args__ = (
+        UniqueConstraint("user_id", "exercise_id", name="uq_code_drafts_user_exercise"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    exercise_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("exercises.id", ondelete="CASCADE"), index=True
+    )
+    code: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
 
 # --------------------------------------------------------------------------- #

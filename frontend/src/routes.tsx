@@ -8,6 +8,7 @@ import { CodingExercisePage } from "@/pages/CodingExercise";
 import { CoursePage } from "@/pages/Course";
 import { DashboardPage } from "@/pages/Dashboard";
 import { LandingPage } from "@/pages/Landing";
+import { LibraryPage } from "@/pages/Library";
 import { LanguagesPage } from "@/pages/Languages";
 import { LessonPage } from "@/pages/Lesson";
 import { LoginPage } from "@/pages/Login";
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { path: "/dashboard", element: <DashboardPage /> },
+              { path: "/library", element: <LibraryPage /> },
               { path: "/today", element: <TodayPage /> },
               { path: "/courses/:slug", element: <CoursePage /> },
               { path: "/lessons/:id", element: <LessonPage /> },

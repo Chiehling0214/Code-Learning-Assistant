@@ -26,6 +26,7 @@ from app.schemas.curriculum import (
     ExtendResponse,
     ExtensionStatusResponse,
     GenerationJobResponse,
+    GenerationNotificationsResponse,
 )
 
 router = APIRouter(tags=["curriculum"])
@@ -47,6 +48,9 @@ def _job_response(job) -> GenerationJobResponse:  # noqa: ANN001 - domain entity
         completed=job.completed,
         course_id=job.course_id,
         error=job.error,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+        seen_at=job.seen_at,
     )
 
 
@@ -81,6 +85,34 @@ def get_generation(
 ) -> GenerationJobResponse:
     try:
         job = service.get_status(user_id=current_user.id, track_id=track_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _job_response(job)
+
+
+@router.get("/me/generation-jobs", response_model=GenerationNotificationsResponse)
+def generation_notifications(
+    current_user: CurrentDbUser,
+    service: CurriculumServiceDep,
+) -> GenerationNotificationsResponse:
+    jobs = service.notifications(current_user.id)
+    unread = sum(
+        1 for job in jobs if job.status in {"done", "error"} and job.seen_at is None
+    )
+    return GenerationNotificationsResponse(
+        unread_count=unread,
+        jobs=[_job_response(job) for job in jobs],
+    )
+
+
+@router.post("/me/generation-jobs/{job_id}/seen", response_model=GenerationJobResponse)
+def mark_generation_seen(
+    job_id: uuid.UUID,
+    current_user: CurrentDbUser,
+    service: CurriculumServiceDep,
+) -> GenerationJobResponse:
+    try:
+        job = service.mark_notification_seen(user_id=current_user.id, job_id=job_id)
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return _job_response(job)

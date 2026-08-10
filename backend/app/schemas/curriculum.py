@@ -16,6 +16,14 @@ class GenerationJobResponse(BaseModel):
     completed: int
     course_id: uuid.UUID | None = None
     error: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    seen_at: datetime | None = None
+
+
+class GenerationNotificationsResponse(BaseModel):
+    unread_count: int
+    jobs: list[GenerationJobResponse]
 
 
 # ----- Continuous learning: extend + in-course chat (Sprint 12) -----

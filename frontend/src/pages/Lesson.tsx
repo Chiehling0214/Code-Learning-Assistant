@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { AiTeacherPanel } from "@/components/AiTeacherPanel";
+import { Markdown } from "@/components/Markdown";
 import { SkeletonCards } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,9 +10,7 @@ import { useLesson } from "@/features/content/hooks";
 import { useMarkLessonComplete } from "@/features/progress/hooks";
 import { useLessonExercises } from "@/features/exercises/hooks";
 import { useLessonQuizzes } from "@/features/quizzes/hooks";
-import { renderMarkdown } from "@/lib/markdown";
-import { rememberRecentCourse } from "@/lib/recent-course";
-import { useSessionStore } from "@/store/session";
+import { useRecordLearningActivity } from "@/features/progress/hooks";
 
 export function LessonPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,13 +18,15 @@ export function LessonPage() {
   const { data: exercises = [] } = useLessonExercises(id);
   const { data: quizzes = [] } = useLessonQuizzes(id);
   const markComplete = useMarkLessonComplete();
-  const userId = useSessionStore((state) => state.user?.id);
-
-  const html = useMemo(() => (lesson ? renderMarkdown(lesson.content) : ""), [lesson]);
+  const { mutate: recordActivity } = useRecordLearningActivity();
+  const recordedActivity = useRef<string>();
 
   useEffect(() => {
-    rememberRecentCourse(userId, lesson?.course_id);
-  }, [lesson?.course_id, userId]);
+    if (lesson?.id && recordedActivity.current !== lesson.id) {
+      recordedActivity.current = lesson.id;
+      recordActivity({ item_type: "lesson", item_id: lesson.id });
+    }
+  }, [lesson?.id, recordActivity]);
 
   if (isLoading) {
     return <SkeletonCards count={3} />;
@@ -42,9 +43,9 @@ export function LessonPage() {
       </header>
       <Card className="border-0 shadow-none sm:border sm:shadow-card">
         <CardContent className="px-0 py-2 sm:px-8 sm:py-8">
-          <div
-            className="markdown-content prose-sm max-w-none text-[15px] leading-7 [&_h1]:mb-4 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold [&_li]:my-1 [&_p]:my-4"
-            dangerouslySetInnerHTML={{ __html: html }}
+          <Markdown
+            content={lesson.content}
+            className="text-[15px] leading-7 [&_h1]:mb-4 [&_h1]:text-2xl [&_h1]:font-semibold [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold [&_li]:my-1 [&_p]:my-4"
           />
         </CardContent>
       </Card>

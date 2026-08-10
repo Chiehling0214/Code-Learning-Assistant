@@ -16,6 +16,7 @@ from app.application.ports.ai_provider import (
 from app.application.services.ai_usage import RateLimitError
 from app.application.services.entitlement_service import UpgradeRequiredError
 from app.schemas.practice import (
+    AbilityAssessmentResponse,
     MasteryResponse,
     PracticeExerciseResponse,
     PracticeGenerateRequest,
@@ -98,6 +99,10 @@ def get_mastery(
 ) -> MasteryResponse:
     try:
         topics = service.snapshot(user_id=current_user.id, language_slug=language)
+        assessment = service.ability_assessment(
+            user_id=current_user.id,
+            language_slug=language,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return MasteryResponse(
@@ -113,4 +118,13 @@ def get_mastery(
             )
             for t in topics
         ],
+        assessment=AbilityAssessmentResponse(
+            current_level=assessment.current_level,
+            evidence_level=assessment.evidence_level,
+            attempts=assessment.attempts,
+            correct=assessment.correct,
+            accuracy=assessment.accuracy,
+            source=assessment.source,
+            next_evaluation=assessment.next_evaluation,
+        ),
     )

@@ -19,6 +19,7 @@ from app.api.deps import (
     get_course_chat_service,
     get_current_db_user,
     get_curriculum_service,
+    get_draft_service,
     get_entitlement_service,
     get_execution_service,
     get_exercise_service,
@@ -42,6 +43,7 @@ from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.content_service import ContentService
 from app.application.services.course_chat_service import CourseChatService
 from app.application.services.curriculum_service import CurriculumService
+from app.application.services.draft_service import DraftService
 from app.application.services.entitlement_service import EntitlementService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
@@ -65,6 +67,7 @@ from fastapi.testclient import TestClient
 from tests.fakes import (
     FakeAIInteractionRepository,
     FakeAIProvider,
+    FakeCodeDraftRepository,
     FakeCodeRunner,
     FakeCourseChatRepository,
     FakeCourseRepository,
@@ -107,6 +110,7 @@ def fakes() -> SimpleNamespace:
         profiles=FakeStudentProfileRepository(),
         languages=FakeLanguageRepository(),
         courses=FakeCourseRepository(),
+        drafts=FakeCodeDraftRepository(),
         lessons=FakeLessonRepository(),
         exercises=FakeExerciseRepository(),
         submissions=FakeSubmissionRepository(),
@@ -139,6 +143,9 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
     )
     app.dependency_overrides[get_submission_service] = lambda: SubmissionService(
         fakes.submissions, fakes.exercises
+    )
+    app.dependency_overrides[get_draft_service] = lambda: DraftService(
+        fakes.drafts, fakes.exercises
     )
     app.dependency_overrides[get_execution_service] = lambda: ExecutionService(fakes.runner)
     app.dependency_overrides[get_review_service] = lambda: ReviewService(fakes.reviews)
@@ -174,7 +181,13 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         ReviewService(fakes.reviews),
     )
     app.dependency_overrides[get_progress_service] = lambda: ProgressService(
-        fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress, fakes.tracks
+        fakes.courses,
+        fakes.lessons,
+        fakes.exercises,
+        fakes.quizzes,
+        fakes.progress,
+        fakes.tracks,
+        fakes.profiles,
     )
     app.dependency_overrides[get_recommendation_service] = lambda: RecommendationService(
         fakes.courses, fakes.lessons, fakes.exercises, fakes.quizzes, fakes.progress, fakes.tracks

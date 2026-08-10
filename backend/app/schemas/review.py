@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ReviewItemResponse(BaseModel):
@@ -18,6 +18,7 @@ class ReviewItemResponse(BaseModel):
     lapses: int
     passes: int
     retired: bool
+    note: str
 
 
 class DueReviewsResponse(BaseModel):
@@ -31,3 +32,7 @@ class NotebookResponse(BaseModel):
 
 class AnswerRequest(BaseModel):
     correct: bool
+
+
+class ReviewNoteRequest(BaseModel):
+    note: str = Field(max_length=2_000)

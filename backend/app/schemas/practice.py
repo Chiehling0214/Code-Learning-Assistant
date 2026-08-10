@@ -39,6 +39,17 @@ class TopicMasteryResponse(BaseModel):
     lesson_id: uuid.UUID | None = None
 
 
+class AbilityAssessmentResponse(BaseModel):
+    current_level: str
+    evidence_level: str
+    attempts: int
+    correct: int
+    accuracy: int | None
+    source: str
+    next_evaluation: str
+
+
 class MasteryResponse(BaseModel):
     language: str
     topics: list[TopicMasteryResponse]
+    assessment: AbilityAssessmentResponse

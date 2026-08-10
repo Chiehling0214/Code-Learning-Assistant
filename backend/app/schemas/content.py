@@ -25,11 +25,19 @@ class CourseResponse(BaseModel):
     description: str | None = None
 
 
+class CourseItemSummary(BaseModel):
+    id: uuid.UUID
+    title: str
+    slug: str
+
+
 class LessonSummary(BaseModel):
     id: uuid.UUID
     title: str
     slug: str
     order_index: int
+    exercises: list[CourseItemSummary] = Field(default_factory=list)
+    quizzes: list[CourseItemSummary] = Field(default_factory=list)
 
 
 class CourseDetailResponse(CourseResponse):

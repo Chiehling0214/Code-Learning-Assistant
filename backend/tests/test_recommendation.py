@@ -145,6 +145,28 @@ def test_progress_aggregates(client: TestClient, fakes: SimpleNamespace) -> None
     assert body["streak"] == 1
     course_row = next(c for c in body["courses"] if c["slug"] == course.slug)
     assert course_row["percent"] == 67  # round(2/3 * 100)
+    assert course_row["next_item"]["item_type"] == "exercise"
+    assert {item["item_type"] for item in course_row["completed_items"]} == {
+        "lesson",
+        "quiz",
+    }
+
+
+def test_learning_activity_sets_precise_resume(
+    client: TestClient, fakes: SimpleNamespace
+) -> None:
+    course, lesson, _, _ = _seed(fakes)
+
+    response = client.post(
+        "/api/v1/progress/activity",
+        json={"item_type": "lesson", "item_id": str(lesson.id)},
+    )
+
+    assert response.status_code == 200
+    resume = client.get("/api/v1/progress").json()["resume"]
+    assert resume["course_id"] == str(course.id)
+    assert resume["item_id"] == str(lesson.id)
+    assert resume["path"] == f"/lessons/{lesson.id}"
 
 
 # ----- grading -> progress helper -----

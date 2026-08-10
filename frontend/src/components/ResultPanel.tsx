@@ -1,3 +1,5 @@
+import { CheckCircle2, LockKeyhole, XCircle } from "lucide-react";
+
 import type { GradingResult, RunResult, SubmissionStatus } from "@/features/exercises/hooks";
 
 function Console({ label, text }: { label: string; text: string }) {
@@ -6,6 +8,18 @@ function Console({ label, text }: { label: string; text: string }) {
     <div className="space-y-1">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">{text}</pre>
+    </div>
+  );
+}
+
+function TestValue({ label, value }: { label: string; value: string | undefined }) {
+  if (value === undefined) return null;
+  return (
+    <div className="min-w-0 space-y-1">
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <pre className="max-h-32 overflow-auto rounded-md bg-muted/70 p-2 text-xs leading-5">
+        {value || "(empty)"}
+      </pre>
     </div>
   );
 }
@@ -67,28 +81,49 @@ export function GradingPanel({
       <Console label="compile output" text={result?.compile_output ?? ""} />
 
       {result?.tests && result.tests.length > 0 && (
-        <ul className="space-y-2">
-          {result.tests.map((test) => (
-            <li key={test.index} className="rounded-md border px-3 py-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span>Test {test.index + 1}</span>
-                <span className={test.passed ? "text-emerald-600" : "text-destructive"}>
-                  {test.passed ? "passed" : (test.status ?? "failed")}
-                </span>
-              </div>
-              {test.expected !== undefined && !test.passed && (
-                <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <div>
-                    expected: <span className="font-mono">{test.expected}</span>
-                  </div>
-                  <div>
-                    got: <span className="font-mono">{test.actual}</span>
-                  </div>
+        <div className="space-y-3">
+          {result.tests.map((test) => {
+            const hidden = test.input === undefined && test.expected === undefined;
+            return (
+              <div key={test.index} className="rounded-lg border p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-2 font-medium">
+                    {test.passed ? (
+                      <CheckCircle2 className="size-4 text-emerald-600" />
+                    ) : (
+                      <XCircle className="size-4 text-destructive" />
+                    )}
+                    Test {test.index + 1}
+                    {hidden && (
+                      <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                        <LockKeyhole className="size-3" /> Hidden
+                      </span>
+                    )}
+                  </span>
+                  <span className={test.passed ? "text-emerald-600" : "text-destructive"}>
+                    {test.passed ? "Passed" : (test.status ?? "Failed")}
+                  </span>
                 </div>
-              )}
-            </li>
-          ))}
-        </ul>
+                {hidden ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Input and expected output stay hidden for this grading case.
+                  </p>
+                ) : (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <TestValue label="Input" value={test.input} />
+                    <TestValue label="Expected" value={test.expected} />
+                    <TestValue label="Your output" value={test.actual} />
+                  </div>
+                )}
+                {test.stderr && (
+                  <div className="mt-3">
+                    <TestValue label="Runtime error" value={test.stderr} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

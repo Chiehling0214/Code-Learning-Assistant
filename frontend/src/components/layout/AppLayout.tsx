@@ -7,6 +7,7 @@ import {
   CreditCard,
   Dumbbell,
   LayoutDashboard,
+  LibraryBig,
   LogOut,
   RotateCcw,
   ShieldCheck,
@@ -14,12 +15,14 @@ import {
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { GenerationNotifications } from "@/components/GenerationNotifications";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store/session";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { to: "/library", label: "Library", icon: LibraryBig },
   { to: "/today", label: "Today", icon: CalendarCheck2 },
   { to: "/review", label: "Review", icon: RotateCcw },
   { to: "/practice", label: "Practice", icon: Dumbbell },
@@ -39,7 +42,9 @@ function Wordmark() {
       <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <Code2 className="size-4" strokeWidth={2.2} />
       </span>
-      <span className="text-sm leading-tight">Code Learning Assistant</span>
+      <span className="hidden text-sm leading-tight min-[380px]:inline lg:inline">
+        Code Learning Assistant
+      </span>
     </NavLink>
   );
 }
@@ -65,6 +70,12 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+      <a
+        href="#main-content"
+        className="fixed -top-20 left-3 z-[100] rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground focus:top-3"
+      >
+        Skip to content
+      </a>
       <aside className="sticky top-0 hidden h-screen flex-col border-r bg-card px-4 py-5 lg:flex">
         <div className="px-2 pb-8">
           <Wordmark />
@@ -112,10 +123,18 @@ export function AppLayout() {
               <span className="block truncate text-xs text-muted-foreground">{user?.email}</span>
             </span>
           </NavLink>
-          <Button variant="ghost" size="sm" className="mt-1 w-full justify-start text-muted-foreground" onClick={handleSignOut}>
-            <LogOut className="size-4" />
-            Sign out
-          </Button>
+          <div className="mt-1 flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-w-0 flex-1 justify-start text-muted-foreground"
+              onClick={handleSignOut}
+            >
+              <LogOut className="size-4" />
+              Sign out
+            </Button>
+            <GenerationNotifications align="left" side="top" />
+          </div>
         </div>
       </aside>
 
@@ -123,31 +142,49 @@ export function AppLayout() {
         <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur lg:hidden">
           <div className="flex h-14 items-center justify-between px-4">
             <Wordmark />
-            <NavLink to="/profile" aria-label="Open profile" className="rounded-full p-1.5 text-muted-foreground hover:bg-accent">
-              <CircleUserRound className="size-5" />
-            </NavLink>
+            <div className="flex items-center gap-1">
+              <GenerationNotifications />
+              <NavLink
+                to="/profile"
+                aria-label="Open profile"
+                className="flex size-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <CircleUserRound className="size-5" />
+              </NavLink>
+            </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto px-3 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {items.map((item) => (
+        </header>
+
+        <main
+          id="main-content"
+          className="mx-auto w-full max-w-7xl px-4 py-7 pb-24 sm:px-6 sm:py-10 sm:pb-24 lg:px-10 lg:pb-10"
+        >
+          <Outlet />
+        </main>
+
+        <nav
+          aria-label="Primary navigation"
+          className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto border-t bg-card px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-3px_16px_rgb(29_39_55_/_0.08)] lg:hidden"
+        >
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium",
+                    "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-0.5 text-[0.65rem] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive ? "bg-primary/10 text-primary" : "text-muted-foreground",
                   )
                 }
               >
-                {item.label}
+                <Icon className="size-[18px]" strokeWidth={1.9} aria-hidden="true" />
+                <span>{item.label}</span>
               </NavLink>
-            ))}
-          </nav>
-        </header>
-
-        <main className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-10">
-          <Outlet />
-        </main>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );

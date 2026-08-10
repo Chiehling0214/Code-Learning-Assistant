@@ -110,6 +110,15 @@ class CurriculumService:
             raise LookupError("No generation job for this track")
         return job
 
+    def notifications(self, user_id: uuid.UUID) -> list[GenerationJob]:
+        """Recent generation activity shown in the global notification menu."""
+        return self._jobs.list_for_user(user_id)[:20]
+
+    def mark_notification_seen(
+        self, *, user_id: uuid.UUID, job_id: uuid.UUID
+    ) -> GenerationJob:
+        return self._jobs.mark_seen(job_id, user_id)
+
     # ----- continuous learning: extend an existing course (Sprint 12) -----
 
     def get_owned_course(self, *, course_id: uuid.UUID, user_id: uuid.UUID) -> Course:

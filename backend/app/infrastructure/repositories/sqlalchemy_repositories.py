@@ -7,13 +7,14 @@ Write methods ``add``/``flush``/``refresh`` only — the request-scoped session
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.entities import AIInteraction as AIInteractionEntity
 from app.domain.entities import Choice as ChoiceEntity
+from app.domain.entities import CodeDraft as CodeDraftEntity
 from app.domain.entities import Course as CourseEntity
 from app.domain.entities import CourseChatMessage as CourseChatMessageEntity
 from app.domain.entities import Exercise as ExerciseEntity
@@ -33,6 +34,7 @@ from app.domain.entities import Subscription as SubscriptionEntity
 from app.domain.entities import User as UserEntity
 from app.infrastructure.models.models import AIInteraction as AIInteractionModel
 from app.infrastructure.models.models import Choice as ChoiceModel
+from app.infrastructure.models.models import CodeDraft as CodeDraftModel
 from app.infrastructure.models.models import Course as CourseModel
 from app.infrastructure.models.models import CourseChatMessage as CourseChatMessageModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
@@ -71,6 +73,10 @@ def _to_profile(model: ProfileModel) -> ProfileEntity:
         skill_level=model.skill_level,
         created_at=model.created_at,
         updated_at=model.updated_at,
+        last_course_id=model.last_course_id,
+        last_item_type=model.last_item_type,
+        last_item_id=model.last_item_id,
+        last_learning_at=model.last_learning_at,
     )
 
 
@@ -150,6 +156,27 @@ class SqlAlchemyStudentProfileRepository:
         if model is None:
             raise LookupError(f"Profile for user {user_id} not found")
         model.skill_level = skill_level
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_profile(model)
+
+    def update_resume(
+        self,
+        user_id: uuid.UUID,
+        *,
+        course_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+    ) -> ProfileEntity:
+        stmt = select(ProfileModel).where(ProfileModel.user_id == user_id)
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            model = ProfileModel(user_id=user_id, skill_level="beginner")
+            self._session.add(model)
+        model.last_course_id = course_id
+        model.last_item_type = item_type
+        model.last_item_id = item_id
+        model.last_learning_at = datetime.now(UTC)
         self._session.flush()
         self._session.refresh(model)
         return _to_profile(model)
@@ -974,6 +1001,7 @@ def _to_job(model: GenerationJobModel) -> GenerationJobEntity:
         error=model.error,
         created_at=model.created_at,
         updated_at=model.updated_at,
+        seen_at=model.seen_at,
     )
 
 
@@ -995,6 +1023,14 @@ class SqlAlchemyGenerationJobRepository:
         )
         model = self._session.scalars(stmt).first()
         return _to_job(model) if model else None
+
+    def list_for_user(self, user_id: uuid.UUID) -> list[GenerationJobEntity]:
+        stmt = (
+            select(GenerationJobModel)
+            .where(GenerationJobModel.user_id == user_id)
+            .order_by(GenerationJobModel.created_at.desc())
+        )
+        return [_to_job(model) for model in self._session.scalars(stmt).all()]
 
     def create(
         self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int
@@ -1029,6 +1065,14 @@ class SqlAlchemyGenerationJobRepository:
         self._session.refresh(model)
         return _to_job(model)
 
+    def mark_seen(self, job_id: uuid.UUID, user_id: uuid.UUID) -> GenerationJobEntity:
+        model = self._session.get(GenerationJobModel, job_id)
+        if model is None or model.user_id != user_id:
+            raise LookupError("Generation job not found")
+        model.seen_at = datetime.now(UTC)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_job(model)
 
 def _to_review(model: ReviewItemModel) -> ReviewItemEntity:
     return ReviewItemEntity(
@@ -1044,6 +1088,7 @@ def _to_review(model: ReviewItemModel) -> ReviewItemEntity:
         retired=model.retired,
         created_at=model.created_at,
         updated_at=model.updated_at,
+        note=model.note,
     )
 
 
@@ -1127,6 +1172,7 @@ class SqlAlchemyReviewItemRepository:
         lapses: int | None = None,
         passes: int | None = None,
         retired: bool | None = None,
+        note: str | None = None,
     ) -> ReviewItemEntity:
         model = self._session.get(ReviewItemModel, item_id)
         if model is None:
@@ -1143,9 +1189,62 @@ class SqlAlchemyReviewItemRepository:
             model.passes = passes
         if retired is not None:
             model.retired = retired
+        if note is not None:
+            model.note = note
         self._session.flush()
         self._session.refresh(model)
         return _to_review(model)
+
+
+def _to_draft(model: CodeDraftModel) -> CodeDraftEntity:
+    return CodeDraftEntity(
+        id=model.id,
+        user_id=model.user_id,
+        exercise_id=model.exercise_id,
+        code=model.code,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyCodeDraftRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get(self, user_id: uuid.UUID, exercise_id: uuid.UUID) -> CodeDraftEntity | None:
+        stmt = select(CodeDraftModel).where(
+            CodeDraftModel.user_id == user_id,
+            CodeDraftModel.exercise_id == exercise_id,
+        )
+        model = self._session.scalars(stmt).first()
+        return _to_draft(model) if model else None
+
+    def upsert(
+        self, *, user_id: uuid.UUID, exercise_id: uuid.UUID, code: str
+    ) -> CodeDraftEntity:
+        stmt = select(CodeDraftModel).where(
+            CodeDraftModel.user_id == user_id,
+            CodeDraftModel.exercise_id == exercise_id,
+        )
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            model = CodeDraftModel(user_id=user_id, exercise_id=exercise_id, code=code)
+            self._session.add(model)
+        else:
+            model.code = code
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_draft(model)
+
+    def delete(self, user_id: uuid.UUID, exercise_id: uuid.UUID) -> None:
+        stmt = select(CodeDraftModel).where(
+            CodeDraftModel.user_id == user_id,
+            CodeDraftModel.exercise_id == exercise_id,
+        )
+        model = self._session.scalars(stmt).first()
+        if model is not None:
+            self._session.delete(model)
+            self._session.flush()
 
 
 def _to_chat(model: CourseChatMessageModel) -> CourseChatMessageEntity:

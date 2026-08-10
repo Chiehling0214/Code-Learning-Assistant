@@ -8,6 +8,7 @@ from app.api.v1.routes import (
     ai,
     courses,
     curriculum,
+    drafts,
     entitlements,
     exercises,
     health,
@@ -47,6 +48,7 @@ api_router.include_router(webhooks.router)
 api_router.include_router(tracks.router)
 api_router.include_router(placement.router)
 api_router.include_router(curriculum.router)
+api_router.include_router(drafts.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(admin_review.router)
 api_router.include_router(review.router)

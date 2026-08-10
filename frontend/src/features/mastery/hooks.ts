@@ -12,14 +12,28 @@ export interface TopicMastery {
   lesson_id: string | null;
 }
 
+export interface AbilityAssessment {
+  current_level: "beginner" | "intermediate" | "advanced";
+  evidence_level: "beginner" | "intermediate" | "advanced";
+  attempts: number;
+  correct: number;
+  accuracy: number | null;
+  source: string;
+  next_evaluation: string;
+}
+
+export interface MasterySnapshot {
+  language: string;
+  topics: TopicMastery[];
+  assessment: AbilityAssessment;
+}
+
 /** Per-topic mastery for one of the learner's languages (weakest first). */
 export function useMastery(language: string | undefined) {
   return useQuery({
     queryKey: ["mastery", language],
     queryFn: () =>
-      apiFetch<{ language: string; topics: TopicMastery[] }>(
-        `/me/mastery?language=${language}`,
-      ),
+      apiFetch<MasterySnapshot>(`/me/mastery?language=${language}`),
     enabled: Boolean(language),
   });
 }

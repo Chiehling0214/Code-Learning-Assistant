@@ -3,7 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "test": "playwright test",
+    "test": "playwright test visual.spec.ts",
+    "test:smoke": "playwright test smoke.spec.ts",
+    "test:visual": "playwright test visual.spec.ts",
+    "test:update": "playwright test visual.spec.ts --update-snapshots",
     "install-browsers": "playwright install --with-deps chromium"
   },
   "devDependencies": {

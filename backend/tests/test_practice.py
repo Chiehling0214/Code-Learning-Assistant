@@ -151,6 +151,13 @@ def test_mastery_snapshot_math(client: TestClient, fakes: SimpleNamespace) -> No
     assert topic["level"] == "ok"
     # Course topics link back to the lesson that teaches them.
     assert topic["lesson_id"] == str(lesson.id)
+    # The level remains system-owned, while current evidence is explained.
+    assessment = body["assessment"]
+    assert assessment["current_level"] == "intermediate"
+    assert assessment["evidence_level"] == "intermediate"
+    assert assessment["accuracy"] == 67
+    assert assessment["attempts"] == 3
+    assert "recalculated" in assessment["next_evaluation"]
 
 
 def test_mastery_unknown_language_404(client: TestClient) -> None:

@@ -132,15 +132,19 @@ export function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Plan</CardTitle>
+          <CardTitle className="text-lg">Learning settings</CardTitle>
           <CardDescription>
-            Limits and usage live on the{" "}
-            <Link to="/subscription" className="text-primary underline">
-              Subscription page
-            </Link>
-            .
+            Manage the languages you’re learning and check your current plan.
           </CardDescription>
         </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2">
+          <Button asChild variant="outline">
+            <Link to="/languages">Manage languages</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/subscription">Plan &amp; usage</Link>
+          </Button>
+        </CardContent>
       </Card>
 
       <Card className="border-destructive/40">

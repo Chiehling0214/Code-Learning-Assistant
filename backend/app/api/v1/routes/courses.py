@@ -2,8 +2,13 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import ContentServiceDep
-from app.schemas.content import CourseDetailResponse, CourseResponse, LessonSummary
+from app.api.deps import ContentServiceDep, ExerciseServiceDep, QuizServiceDep
+from app.schemas.content import (
+    CourseDetailResponse,
+    CourseItemSummary,
+    CourseResponse,
+    LessonSummary,
+)
 
 router = APIRouter(tags=["content"])
 
@@ -23,7 +28,12 @@ def list_courses(service: ContentServiceDep) -> list[CourseResponse]:
 
 
 @router.get("/courses/{slug}", response_model=CourseDetailResponse)
-def get_course(slug: str, service: ContentServiceDep) -> CourseDetailResponse:
+def get_course(
+    slug: str,
+    service: ContentServiceDep,
+    exercises: ExerciseServiceDep,
+    quizzes: QuizServiceDep,
+) -> CourseDetailResponse:
     try:
         course = service.get_course_by_slug(slug)
     except LookupError as exc:
@@ -37,7 +47,20 @@ def get_course(slug: str, service: ContentServiceDep) -> CourseDetailResponse:
         slug=course.slug,
         description=course.description,
         lessons=[
-            LessonSummary(id=ln.id, title=ln.title, slug=ln.slug, order_index=ln.order_index)
+            LessonSummary(
+                id=ln.id,
+                title=ln.title,
+                slug=ln.slug,
+                order_index=ln.order_index,
+                exercises=[
+                    CourseItemSummary(id=item.id, title=item.title, slug=item.slug)
+                    for item in exercises.list_for_lesson(ln.id)
+                ],
+                quizzes=[
+                    CourseItemSummary(id=item.id, title=item.title, slug=item.slug)
+                    for item in quizzes.list_for_lesson(ln.id)
+                ],
+            )
             for ln in lessons
         ],
     )

@@ -2,18 +2,21 @@ import { ArrowRight, BookOpen, CalendarCheck2, Dumbbell } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { SkeletonCards } from "@/components/Skeleton";
+import { CourseCard } from "@/components/CourseCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useMyCourses } from "@/features/curriculum/hooks";
-import { getRecentCourseId } from "@/lib/recent-course";
+import { useProgress } from "@/features/progress/hooks";
 import { useSessionStore } from "@/store/session";
 
 export function DashboardPage() {
   const user = useSessionStore((state) => state.user);
   const { data: myCourses = [], isLoading } = useMyCourses();
+  const { data: progress } = useProgress();
   const firstName = user?.displayName?.trim().split(/\s+/)[0];
-  const recentCourseId = getRecentCourseId(user?.id);
-  const featured = myCourses.find((course) => course.id === recentCourseId) ?? myCourses[0];
+  const resume = progress?.resume;
+  const featured = myCourses.find((course) => course.id === resume?.course_id) ?? myCourses[0];
+  const progressByCourse = new Map(progress?.courses.map((item) => [item.course_id, item]));
 
   return (
     <div className="space-y-10">
@@ -41,10 +44,13 @@ export function DashboardPage() {
                 <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
                   {featured?.description || "Once your curriculum is ready, you can pick up from here."}
                 </p>
+                {resume && featured?.id === resume.course_id && resume.item_type !== "course" && (
+                  <p className="mt-3 text-sm font-medium text-foreground">Continue: {resume.title}</p>
+                )}
               </div>
               {featured && (
-                <Link to={`/courses/${featured.slug}`} className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-                  View course <ArrowRight className="size-4" />
+                <Link to={resume?.course_id === featured.id ? resume.path : `/courses/${featured.slug}`} className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                  {resume?.course_id === featured.id && resume.item_type !== "course" ? "Resume learning" : "View course"} <ArrowRight className="size-4" />
                 </Link>
               )}
             </div>
@@ -72,9 +78,16 @@ export function DashboardPage() {
       </section>
 
       <section className="space-y-3">
-        <div>
-          <p className="page-kicker">Library</p>
-          <h2 className="section-heading">Your courses</h2>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="page-kicker">Library</p>
+            <h2 className="section-heading">Your courses</h2>
+          </div>
+          {myCourses.length > 0 && (
+            <Link to="/library" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+              View full library <ArrowRight className="size-4" />
+            </Link>
+          )}
         </div>
         {isLoading ? (
           <SkeletonCards count={2} />
@@ -82,19 +95,13 @@ export function DashboardPage() {
           <Card><CardContent className="py-8 text-sm text-muted-foreground">Your personalized courses will appear here after placement.</CardContent></Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {myCourses.map((course, index) => (
-              <Link key={course.id} to={`/courses/${course.slug}`} className="group">
-                <Card className="h-full transition-[border-color,transform] hover:-translate-y-0.5 hover:border-primary/25">
-                  <CardHeader>
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="font-mono text-xs text-muted-foreground">COURSE {String(index + 1).padStart(2, "0")}</span>
-                      <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary" />
-                    </div>
-                    <CardTitle className="text-lg leading-snug">{course.title}</CardTitle>
-                    {course.description && <CardDescription className="line-clamp-2 leading-5">{course.description}</CardDescription>}
-                  </CardHeader>
-                </Card>
-              </Link>
+            {myCourses.slice(0, 3).map((course, index) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                courseProgress={progressByCourse.get(course.id)}
+                index={index}
+              />
             ))}
           </div>
         )}
