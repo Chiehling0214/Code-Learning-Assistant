@@ -74,7 +74,10 @@ PYTHON_PACK: dict[str, Any] = {
         "slug": "hello-codepath",
         "title": "Hello, Code Learning Assistant",
         "language": "python",
-        "prompt": 'Write a function `solution()` that returns the string "Hello, Code Learning Assistant!".',
+        "prompt": (
+            'Write a function `solution()` that returns the string '
+            '"Hello, Code Learning Assistant!".'
+        ),
         "starter_code": "def solution():\n    # your code here\n    pass\n\n\nprint(solution())\n",
         "test_spec": {"cases": [{"input": "", "expected": "Hello, Code Learning Assistant!"}]},
     },
