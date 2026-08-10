@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Markdown } from "@/components/Markdown";
 import { Button } from "@/components/ui/button";
@@ -136,8 +137,7 @@ function Flashcard({
 
 function DueQueue() {
   const { data, isLoading } = useDueReviews();
-  // Bump to force a fresh card after each answer (the refetched list drops it).
-  const [, setDoneCount] = useState(0);
+  const queryClient = useQueryClient();
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading reviews…</p>;
   const items = data?.items ?? [];
@@ -152,10 +152,19 @@ function DueQueue() {
     );
   }
   const current = items[0];
+  const goNext = () => {
+    queryClient.setQueryData<{ due_count: number; items: ReviewItem[] }>(
+      ["reviews-due"],
+      (old) => old
+        ? { due_count: Math.max(0, old.due_count - 1), items: old.items.filter((item) => item.id !== current.id) }
+        : old,
+    );
+    queryClient.invalidateQueries({ queryKey: ["reviews-due"] });
+  };
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">{items.length} due</p>
-      <Flashcard key={current.id} item={current} onDone={() => setDoneCount((n) => n + 1)} />
+      <Flashcard key={current.id} item={current} onDone={goNext} />
     </div>
   );
 }
@@ -202,8 +211,9 @@ export function ReviewPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Review</h1>
-        <p className="text-muted-foreground">
+        <p className="page-kicker">Spaced review</p>
+        <h1 className="page-heading">Make the hard parts stick.</h1>
+        <p className="mt-2 text-muted-foreground">
           Your mistakes come back on a spaced schedule until you've mastered them.
         </p>
       </div>

@@ -1,10 +1,35 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Code2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
 import { useSessionStore } from "@/store/session";
+
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  "auth/invalid-credential":
+    "The email or password is incorrect. If you joined with Google, use Continue with Google instead.",
+  "auth/email-already-in-use":
+    "An account already exists for this email. Sign in instead, or use the same provider you originally chose.",
+  "auth/invalid-email": "Enter a valid email address.",
+  "auth/weak-password": "Choose a password with at least 6 characters.",
+  "auth/operation-not-allowed":
+    "This sign-in method is not enabled yet. Ask the project owner to enable it in Firebase Authentication.",
+  "auth/popup-closed-by-user": "Google sign-in was closed before it finished.",
+  "auth/popup-blocked": "The browser blocked the Google sign-in window. Allow pop-ups and try again.",
+  "auth/unauthorized-domain":
+    "This site is not authorized in Firebase. Add localhost to Authentication → Settings → Authorized domains.",
+  "auth/network-request-failed": "Could not reach Firebase. Check your connection and try again.",
+};
+
+function authErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "code" in error) {
+    const code = String((error as { code?: unknown }).code ?? "");
+    if (AUTH_ERROR_MESSAGES[code]) return AUTH_ERROR_MESSAGES[code];
+  }
+  return error instanceof Error ? error.message : "Authentication failed. Please try again.";
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -31,7 +56,7 @@ export function LoginPage() {
       await action();
       // No navigate() here — the effect above fires when the session is ready.
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      setError(authErrorMessage(err));
       setBusy(false);
     }
   }
@@ -39,15 +64,33 @@ export function LoginPage() {
   const isSignup = mode === "signup";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+    <div className="grid min-h-screen bg-background lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="hidden border-r bg-primary px-12 py-10 text-primary-foreground lg:flex lg:flex-col">
+        <Link to="/" className="flex items-center gap-2.5 font-semibold">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-white/10"><Code2 className="size-4" /></span>
+          Code Learning Assistant
+        </Link>
+        <div className="my-auto max-w-md">
+          <p className="text-sm font-medium text-primary-foreground/65">Your learning path</p>
+          <p className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.04em]">
+            Small lessons. Real practice. Steady progress.
+          </p>
+          <p className="mt-5 leading-7 text-primary-foreground/70">
+            Pick up where you left off, review what needs attention, and keep moving forward.
+          </p>
+        </div>
+        <p className="text-xs text-primary-foreground/50">Code Learning Assistant workspace</p>
+      </div>
+      <div className="flex items-center justify-center p-5 sm:p-10">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{isSignup ? "Create account" : "Sign in"}</CardTitle>
+          <Link to="/" className="mb-7 flex items-center gap-2 text-sm font-semibold lg:hidden"><Code2 className="size-5 shrink-0 text-primary" /> Code Learning Assistant</Link>
+          <CardTitle className="text-2xl">{isSignup ? "Create your account" : "Welcome back"}</CardTitle>
           <CardDescription>
             {isConfigured
               ? isSignup
-                ? "Create an account to get started."
-                : "Sign in with your account to continue."
+                ? "Set up your learning path in a few minutes."
+                : "Sign in to continue your learning path."
               : "Firebase is not configured — continue in development mode."}
           </CardDescription>
         </CardHeader>
@@ -115,9 +158,14 @@ export function LoginPage() {
               Continue (development mode)
             </Button>
           )}
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2.5 text-sm leading-5 text-destructive">
+              {error}
+            </p>
+          )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

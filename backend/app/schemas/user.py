@@ -28,4 +28,3 @@ class ProfileResponse(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     display_name: str | None = Field(default=None, max_length=255)
-    skill_level: str | None = Field(default=None, max_length=32)

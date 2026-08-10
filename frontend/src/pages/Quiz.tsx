@@ -57,7 +57,8 @@ export function QuizPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{quiz.title}</h1>
+        <p className="page-kicker">Knowledge check</p>
+        <h1 className="page-heading">{quiz.title}</h1>
         {quiz.description && <p className="text-muted-foreground">{quiz.description}</p>}
       </div>
 

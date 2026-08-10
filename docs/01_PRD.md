@@ -2,7 +2,7 @@
 
 ## Summary
 
-CodePath AI delivers a personalized, hands-on programming curriculum. Learners
+Code Learning Assistant delivers a personalized, hands-on programming curriculum. Learners
 sign in, pick a programming language/course, and receive a daily plan of
 lessons, coding exercises, and quizzes. AI assists with teaching and tutoring;
 Judge0 runs and grades code.

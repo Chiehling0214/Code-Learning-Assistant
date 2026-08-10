@@ -14,7 +14,7 @@ from app.application.ports.ai_provider import AINotConfiguredError, AIProviderEr
 from app.application.services.ai_usage import RateLimitError
 from app.application.services.entitlement_service import UpgradeRequiredError
 from app.domain.entities import Lesson
-from app.infrastructure.generation_worker import run_generation
+from app.infrastructure.generation_worker import run_course_set_generation, run_generation
 from app.schemas.content import CourseResponse
 from app.schemas.curriculum import (
     AddedLesson,
@@ -104,6 +104,31 @@ def list_my_courses(
 
 
 # ----- Continuous learning: extend + in-course chat (Sprint 12) -----
+
+
+@router.post(
+    "/courses/{course_id}/advance",
+    response_model=GenerationJobResponse | None,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def advance_completed_curriculum(
+    course_id: uuid.UUID,
+    current_user: CurrentDbUser,
+    service: CurriculumServiceDep,
+    background: BackgroundTasks,
+) -> GenerationJobResponse | None:
+    """After all current courses are complete, reassess and build 3 next courses."""
+    try:
+        job, created = service.start_next_courses(
+            course_id=course_id, user_id=current_user.id, course_count=3
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    if job is None:
+        return None
+    if created:
+        background.add_task(run_course_set_generation, job.id, 3)
+    return _job_response(job)
 
 
 @router.get("/courses/{course_id}/extension", response_model=ExtensionStatusResponse)

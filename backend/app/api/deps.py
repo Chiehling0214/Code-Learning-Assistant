@@ -321,6 +321,7 @@ def get_curriculum_service(session: DbSession, settings: SettingsDep) -> Curricu
         AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
         settings,
         SqlAlchemyProgressRepository(session),
+        SqlAlchemyStudentProfileRepository(session),
     )
 
 

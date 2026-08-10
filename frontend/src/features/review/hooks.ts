@@ -58,7 +58,8 @@ export function useAnswerReview() {
         body: JSON.stringify({ correct }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reviews-due"] });
+      // Keep the answered card on screen so the learner can read the result and
+      // explanation. DueQueue removes it only when they explicitly press Next.
       queryClient.invalidateQueries({ queryKey: ["reviews-all"] });
       queryClient.invalidateQueries({ queryKey: ["today"] });
     },

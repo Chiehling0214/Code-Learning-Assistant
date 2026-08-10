@@ -15,8 +15,6 @@ interface Profile {
   is_admin: boolean;
 }
 
-const SKILL_LEVELS = ["beginner", "intermediate", "advanced"];
-
 export function ProfilePage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -29,7 +27,6 @@ export function ProfilePage() {
   });
 
   const [displayName, setDisplayName] = useState("");
-  const [skillLevel, setSkillLevel] = useState("beginner");
   const [saved, setSaved] = useState(false);
 
   const [confirmEmail, setConfirmEmail] = useState("");
@@ -54,7 +51,6 @@ export function ProfilePage() {
   useEffect(() => {
     if (data) {
       setDisplayName(data.display_name ?? "");
-      setSkillLevel(data.skill_level);
     }
   }, [data]);
 
@@ -62,7 +58,7 @@ export function ProfilePage() {
     mutationFn: () =>
       apiFetch<Profile>("/me/profile", {
         method: "PUT",
-        body: JSON.stringify({ display_name: displayName || null, skill_level: skillLevel }),
+        body: JSON.stringify({ display_name: displayName || null }),
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(["profile"], updated);
@@ -76,8 +72,9 @@ export function ProfilePage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground">Manage your account details.</p>
+        <p className="page-kicker">Account</p>
+        <h1 className="page-heading">Profile settings</h1>
+        <p className="mt-2 text-muted-foreground">Manage your details and preferences.</p>
       </div>
 
       <Card>
@@ -106,22 +103,18 @@ export function ProfilePage() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="skillLevel" className="text-sm font-medium">
-                Skill level
-              </label>
-              <select
-                id="skillLevel"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={skillLevel}
-                onChange={(e) => setSkillLevel(e.target.value)}
-              >
-                {SKILL_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
+            <div className="rounded-lg border bg-secondary/45 px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Assessed level</p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                    Updated automatically from your quiz and exercise performance.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-md bg-card px-2.5 py-1 text-sm font-semibold capitalize text-primary shadow-sm">
+                  {isLoading ? "—" : data?.skill_level}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">

@@ -1,176 +1,104 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, BookOpen, CalendarCheck2, Dumbbell } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { SkeletonCards } from "@/components/Skeleton";
-import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLanguages } from "@/features/content/hooks";
 import { useMyCourses } from "@/features/curriculum/hooks";
-import { useAddTrack, useRemoveTrack, useTracks } from "@/features/tracks/hooks";
-import { ApiError, apiFetch } from "@/lib/api";
-
-interface Readiness {
-  status: string;
-  database: string;
-}
-
-const inputClass =
-  "h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-function LanguagesSection() {
-  const navigate = useNavigate();
-  const { data: tracks = [] } = useTracks();
-  const { data: languages = [] } = useLanguages();
-  const addTrack = useAddTrack();
-  const removeTrack = useRemoveTrack();
-  const [selected, setSelected] = useState("");
-
-  const trackedIds = new Set(tracks.map((t) => t.language_id));
-  const available = languages.filter((l) => !trackedIds.has(l.id));
-  const atLimit = addTrack.error instanceof ApiError && addTrack.error.status === 402;
-
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-semibold">Your languages</h2>
-      <div className="flex flex-wrap gap-2">
-        {tracks.map((track) => (
-          <span
-            key={track.id}
-            className="flex items-center gap-2 rounded-full border px-3 py-1 text-sm"
-          >
-            {track.language_name}
-            <button
-              className="text-muted-foreground hover:text-destructive"
-              title="Remove"
-              onClick={() => removeTrack.mutate(track.id)}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        {tracks.length === 0 && (
-          <span className="text-sm text-muted-foreground">No languages yet.</span>
-        )}
-      </div>
-
-      {available.length > 0 && (
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (selected)
-              addTrack.mutate(selected, {
-                // Same flow as onboarding: new language → placement test.
-                onSuccess: (track) => {
-                  setSelected("");
-                  navigate(`/tracks/${track.id}/placement`);
-                },
-              });
-          }}
-        >
-          <select
-            className={inputClass}
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-          >
-            <option value="">Add a language…</option>
-            {available.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-          <Button type="submit" size="sm" disabled={!selected || addTrack.isPending}>
-            Add
-          </Button>
-        </form>
-      )}
-
-      {atLimit && <UpgradePrompt message="You've reached your plan's language limit." />}
-    </div>
-  );
-}
+import { getRecentCourseId } from "@/lib/recent-course";
+import { useSessionStore } from "@/store/session";
 
 export function DashboardPage() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["health"],
-    queryFn: () => apiFetch<Readiness>("/health"),
-  });
-  const { data: myCourses = [], isLoading: coursesLoading } = useMyCourses();
-
-  const apiStatus = isLoading ? "checking…" : isError ? "unreachable" : (data?.status ?? "unknown");
+  const user = useSessionStore((state) => state.user);
+  const { data: myCourses = [], isLoading } = useMyCourses();
+  const firstName = user?.displayName?.trim().split(/\s+/)[0];
+  const recentCourseId = getRecentCourseId(user?.id);
+  const featured = myCourses.find((course) => course.id === recentCourseId) ?? myCourses[0];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back to CodePath AI.</p>
-      </div>
+    <div className="space-y-10">
+      <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="page-kicker">Learning workspace</p>
+          <h1 className="page-heading">{firstName ? `Good to see you, ${firstName}.` : "Good to see you."}</h1>
+          <p className="mt-2 text-muted-foreground">Keep the momentum going with one focused step today.</p>
+        </div>
+        <Button asChild>
+          <Link to="/today">Open today’s plan <ArrowRight className="size-4" /></Link>
+        </Button>
+      </header>
 
-      <LanguagesSection />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">API status</CardTitle>
-            <CardDescription>Live backend health check.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <span className="font-mono text-sm">{apiStatus}</span>
+      <section className="grid gap-4 lg:grid-cols-[1.55fr_0.85fr]">
+        <Card className="flex min-h-52 overflow-hidden border-primary/20">
+          <CardContent className="flex flex-1 items-center p-6 sm:p-8">
+            <div>
+              <div>
+                <div className="mb-4 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <BookOpen className="size-5" />
+                </div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Continue learning</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">{featured?.title ?? "Your next course is being prepared"}</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                  {featured?.description || "Once your curriculum is ready, you can pick up from here."}
+                </p>
+              </div>
+              {featured && (
+                <Link to={`/courses/${featured.slug}`} className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                  View course <ArrowRight className="size-4" />
+                </Link>
+              )}
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              <Link to="/today" className="hover:underline">
-                Today's plan
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent />
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              <Link to="/progress" className="hover:underline">
-                Your progress
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent />
-        </Card>
-      </div>
 
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Courses</h2>
-        {coursesLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          <Link to="/review" className="group flex min-h-[9.125rem] flex-col justify-center rounded-xl border bg-card p-5 shadow-card transition-colors hover:border-primary/25">
+            <div className="flex items-start justify-between">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-secondary text-primary"><CalendarCheck2 className="size-[18px]" /></span>
+              <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </div>
+            <h2 className="mt-5 font-semibold">Review mistakes</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Revisit the things that need another pass.</p>
+          </Link>
+          <Link to="/practice" className="group flex min-h-[9.125rem] flex-col justify-center rounded-xl border bg-card p-5 shadow-card transition-colors hover:border-primary/25">
+            <div className="flex items-start justify-between">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-secondary text-primary"><Dumbbell className="size-[18px]" /></span>
+              <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </div>
+            <h2 className="mt-5 font-semibold">Start a quick drill</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Practice a topic or target a weak spot.</p>
+          </Link>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <p className="page-kicker">Library</p>
+          <h2 className="section-heading">Your courses</h2>
+        </div>
+        {isLoading ? (
           <SkeletonCards count={2} />
         ) : myCourses.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No courses yet — they'll appear here as your curriculum is built.
-          </p>
+          <Card><CardContent className="py-8 text-sm text-muted-foreground">Your personalized courses will appear here after placement.</CardContent></Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-3">
-            {myCourses.map((course) => (
-              <Card key={course.id} className="transition-colors hover:bg-accent">
-                <Link to={`/courses/${course.slug}`}>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {myCourses.map((course, index) => (
+              <Link key={course.id} to={`/courses/${course.slug}`} className="group">
+                <Card className="h-full transition-[border-color,transform] hover:-translate-y-0.5 hover:border-primary/25">
                   <CardHeader>
-                    <CardTitle className="text-base">{course.title}</CardTitle>
-                    {course.description && (
-                      <CardDescription className="line-clamp-2">
-                        {course.description}
-                      </CardDescription>
-                    )}
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="font-mono text-xs text-muted-foreground">COURSE {String(index + 1).padStart(2, "0")}</span>
+                      <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary" />
+                    </div>
+                    <CardTitle className="text-lg leading-snug">{course.title}</CardTitle>
+                    {course.description && <CardDescription className="line-clamp-2 leading-5">{course.description}</CardDescription>}
                   </CardHeader>
-                  <CardContent />
-                </Link>
-              </Card>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

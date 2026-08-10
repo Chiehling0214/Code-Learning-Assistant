@@ -1,8 +1,8 @@
 # 00 — Project Overview
 
-## What is CodePath AI??
+## What is Code Learning Assistant?
 
-CodePath AI is an AI-powered, personalized programming learning platform. It
+Code Learning Assistant is an AI-powered, personalized programming learning platform. It
 guides each learner through a structured path of lessons, coding exercises, and
 quizzes, adapting the daily plan to the learner's progress.
 

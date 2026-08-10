@@ -125,16 +125,15 @@ export function ProgressPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Progress</h1>
-        <p className="text-muted-foreground">Your completion across courses.</p>
+        <p className="page-kicker">Learning record</p>
+        <h1 className="page-heading">Your progress</h1>
+        <p className="mt-2 text-muted-foreground">A practical view of what’s solid and what needs work.</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Overall</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="flex min-h-44 flex-col justify-center space-y-3 py-6">
+            <p className="text-sm font-medium text-muted-foreground">Overall</p>
             <div className="text-2xl font-bold">{data.percent}%</div>
             <ProgressBar percent={data.percent} />
             <p className="text-xs text-muted-foreground">
@@ -143,12 +142,10 @@ export function ProgressPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Streak</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="flex min-h-44 flex-col justify-center py-6">
+            <p className="mb-3 text-sm font-medium text-muted-foreground">Streak</p>
             <div className="text-2xl font-bold">🔥 {data.streak}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               {data.streak === 1 ? "day" : "days"} in a row
             </p>
           </CardContent>
@@ -162,7 +159,7 @@ export function ProgressPage() {
         ) : (
           data.courses.map((course) => (
             <Card key={course.course_id}>
-              <CardContent className="space-y-2 py-4">
+              <CardContent className="flex min-h-20 flex-col justify-center space-y-3 py-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">{course.title}</span>
                   <span className="text-muted-foreground">

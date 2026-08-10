@@ -1,8 +1,8 @@
-# CodePath AI
+# Code Learning Assistant
 
 > AI-powered, personalized programming learning platform.
 
-CodePath AI guides each learner through a tailored path of lessons, coding
+Code Learning Assistant guides each learner through a tailored path of lessons, coding
 exercises, and quizzes — taught and tutored by AI, with code executed in a
 sandbox.
 

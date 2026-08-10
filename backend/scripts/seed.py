@@ -72,11 +72,11 @@ PYTHON_PACK: dict[str, Any] = {
     "exercise": {
         "lesson_slug": "variables-and-types",
         "slug": "hello-codepath",
-        "title": "Hello, CodePath",
+        "title": "Hello, Code Learning Assistant",
         "language": "python",
-        "prompt": 'Write a function `solution()` that returns the string "Hello, CodePath!".',
+        "prompt": 'Write a function `solution()` that returns the string "Hello, Code Learning Assistant!".',
         "starter_code": "def solution():\n    # your code here\n    pass\n\n\nprint(solution())\n",
-        "test_spec": {"cases": [{"input": "", "expected": "Hello, CodePath!"}]},
+        "test_spec": {"cases": [{"input": "", "expected": "Hello, Code Learning Assistant!"}]},
     },
     "quiz": {
         "lesson_slug": "control-flow",
@@ -147,14 +147,14 @@ CPP_PACK: dict[str, Any] = {
     "exercise": {
         "lesson_slug": "hello-world-io",
         "slug": "cpp-hello-codepath",
-        "title": "Hello, CodePath (C++)",
+        "title": "Hello, Code Learning Assistant (C++)",
         "language": "cpp",
-        "prompt": 'Print the string "Hello, CodePath!" to standard output.',
+        "prompt": 'Print the string "Hello, Code Learning Assistant!" to standard output.',
         "starter_code": (
             "#include <iostream>\n\nint main() {\n"
             "    // your code here\n    return 0;\n}\n"
         ),
-        "test_spec": {"cases": [{"input": "", "expected": "Hello, CodePath!"}]},
+        "test_spec": {"cases": [{"input": "", "expected": "Hello, Code Learning Assistant!"}]},
     },
     "quiz": {
         "lesson_slug": "control-flow",
@@ -227,15 +227,15 @@ JAVA_PACK: dict[str, Any] = {
     "exercise": {
         "lesson_slug": "hello-world-io",
         "slug": "java-hello-codepath",
-        "title": "Hello, CodePath (Java)",
+        "title": "Hello, Code Learning Assistant (Java)",
         "language": "java",
-        "prompt": 'Print the string "Hello, CodePath!" to standard output.',
+        "prompt": 'Print the string "Hello, Code Learning Assistant!" to standard output.',
         "starter_code": (
             "public class Main {\n"
             "    public static void main(String[] args) {\n"
             "        // your code here\n    }\n}\n"
         ),
-        "test_spec": {"cases": [{"input": "", "expected": "Hello, CodePath!"}]},
+        "test_spec": {"cases": [{"input": "", "expected": "Hello, Code Learning Assistant!"}]},
     },
     "quiz": {
         "lesson_slug": "control-flow",

@@ -1,4 +1,4 @@
-"""ORM models for the CodePath AI domain.
+"""ORM models for the Code Learning Assistant domain.
 
 Tables are introduced incrementally per sprint; see the Alembic migrations under
 ``alembic/versions`` for the schema history.

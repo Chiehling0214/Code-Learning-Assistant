@@ -33,7 +33,7 @@ def test_get_profile_returns_default_skill_level(client: TestClient) -> None:
     assert response.json()["skill_level"] == "beginner"
 
 
-def test_update_profile_persists_changes(client: TestClient) -> None:
+def test_update_profile_persists_display_name_but_not_assessed_level(client: TestClient) -> None:
     client.get("/api/v1/me")  # provision first
 
     update = client.put(
@@ -44,11 +44,11 @@ def test_update_profile_persists_changes(client: TestClient) -> None:
     assert update.json() == {
         "display_name": "Grace",
         "email": "dev@codepath.local",
-        "skill_level": "advanced",
+        "skill_level": "beginner",
         "is_admin": False,
     }
 
     # Change is reflected on a subsequent read.
     after = client.get("/api/v1/me/profile")
     assert after.json()["display_name"] == "Grace"
-    assert after.json()["skill_level"] == "advanced"
+    assert after.json()["skill_level"] == "beginner"

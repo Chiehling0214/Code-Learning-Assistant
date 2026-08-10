@@ -8,6 +8,7 @@ import { CodingExercisePage } from "@/pages/CodingExercise";
 import { CoursePage } from "@/pages/Course";
 import { DashboardPage } from "@/pages/Dashboard";
 import { LandingPage } from "@/pages/Landing";
+import { LanguagesPage } from "@/pages/Languages";
 import { LessonPage } from "@/pages/Lesson";
 import { LoginPage } from "@/pages/Login";
 import { NotFoundPage } from "@/pages/NotFound";
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
               { path: "/progress", element: <ProgressPage /> },
               { path: "/review", element: <ReviewPage /> },
               { path: "/practice", element: <PracticePage /> },
+              { path: "/languages", element: <LanguagesPage /> },
               { path: "/subscription", element: <SubscriptionPage /> },
               { path: "/admin", element: <AdminPage /> },
               { path: "/profile", element: <ProfilePage /> },

@@ -47,6 +47,14 @@ export function useMyCourses() {
   });
 }
 
+/** Reassess a completed track and automatically build its next three courses. */
+export function useAdvanceCurriculum(courseId: string | undefined) {
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<GenerationJob | null>(`/courses/${courseId}/advance`, { method: "POST" }),
+  });
+}
+
 // ----- Continuous learning: extend + in-course chat (Sprint 12) -----
 
 export interface AddedLesson {

@@ -28,7 +28,8 @@ def update_my_profile(
     user, profile = service.update_profile(
         current_user.id,
         display_name=payload.display_name,
-        skill_level=payload.skill_level,
+        # Skill level is assessment-owned; learners cannot edit it from Profile.
+        skill_level=None,
     )
     return ProfileResponse(
         display_name=user.display_name,

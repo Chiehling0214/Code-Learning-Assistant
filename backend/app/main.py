@@ -24,9 +24,9 @@ logger = get_logger(__name__)
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="CodePath AI API",
+        title="Code Learning Assistant API",
         version=__version__,
-        description="Backend API for the CodePath AI learning platform.",
+        description="Backend API for the Code Learning Assistant platform.",
         openapi_url=f"{settings.api_v1_prefix}/openapi.json",
     )
 

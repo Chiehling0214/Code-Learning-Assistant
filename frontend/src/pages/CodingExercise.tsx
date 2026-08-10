@@ -44,7 +44,8 @@ export function CodingExercisePage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight">{exercise.title}</h1>
+          <p className="page-kicker">Coding exercise</p>
+          <h1 className="page-heading">{exercise.title}</h1>
           <Markdown content={exercise.prompt} className="text-muted-foreground" />
         </div>
         <div className="flex shrink-0 gap-2">

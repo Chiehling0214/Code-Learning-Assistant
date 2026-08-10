@@ -50,8 +50,9 @@ export function PracticePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Practice</h1>
-        <p className="text-muted-foreground">
+        <p className="page-kicker">Practice arena</p>
+        <h1 className="page-heading">Sharpen one skill at a time.</h1>
+        <p className="mt-2 text-muted-foreground">
           Generate a drill on any topic — or let us target your weak spots.
         </p>
       </div>

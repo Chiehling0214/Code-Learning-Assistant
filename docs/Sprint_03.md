@@ -93,7 +93,7 @@ frontend/
   `GET /lessons/{id}/exercises`; learner `POST /exercises/{id}/submit` +
   `GET /exercises/{id}/submissions`; admin `POST/DELETE /admin/exercises`.
 - `ExerciseResponse` excludes `test_spec` (hidden test cases).
-- Seed extended with a sample exercise ("Hello, CodePath").
+- Seed extended with a sample exercise ("Hello, Code Learning Assistant").
 - `tests/test_submissions.py` + exercise/submission fakes; shared `fakes`
   fixture in `conftest.py` (24 tests total, DB-free).
 

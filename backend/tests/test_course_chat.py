@@ -171,6 +171,7 @@ def test_extend_enforces_quota(fakes: SimpleNamespace) -> None:
         AIUsageGuard(fakes.interactions, settings),
         settings,
         fakes.progress,
+        fakes.profiles,
     )
     with pytest.raises(RateLimitError):
         service.extend_course(course_id=course.id, user_id=user.id)

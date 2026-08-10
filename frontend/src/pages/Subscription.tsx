@@ -49,8 +49,9 @@ export function SubscriptionPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Subscription</h1>
-        <p className="text-muted-foreground">Manage your plan and billing.</p>
+        <p className="page-kicker">Account</p>
+        <h1 className="page-heading">Plan & usage</h1>
+        <p className="mt-2 text-muted-foreground">See your current limits and manage billing.</p>
       </div>
 
       {confirm.isPending && (
@@ -95,7 +96,7 @@ export function SubscriptionPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">CodePath Pro</CardTitle>
+          <CardTitle className="text-lg">Code Learning Assistant Pro</CardTitle>
           <CardDescription>Unlock premium features.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -37,6 +37,7 @@ from app.domain.repositories import (
     LessonRepository,
     ProgressRepository,
     QuizRepository,
+    StudentProfileRepository,
 )
 
 logger = get_logger(__name__)
@@ -64,6 +65,7 @@ class CurriculumService:
         usage: AIUsageGuard,
         settings: Settings,
         progress: ProgressRepository,
+        profiles: StudentProfileRepository,
     ) -> None:
         self._provider = provider
         self._jobs = jobs
@@ -77,6 +79,7 @@ class CurriculumService:
         self._usage = usage
         self._settings = settings
         self._progress = progress
+        self._profiles = profiles
 
     # ----- job control -----
 
@@ -148,6 +151,164 @@ class CurriculumService:
         """Whether the "Learn more" hint should show (course near completion)."""
         _, total, percent = self.course_completion(course_id=course_id, user_id=user_id)
         return total > 0 and percent >= round(self._settings.curriculum_extend_threshold * 100)
+
+    def assess_track_level(
+        self, *, track_id: uuid.UUID, user_id: uuid.UUID
+    ) -> tuple[str, int]:
+        """Reassess a learner from real quiz and exercise results.
+
+        The latest curriculum is the assessment surface: quiz question scores
+        and every exercise submission contribute to an accuracy score. The
+        resulting level is owned by the learning system, never by profile UI.
+        """
+        track = self._tracks.get_by_id(track_id)
+        if track is None or track.user_id != user_id:
+            raise LookupError("Track not found")
+
+        courses = [
+            course
+            for course in self._courses.list_by_track_ids([track_id])
+            if course.kind != "practice"
+        ]
+        exercise_ids: set[uuid.UUID] = set()
+        quiz_totals: dict[uuid.UUID, int] = {}
+        for course in courses:
+            for lesson in self._lessons.list_by_course(course.id):
+                exercise_ids.update(ex.id for ex in self._exercises.list_by_lesson(lesson.id))
+                for quiz in self._quizzes.list_by_lesson(lesson.id):
+                    quiz_totals[quiz.id] = len(quiz.questions)
+
+        earned = 0
+        possible = 0
+        for event in self._progress.list_for_user(user_id):
+            if event.item_type == "exercise" and event.item_id in exercise_ids:
+                possible += 1
+                earned += 1 if event.status == "passed" else 0
+            elif event.item_type == "quiz" and event.item_id in quiz_totals:
+                total = quiz_totals[event.item_id]
+                possible += total
+                earned += max(0, min(event.score or 0, total))
+
+        accuracy = round(earned / possible * 100) if possible else 0
+        if possible == 0:
+            level = track.level or "beginner"
+        elif accuracy >= 85:
+            level = "advanced"
+        elif accuracy >= 60:
+            level = "intermediate"
+        else:
+            level = "beginner"
+
+        self._tracks.set_level(track_id, level)
+        profile = self._profiles.get_by_user_id(user_id)
+        if profile is None:
+            self._profiles.create(user_id=user_id, skill_level=level)
+        else:
+            self._profiles.update_skill_level(user_id, level)
+        return level, accuracy
+
+    def start_next_courses(
+        self, *, course_id: uuid.UUID, user_id: uuid.UUID, course_count: int = 3
+    ) -> tuple[GenerationJob | None, bool]:
+        """Start the next learning cycle once every current course is complete.
+
+        Returns ``(None, False)`` while any course is unfinished. An active job
+        is reused; the boolean tells the API whether it must launch a worker.
+        """
+        course = self.get_owned_course(course_id=course_id, user_id=user_id)
+        track_id = course.track_id
+        if track_id is None:
+            return None, False
+        current = [
+            item
+            for item in self._courses.list_by_track_ids([track_id])
+            if item.kind != "practice"
+        ]
+        if not current or any(
+            self.course_completion(course_id=item.id, user_id=user_id)[2] < 100
+            for item in current
+        ):
+            return None, False
+
+        latest = self._jobs.get_latest_for_track(track_id)
+        if latest is not None and latest.status in _ACTIVE_STATES:
+            return latest, False
+
+        self.assess_track_level(track_id=track_id, user_id=user_id)
+        job = self._jobs.create(
+            track_id=track_id,
+            user_id=user_id,
+            total=max(1, course_count) * self._settings.curriculum_lesson_count,
+        )
+        return job, True
+
+    def generate_course_set(
+        self,
+        job_id: uuid.UUID,
+        *,
+        course_count: int = 3,
+        commit: Callable[[], None] = lambda: None,
+    ) -> None:
+        """Generate three distinct next-step courses for a completed track."""
+        job = self._jobs.get_by_id(job_id)
+        if job is None:
+            return
+        track = self._tracks.get_by_id(job.track_id)
+        language = self._languages.get_by_id(track.language_id) if track else None
+        if track is None or language is None:
+            self._jobs.update(job_id, status="error", error="Track or language missing")
+            commit()
+            return
+
+        level = track.level or "beginner"
+        directions = [
+            ("Core Skills", "reinforce weak foundations and close gaps shown by recent answers"),
+            ("Problem Solving", "build algorithmic thinking through progressively harder problems"),
+            ("Applied Projects", "apply current skills in practical, portfolio-sized projects"),
+        ][: max(1, course_count)]
+        self._jobs.update(job_id, status="running")
+        commit()
+        completed = 0
+
+        for course_index, (name, focus) in enumerate(directions):
+            course = self._courses.create(
+                language_id=language.id,
+                track_id=track.id,
+                title=f"{language.name} · {name}",
+                slug=_slug(f"{language.slug}-{name}"),
+                description=f"A {level} path selected from your recent course performance.",
+            )
+            if course_index == 0:
+                self._jobs.update(job_id, course_id=course.id)
+                commit()
+
+            remaining = self._settings.curriculum_lesson_count
+            order_index = 0
+            prior_titles: list[str] = []
+            while remaining > 0:
+                count = min(max(1, self._settings.curriculum_batch_size), remaining)
+                batch = self._generate_batch_with_retry(
+                    language,
+                    level,
+                    count,
+                    prior_titles,
+                    job.user_id,
+                    focus=focus,
+                    usage_kind="generate_course",
+                )
+                for lesson_data in (batch.lessons if batch else [])[:count]:
+                    lesson = self._build_lesson_from_data(
+                        course.id, language, order_index, lesson_data
+                    )
+                    prior_titles.append(lesson.title)
+                    order_index += 1
+                    completed += 1
+                    self._jobs.update(job_id, completed=completed)
+                    commit()
+                remaining -= count
+
+        self._jobs.update(job_id, status="done")
+        commit()
 
     def lesson_count(self, course_id: uuid.UUID) -> int:
         return len(self._lessons.list_by_course(course_id))

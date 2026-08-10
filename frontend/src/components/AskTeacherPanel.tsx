@@ -13,7 +13,7 @@ import { useStreamingAnswer } from "@/features/ai/hooks";
 export function AskTeacherPanel({
   topic,
   context,
-  title = "Ask the AI Teacher",
+  title = "Ask a follow-up",
   placeholder = "Ask about any of these questions…",
 }: {
   topic?: string;

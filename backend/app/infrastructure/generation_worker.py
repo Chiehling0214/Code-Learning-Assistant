@@ -27,6 +27,7 @@ from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyLessonRepository,
     SqlAlchemyProgressRepository,
     SqlAlchemyQuizRepository,
+    SqlAlchemyStudentProfileRepository,
 )
 
 logger = get_logger(__name__)
@@ -51,6 +52,7 @@ def run_generation(job_id: uuid.UUID) -> None:
             AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
             settings,
             SqlAlchemyProgressRepository(session),
+            SqlAlchemyStudentProfileRepository(session),
         )
         service.generate_course(job_id, commit=session.commit)
     except Exception as exc:  # noqa: BLE001 - never let the background task crash
@@ -58,6 +60,40 @@ def run_generation(job_id: uuid.UUID) -> None:
         session.rollback()
         try:
             jobs.update(job_id, status="error", error="Generation failed")
+            session.commit()
+        except Exception:  # noqa: BLE001
+            session.rollback()
+    finally:
+        session.close()
+
+
+def run_course_set_generation(job_id: uuid.UUID, course_count: int = 3) -> None:
+    """Generate the adaptive follow-up course set in an isolated DB session."""
+    settings = get_settings()
+    session = SessionLocal()
+    jobs = SqlAlchemyGenerationJobRepository(session)
+    try:
+        service = CurriculumService(
+            GeminiAIProvider(settings),
+            jobs,
+            SqlAlchemyCourseRepository(session),
+            SqlAlchemyLessonRepository(session),
+            SqlAlchemyExerciseRepository(session),
+            SqlAlchemyQuizRepository(session),
+            SqlAlchemyLanguageRepository(session),
+            SqlAlchemyLanguageTrackRepository(session),
+            ExecutionService(Judge0Client(settings)),
+            AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
+            settings,
+            SqlAlchemyProgressRepository(session),
+            SqlAlchemyStudentProfileRepository(session),
+        )
+        service.generate_course_set(job_id, course_count=course_count, commit=session.commit)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Course-set generation failed for job %s: %s", job_id, exc)
+        session.rollback()
+        try:
+            jobs.update(job_id, status="error", error="Course-set generation failed")
             session.commit()
         except Exception:  # noqa: BLE001
             session.rollback()

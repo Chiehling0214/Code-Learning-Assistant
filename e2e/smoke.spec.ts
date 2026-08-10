@@ -10,7 +10,7 @@ import { expect, test } from "@playwright/test";
  */
 test("learner can sign in and open a course", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "CodePath AI" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Learn by building, not by watching." })).toBeVisible();
 
   await page.goto("/login");
   await page.getByRole("button", { name: /continue \(development mode\)/i }).click();

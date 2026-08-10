@@ -31,6 +31,7 @@ def _service(fakes: SimpleNamespace) -> CurriculumService:
         AIUsageGuard(fakes.interactions, _SETTINGS),
         _SETTINGS,
         fakes.progress,
+        fakes.profiles,
     )
 
 
@@ -88,6 +89,95 @@ def test_start_generation_unknown_track_raises(fakes: SimpleNamespace) -> None:
         raise AssertionError("expected LookupError")
     except LookupError:
         pass
+
+
+def test_completed_track_reassesses_and_generates_three_next_courses(
+    fakes: SimpleNamespace,
+) -> None:
+    user_id = uuid.uuid4()
+    lang, track = _track(fakes, user_id)
+    course = fakes.courses.create(
+        language_id=lang.id,
+        track_id=track.id,
+        title="Python starter",
+        slug="python-starter",
+        description=None,
+    )
+    lesson = fakes.lessons.create(
+        course_id=course.id,
+        title="Basics",
+        slug="basics",
+        order_index=0,
+        content="Learn basics",
+    )
+    exercise = fakes.exercises.create(
+        lesson_id=lesson.id,
+        language="python",
+        title="Practice",
+        slug="practice",
+        prompt="Solve it",
+        starter_code="",
+        test_spec={},
+    )
+    quiz = fakes.quizzes.create(
+        lesson_id=lesson.id, title="Check", slug="check", description=None
+    )
+    fakes.quizzes.add_question(
+        quiz_id=quiz.id,
+        prompt="Ready?",
+        type="single",
+        order_index=0,
+        choices=[
+            {"text": "Yes", "is_correct": True},
+            {"text": "No", "is_correct": False},
+        ],
+    )
+    fakes.progress.record(
+        user_id=user_id, item_type="lesson", item_id=lesson.id, status="completed"
+    )
+    fakes.progress.record(
+        user_id=user_id, item_type="exercise", item_id=exercise.id, status="passed"
+    )
+    fakes.progress.record(
+        user_id=user_id, item_type="quiz", item_id=quiz.id, status="completed", score=1
+    )
+
+    service = _service(fakes)
+    job, created = service.start_next_courses(course_id=course.id, user_id=user_id)
+
+    assert created is True and job is not None
+    assert fakes.tracks.get_by_id(track.id).level == "advanced"
+    assert fakes.profiles.get_by_user_id(user_id).skill_level == "advanced"
+
+    service.generate_course_set(job.id, course_count=3)
+    courses = fakes.courses.list_by_track_ids([track.id])
+    assert len(courses) == 4
+    assert all(len(fakes.lessons.list_by_course(item.id)) == 3 for item in courses[1:])
+    assert fakes.jobs.get_by_id(job.id).status == "done"
+
+
+def test_next_courses_wait_until_current_course_is_complete(fakes: SimpleNamespace) -> None:
+    user_id = uuid.uuid4()
+    lang, track = _track(fakes, user_id)
+    course = fakes.courses.create(
+        language_id=lang.id,
+        track_id=track.id,
+        title="Python starter",
+        slug="python-starter",
+        description=None,
+    )
+    fakes.lessons.create(
+        course_id=course.id,
+        title="Unfinished",
+        slug="unfinished",
+        order_index=0,
+        content="Keep going",
+    )
+
+    job, created = _service(fakes).start_next_courses(
+        course_id=course.id, user_id=user_id
+    )
+    assert job is None and created is False
 
 
 # ----- API -----

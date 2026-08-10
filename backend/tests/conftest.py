@@ -241,6 +241,7 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
             AIUsageGuard(fakes.interactions, _CURRICULUM_SETTINGS),
             _CURRICULUM_SETTINGS,
             fakes.progress,
+            fakes.profiles,
         )
 
     app.dependency_overrides[get_curriculum_service] = _curriculum

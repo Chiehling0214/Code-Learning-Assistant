@@ -1,7 +1,7 @@
 [project]
 name = "codepath-backend"
 version = "0.1.0"
-description = "CodePath AI backend (FastAPI, Clean Architecture)"
+description = "Code Learning Assistant backend (FastAPI, Clean Architecture)"
 requires-python = ">=3.11"
 
 [tool.ruff]

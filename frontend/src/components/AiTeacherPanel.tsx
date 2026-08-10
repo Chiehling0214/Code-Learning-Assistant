@@ -16,7 +16,7 @@ export function AiTeacherPanel({ lessonId }: { lessonId: string | undefined }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Ask the AI Teacher</CardTitle>
+        <CardTitle className="text-lg">Ask about this lesson</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <textarea
@@ -40,7 +40,7 @@ export function AiTeacherPanel({ lessonId }: { lessonId: string | undefined }) {
         )}
         {teacher.answer && (
           <div
-            className="prose-sm max-w-none rounded-md bg-muted p-3 [&_code]:rounded [&_code]:bg-background [&_code]:px-1 [&_p]:my-2 [&_pre]:overflow-x-auto"
+            className="markdown-content prose-sm max-w-none rounded-md bg-muted p-3 [&_p]:my-2"
             dangerouslySetInnerHTML={{ __html: renderMarkdown(teacher.answer) }}
           />
         )}

@@ -1,3 +1,4 @@
+import { ArrowRight, BookOpen, CircleHelp, Code2, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,8 @@ const LINK_FOR: Record<TodayItem["type"], (id: string) => string> = {
   quiz: (id) => `/quizzes/${id}`,
 };
 
+const ICON_FOR = { lesson: BookOpen, exercise: Code2, quiz: CircleHelp };
+
 export function TodayPage() {
   const { data, isLoading, isError } = useToday();
 
@@ -19,22 +22,23 @@ export function TodayPage() {
   const reviewsDue = data?.reviews_due ?? 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Today</h1>
-        <p className="text-muted-foreground">Your next steps, tailored to your progress.</p>
+        <p className="page-kicker">Daily plan</p>
+        <h1 className="page-heading">A few good steps for today.</h1>
+        <p className="mt-2 text-muted-foreground">Work from top to bottom, or choose what fits your time.</p>
       </div>
 
       {reviewsDue > 0 && (
-        <Card className="border-primary/40 transition-colors hover:bg-accent">
-          <Link to="/review">
-            <CardContent className="flex items-center justify-between py-4">
-              <span className="font-medium">
-                🔁 {reviewsDue} review{reviewsDue !== 1 ? "s" : ""} due — clear these first
+        <Card className="border-primary/25 bg-primary/[0.035] transition-colors hover:bg-primary/[0.06]">
+          <Link to="/review" className="flex min-h-[4.5rem]">
+            <CardContent className="flex flex-1 items-center gap-4 px-5 py-0 sm:px-6">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><RotateCcw className="size-4" /></span>
+              <span className="flex-1">
+                <span className="block font-semibold">Start with review</span>
+                <span className="text-sm text-muted-foreground">{reviewsDue} item{reviewsDue !== 1 ? "s" : ""} ready to revisit</span>
               </span>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs uppercase text-muted-foreground">
-                review
-              </span>
+              <ArrowRight className="size-4 text-primary" />
             </CardContent>
           </Link>
         </Card>
@@ -47,19 +51,24 @@ export function TodayPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {items.map((item) => (
-            <Card key={`${item.type}-${item.id}`} className="transition-colors hover:bg-accent">
-              <Link to={LINK_FOR[item.type](item.id)}>
-                <CardContent className="flex items-center justify-between py-4">
-                  <span className="font-medium">{item.title}</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs uppercase text-muted-foreground">
-                    {item.type}
+        <div className="space-y-2.5">
+          {items.map((item, index) => {
+            const Icon = ICON_FOR[item.type];
+            return (
+            <Card key={`${item.type}-${item.id}`} className="group transition-colors hover:border-primary/25">
+              <Link to={LINK_FOR[item.type](item.id)} className="flex min-h-[4.5rem]">
+                <CardContent className="flex flex-1 items-center gap-4 px-5 py-0 sm:px-6">
+                  <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary"><Icon className="size-4" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{item.title}</span>
+                    <span className="text-xs capitalize text-muted-foreground">{item.type}</span>
                   </span>
+                  <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary" />
                 </CardContent>
               </Link>
             </Card>
-          ))}
+          );})}
         </div>
       )}
     </div>

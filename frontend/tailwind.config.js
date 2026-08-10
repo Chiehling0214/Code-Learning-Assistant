@@ -9,6 +9,9 @@ export default {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      boxShadow: {
+        card: "0 1px 2px rgb(29 39 55 / 0.06), 0 8px 24px rgb(29 39 55 / 0.035)",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
