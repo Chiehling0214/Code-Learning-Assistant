@@ -106,8 +106,8 @@ gated behind an active subscription; the stack is hardened for production.
   `POST /webhooks/stripe`. Config `STRIPE_*`, `BILLING_ENABLED`, checkout URLs.
 
 **Backend — hardening**
-- Optional in-process per-client rate-limit middleware (`RATE_LIMIT_ENABLED`,
-  `RATE_LIMIT_PER_MINUTE`; off in dev, on in prod compose).
+- Optional per-client rate-limit middleware (`RATE_LIMIT_ENABLED`,
+  `RATE_LIMIT_PER_MINUTE`), now shared through Redis in multi-process deployments.
 - CORS already env-driven; consistent `{"detail": …}` error envelopes and auth on
   every protected route (audited); `409` handler for integrity violations.
 

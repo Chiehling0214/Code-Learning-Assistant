@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { AskTeacherPanel } from "@/components/AskTeacherPanel";
 import { Markdown } from "@/components/Markdown";
 import { ProgressBar } from "@/components/ProgressBar";
+import { ReportContent } from "@/components/ReportContent";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRecordLearningActivity } from "@/features/progress/hooks";
@@ -183,6 +184,7 @@ export function QuizPage() {
           </div>
         </>
       ) : null}
+      <ReportContent itemType="quiz" itemId={quiz.id} />
     </div>
   );
 }

@@ -56,6 +56,10 @@ class Course:
     track_id: uuid.UUID | None = None
     # "course" (a real curriculum) | "practice" (hidden drill container, Sprint 16).
     kind: str = "course"
+    prerequisite_course_id: uuid.UUID | None = None
+    sequence_index: int = 0
+    recommendation_reason: str | None = None
+    generation_job_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -202,6 +206,36 @@ class GenerationJob:
     created_at: datetime
     updated_at: datetime
     seen_at: datetime | None = None
+    kind: str = "initial"
+    course_count: int = 1
+    attempt_count: int = 0
+    max_attempts: int = 3
+    heartbeat_at: datetime | None = None
+    next_attempt_at: datetime | None = None
+    cancel_requested: bool = False
+
+
+@dataclass(frozen=True)
+class ContentReport:
+    id: uuid.UUID
+    user_id: uuid.UUID
+    item_type: str
+    item_id: uuid.UUID
+    reason: str
+    details: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
+class ContentVersion:
+    id: uuid.UUID
+    item_type: str
+    item_id: uuid.UUID
+    snapshot: dict
+    created_by: uuid.UUID | None
+    created_at: datetime
 
 
 @dataclass(frozen=True)

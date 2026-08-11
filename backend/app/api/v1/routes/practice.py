@@ -126,5 +126,10 @@ def get_mastery(
             accuracy=assessment.accuracy,
             source=assessment.source,
             next_evaluation=assessment.next_evaluation,
+            weighted_accuracy=assessment.weighted_accuracy,
+            confidence=assessment.confidence,
+            sample_status=assessment.sample_status,
+            exercise_weight=assessment.exercise_weight,
+            quiz_weight=assessment.quiz_weight,
         ),
     )

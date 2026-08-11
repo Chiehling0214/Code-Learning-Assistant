@@ -2,7 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "@/App";
+import { FrontendErrorBoundary } from "@/components/FrontendErrorBoundary";
 import "@/index.css";
+import { installGlobalErrorMonitoring } from "@/lib/monitoring";
+
+installGlobalErrorMonitoring();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -11,6 +15,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <FrontendErrorBoundary>
+      <App />
+    </FrontendErrorBoundary>
   </StrictMode>,
 );

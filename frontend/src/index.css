@@ -106,4 +106,10 @@
   .code-toolbar button {
     @apply rounded px-2 py-1 normal-case tracking-normal text-slate-300 transition-colors hover:bg-white/10 hover:text-white;
   }
+
+  .dark-code-selection::selection,
+  .dark-code-selection *::selection {
+    background: #486779;
+    color: #f8fafc;
+  }
 }

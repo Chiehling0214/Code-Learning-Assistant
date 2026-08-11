@@ -14,6 +14,9 @@ export interface Course {
   title: string;
   slug: string;
   description: string | null;
+  prerequisite_course_id: string | null;
+  sequence_index: number;
+  recommendation_reason: string | null;
 }
 
 export interface LessonSummary {
@@ -44,6 +47,15 @@ export interface Lesson {
   content: string;
 }
 
+export type LessonAdjustmentPreset = "simpler" | "examples" | "challenge" | "practical";
+
+export interface LessonAdjustmentPreview {
+  adjustment_id: string;
+  lesson_id: string;
+  title: string;
+  content: string;
+}
+
 // ----- queries -----
 
 export function useLanguages() {
@@ -67,6 +79,40 @@ export function useLesson(id: string | undefined) {
     queryKey: ["lesson", id],
     queryFn: () => apiFetch<Lesson>(`/lessons/${id}`),
     enabled: Boolean(id),
+  });
+}
+
+export function usePreviewLessonAdjustment() {
+  return useMutation({
+    mutationFn: ({
+      lessonId,
+      preset,
+      instructions,
+    }: {
+      lessonId: string;
+      preset: LessonAdjustmentPreset;
+      instructions: string;
+    }) =>
+      apiFetch<LessonAdjustmentPreview>(`/lessons/${lessonId}/adjustments/preview`, {
+        method: "POST",
+        body: JSON.stringify({ preset, instructions }),
+      }),
+  });
+}
+
+export function useApplyLessonAdjustment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ lessonId, adjustmentId }: { lessonId: string; adjustmentId: string }) =>
+      apiFetch<Lesson>(`/lessons/${lessonId}/adjustments/${adjustmentId}/apply`, {
+        method: "POST",
+      }),
+    onSuccess: (lesson) => {
+      queryClient.setQueryData(["lesson", lesson.id], lesson);
+      queryClient.invalidateQueries({ queryKey: ["admin-content"] });
+      queryClient.invalidateQueries({ queryKey: ["content-versions"] });
+      queryClient.invalidateQueries({ queryKey: ["entitlements"] });
+    },
   });
 }
 

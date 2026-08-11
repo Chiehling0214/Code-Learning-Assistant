@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     # and retry the lesson (the free tier's per-minute cap resets in ~60s).
     curriculum_retry_delay_seconds: float = 20.0
     curriculum_retry_attempts: int = 3
+    generation_worker_enabled: bool = False
+    generation_worker_poll_seconds: float = 2.0
+    generation_worker_stale_minutes: int = 5
     # Continuous learning (Sprint 12): default lessons added per "Learn more" /
     # chat request, the upper bound the learner may request, and the completion
     # ratio at which the "Learn more" hint appears.
@@ -117,6 +120,10 @@ class Settings(BaseSettings):
     # unaffected; enabled in the production compose file).
     rate_limit_enabled: bool = False
     rate_limit_per_minute: int = 120
+    redis_url: str | None = None
+    content_version_limit: int = 20
+    monitoring_enabled: bool = False
+    monitoring_retention_days: int = 30
 
     @property
     def ai_enabled(self) -> bool:

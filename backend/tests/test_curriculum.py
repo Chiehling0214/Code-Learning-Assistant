@@ -153,6 +153,13 @@ def test_completed_track_reassesses_and_generates_three_next_courses(
     courses = fakes.courses.list_by_track_ids([track.id])
     assert len(courses) == 4
     assert all(len(fakes.lessons.list_by_course(item.id)) == 3 for item in courses[1:])
+    assert [item.sequence_index for item in courses] == [0, 1, 2, 3]
+    assert [item.prerequisite_course_id for item in courses[1:]] == [
+        courses[0].id,
+        courses[1].id,
+        courses[2].id,
+    ]
+    assert all(item.generation_job_id == job.id for item in courses[1:])
     assert fakes.jobs.get_by_id(job.id).status == "done"
 
 

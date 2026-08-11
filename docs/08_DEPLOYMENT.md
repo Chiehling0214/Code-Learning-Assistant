@@ -101,8 +101,9 @@ Differences from the dev compose:
   stage), not the Vite dev server (host `:8080`);
 - **backend** runs under **gunicorn with uvicorn workers** (`-w 4`), applying
   migrations on start;
-- **hardening on**: `RATE_LIMIT_ENABLED=true`, `AUTH_STUB_ENABLED=false`, CORS
-  restricted to `CORS_ORIGINS`;
+- **hardening on**: Redis-backed shared request limiting,
+  `AUTH_STUB_ENABLED=false`, and CORS restricted to `CORS_ORIGINS`;
+- **worker** runs curriculum generation separately from the API processes;
 - **billing on**: `BILLING_ENABLED=true` with the `STRIPE_*` secrets;
 - Postgres is **not** published to the host.
 
@@ -123,8 +124,8 @@ Hardening checklist (Sprint 8):
 - VM firewall: open only `443` (backend); keep `5432`/`2358` internal.
 - Put the backend behind Caddy/Nginx (or a GCP load balancer) for TLS (the prod
   compose already runs gunicorn/uvicorn workers).
-- Enable the in-process rate limiter (`RATE_LIMIT_ENABLED`), or front with a
-  shared limiter (Redis) for multi-instance deployments.
+- Keep `RATE_LIMIT_ENABLED=true` and `REDIS_URL` pointed at the shared Redis
+  instance so all API workers enforce one request limit.
 - Secrets via the VM's `.env` / a secret manager — never commit them.
 
 ## Health & readiness
@@ -132,6 +133,10 @@ Hardening checklist (Sprint 8):
 - Liveness: `GET /health`.
 - Readiness (includes DB check): `GET /api/v1/health`.
 - Postgres: compose `pg_isready` healthcheck.
+- Redis: compose `redis-cli ping` healthcheck.
+- Generation worker: inspect with `docker compose logs worker`.
+- Admin monitoring: `/admin` → **Monitoring** stores frontend errors, API 5xx,
+  AI generation failures, and worker retries for 30 days by default.
 
 ## CI
 

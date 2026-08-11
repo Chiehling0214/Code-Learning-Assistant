@@ -17,6 +17,7 @@ from app.application.services.admin_review_service import AdminReviewService
 from app.application.services.ai_teacher_service import AITeacherService
 from app.application.services.ai_tutor_service import AITutorService
 from app.application.services.ai_usage import AIUsageGuard
+from app.application.services.content_report_service import ContentReportService
 from app.application.services.content_service import ContentService
 from app.application.services.course_chat_service import CourseChatService
 from app.application.services.curriculum_service import CurriculumService
@@ -25,6 +26,7 @@ from app.application.services.entitlement_service import EntitlementService
 from app.application.services.execution_service import ExecutionService
 from app.application.services.exercise_service import ExerciseService
 from app.application.services.generate_content_service import GenerateContentService
+from app.application.services.lesson_adjustment_service import LessonAdjustmentService
 from app.application.services.mastery_service import MasteryService
 from app.application.services.placement_service import PlacementService
 from app.application.services.practice_service import PracticeService
@@ -46,6 +48,8 @@ from app.infrastructure.judge0.client import Judge0Client
 from app.infrastructure.repositories.sqlalchemy_repositories import (
     SqlAlchemyAIInteractionRepository,
     SqlAlchemyCodeDraftRepository,
+    SqlAlchemyContentReportRepository,
+    SqlAlchemyContentVersionRepository,
     SqlAlchemyCourseChatRepository,
     SqlAlchemyCourseRepository,
     SqlAlchemyExerciseRepository,
@@ -135,6 +139,27 @@ def get_content_service(session: DbSession) -> ContentService:
 
 
 ContentServiceDep = Annotated[ContentService, Depends(get_content_service)]
+
+
+def get_content_report_service(session: DbSession, settings: SettingsDep) -> ContentReportService:
+    return ContentReportService(
+        SqlAlchemyContentReportRepository(session),
+        SqlAlchemyContentVersionRepository(session),
+        SqlAlchemyLessonRepository(session),
+        SqlAlchemyExerciseRepository(session),
+        SqlAlchemyQuizRepository(session),
+        SqlAlchemyCourseRepository(session),
+        SqlAlchemyLanguageRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
+        GeminiAIProvider(settings),
+        AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
+        settings.content_version_limit,
+    )
+
+
+ContentReportServiceDep = Annotated[
+    ContentReportService, Depends(get_content_report_service)
+]
 
 
 def get_exercise_service(session: DbSession) -> ExerciseService:
@@ -291,12 +316,34 @@ def get_track_service(session: DbSession, settings: SettingsDep) -> TrackService
 TrackServiceDep = Annotated[TrackService, Depends(get_track_service)]
 
 
+def get_lesson_adjustment_service(
+    session: DbSession, settings: SettingsDep
+) -> LessonAdjustmentService:
+    return LessonAdjustmentService(
+        GeminiAIProvider(settings),
+        SqlAlchemyLessonRepository(session),
+        SqlAlchemyCourseRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyContentVersionRepository(session),
+        AIUsageGuard(SqlAlchemyAIInteractionRepository(session), settings),
+        get_entitlement_service(session, settings),
+        settings.content_version_limit,
+    )
+
+
+LessonAdjustmentServiceDep = Annotated[
+    LessonAdjustmentService, Depends(get_lesson_adjustment_service)
+]
+
+
 def get_admin_review_service(session: DbSession) -> AdminReviewService:
     return AdminReviewService(
         SqlAlchemyLessonRepository(session),
         SqlAlchemyExerciseRepository(session),
         SqlAlchemyQuizRepository(session),
         SqlAlchemyCourseRepository(session),
+        SqlAlchemyLanguageTrackRepository(session),
+        SqlAlchemyUserRepository(session),
     )
 
 

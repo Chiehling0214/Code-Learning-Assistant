@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { AiTutorPanel } from "@/components/AiTutorPanel";
 import { Markdown } from "@/components/Markdown";
 import { GradingPanel, RunOutput } from "@/components/ResultPanel";
+import { ReportContent } from "@/components/ReportContent";
 import { SubmissionList } from "@/components/SubmissionList";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -268,13 +269,10 @@ export function CodingExercisePage() {
           <CardTitle className="text-lg">Submissions</CardTitle>
         </CardHeader>
         <CardContent>
-          <SubmissionList
-            submissions={submissions}
-            onView={(submission) => setActiveSubmissionId(submission.id)}
-            onRestore={(submission) => setCode(submission.code)}
-          />
+          <SubmissionList submissions={submissions} />
         </CardContent>
       </Card>
+      <ReportContent itemType="exercise" itemId={exercise.id} />
     </div>
   );
 }

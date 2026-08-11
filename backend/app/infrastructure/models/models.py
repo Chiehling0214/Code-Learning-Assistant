@@ -113,6 +113,17 @@ class Course(TimestampMixin, Base):
     kind: Mapped[str] = mapped_column(
         String(16), default="course", server_default="course", nullable=False
     )
+    prerequisite_course_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="SET NULL"), nullable=True
+    )
+    sequence_index: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    recommendation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    generation_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("generation_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     language: Mapped[ProgrammingLanguage] = relationship(back_populates="courses")
     lessons: Mapped[list[Lesson]] = relationship(
@@ -277,7 +288,7 @@ class AIInteraction(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     # "teacher" | "tutor" | "generate"
-    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
     model: Mapped[str] = mapped_column(String(64), default="", nullable=False)
     total_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -372,6 +383,62 @@ class GenerationJob(TimestampMixin, Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Persist notification read state so it stays consistent across devices.
     seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    kind: Mapped[str] = mapped_column(String(24), default="initial", server_default="initial")
+    course_count: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_requested: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+
+
+class ContentReport(TimestampMixin, Base):
+    __tablename__ = "content_reports"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    item_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    reason: Mapped[str] = mapped_column(String(40), nullable=False)
+    details: Mapped[str] = mapped_column(Text, default="", server_default="", nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default="open")
+
+
+class ContentVersion(Base):
+    __tablename__ = "content_versions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    item_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+
+class OperationalEvent(Base):
+    __tablename__ = "operational_events"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    category: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    level: Mapped[str] = mapped_column(String(16), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    details: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
 
 
 # --------------------------------------------------------------------------- #

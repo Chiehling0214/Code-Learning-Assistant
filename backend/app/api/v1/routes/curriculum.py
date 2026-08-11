@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import (
     CourseChatServiceDep,
@@ -14,7 +14,6 @@ from app.application.ports.ai_provider import AINotConfiguredError, AIProviderEr
 from app.application.services.ai_usage import RateLimitError
 from app.application.services.entitlement_service import UpgradeRequiredError
 from app.domain.entities import Lesson
-from app.infrastructure.generation_worker import run_course_set_generation, run_generation
 from app.schemas.content import CourseResponse
 from app.schemas.curriculum import (
     AddedLesson,
@@ -51,6 +50,13 @@ def _job_response(job) -> GenerationJobResponse:  # noqa: ANN001 - domain entity
         created_at=job.created_at,
         updated_at=job.updated_at,
         seen_at=job.seen_at,
+        kind=job.kind,
+        course_count=job.course_count,
+        attempt_count=job.attempt_count,
+        max_attempts=job.max_attempts,
+        heartbeat_at=job.heartbeat_at,
+        next_attempt_at=job.next_attempt_at,
+        cancel_requested=job.cancel_requested,
     )
 
 
@@ -63,7 +69,6 @@ def start_generation(
     track_id: uuid.UUID,
     current_user: CurrentDbUser,
     service: CurriculumServiceDep,
-    background: BackgroundTasks,
 ) -> GenerationJobResponse:
     # The one-time onboarding course build is not counted against the daily
     # generation quota (only on-demand "Learn more" / chat is — see extend/chat).
@@ -72,8 +77,6 @@ def start_generation(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     # Only kick off a worker for a freshly-created (pending) job.
-    if job.status == "pending":
-        background.add_task(run_generation, job.id)
     return _job_response(job)
 
 
@@ -130,6 +133,9 @@ def list_my_courses(
             title=c.title,
             slug=c.slug,
             description=c.description,
+            prerequisite_course_id=c.prerequisite_course_id,
+            sequence_index=c.sequence_index,
+            recommendation_reason=c.recommendation_reason,
         )
         for c in courses
     ]
@@ -147,7 +153,6 @@ def advance_completed_curriculum(
     course_id: uuid.UUID,
     current_user: CurrentDbUser,
     service: CurriculumServiceDep,
-    background: BackgroundTasks,
 ) -> GenerationJobResponse | None:
     """After all current courses are complete, reassess and build 3 next courses."""
     try:
@@ -158,8 +163,6 @@ def advance_completed_curriculum(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     if job is None:
         return None
-    if created:
-        background.add_task(run_course_set_generation, job.id, 3)
     return _job_response(job)
 
 

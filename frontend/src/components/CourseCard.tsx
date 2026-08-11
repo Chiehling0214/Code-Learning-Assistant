@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Route } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { ProgressBar } from "@/components/ProgressBar";
@@ -19,11 +19,15 @@ export function CourseCard({
   courseProgress,
   index,
   language,
+  recommended = false,
+  prerequisiteTitle,
 }: {
   course: Course;
   courseProgress?: CourseProgress;
   index: number;
   language?: string;
+  recommended?: boolean;
+  prerequisiteTitle?: string;
 }) {
   return (
     <Card className="group flex h-full flex-col transition-[border-color,transform] hover:-translate-y-0.5 hover:border-primary/25">
@@ -35,9 +39,19 @@ export function CourseCard({
           </span>
           <BookOpen className="size-4 text-muted-foreground group-hover:text-primary" />
         </div>
+        {recommended && (
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-primary">
+            <Route className="size-3.5" /> Recommended next
+          </p>
+        )}
         <CardTitle className="text-lg leading-snug">{course.title}</CardTitle>
         {course.description && (
           <CardDescription className="line-clamp-2 leading-5">{course.description}</CardDescription>
+        )}
+        {prerequisiteTitle && (
+          <CardDescription className="pt-1 text-xs">
+            Suggested first: {prerequisiteTitle}
+          </CardDescription>
         )}
       </CardHeader>
       {courseProgress && (

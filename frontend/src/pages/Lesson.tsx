@@ -1,8 +1,11 @@
-import { useEffect, useRef } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { AiTeacherPanel } from "@/components/AiTeacherPanel";
 import { Markdown } from "@/components/Markdown";
+import { LessonAdjustmentDialog } from "@/components/LessonAdjustmentDialog";
+import { ReportContent } from "@/components/ReportContent";
 import { SkeletonCards } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +23,8 @@ export function LessonPage() {
   const markComplete = useMarkLessonComplete();
   const { mutate: recordActivity } = useRecordLearningActivity();
   const recordedActivity = useRef<string>();
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [adjustmentApplied, setAdjustmentApplied] = useState(false);
 
   useEffect(() => {
     if (lesson?.id && recordedActivity.current !== lesson.id) {
@@ -37,10 +42,21 @@ export function LessonPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
-      <header className="border-b pb-7">
-        <p className="page-kicker">Lesson</p>
-        <h1 className="page-heading max-w-3xl">{lesson.title}</h1>
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b pb-7">
+        <div>
+          <p className="page-kicker">Lesson</p>
+          <h1 className="page-heading max-w-3xl">{lesson.title}</h1>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setAdjustmentOpen(true)}>
+          <SlidersHorizontal className="size-4" />
+          Adjust this lesson
+        </Button>
       </header>
+      {adjustmentApplied && (
+        <p role="status" className="rounded-md bg-green-700/10 px-3 py-2 text-sm text-green-800">
+          Your adjusted lesson is now active. The original version was saved.
+        </p>
+      )}
       <Card className="border-0 shadow-none sm:border sm:shadow-card">
         <CardContent className="px-0 py-2 sm:px-8 sm:py-8">
           <Markdown
@@ -99,6 +115,13 @@ export function LessonPage() {
           ))}
         </div>
       )}
+      <ReportContent itemType="lesson" itemId={lesson.id} />
+      <LessonAdjustmentDialog
+        open={adjustmentOpen}
+        lesson={lesson}
+        onClose={() => setAdjustmentOpen(false)}
+        onApplied={() => setAdjustmentApplied(true)}
+      />
     </div>
   );
 }

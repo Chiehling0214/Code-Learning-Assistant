@@ -47,6 +47,11 @@ class AbilityAssessmentResponse(BaseModel):
     accuracy: int | None
     source: str
     next_evaluation: str
+    weighted_accuracy: int | None = None
+    confidence: str = "low"
+    sample_status: str = "insufficient"
+    exercise_weight: float = 0
+    quiz_weight: float = 0
 
 
 class MasteryResponse(BaseModel):

@@ -77,6 +77,12 @@ account settings — display name, skill level, plan link, and a danger zone tha
 deletes the account (typed-email confirm). The **Admin** nav entry and page are
 only visible/reachable for admins (backend 403s enforce it regardless).
 
+The Lesson page also provides **Adjust this lesson**. Learners select a simpler,
+example-focused, challenging, or practical treatment and can add optional
+details. A modal renders the original and generated Markdown side by side;
+`Keep new version` applies it, while `Use original lesson` closes the preview
+without changing stored content.
+
 | Path | Page | Access |
 |------|------|--------|
 | `/` | Landing | public |

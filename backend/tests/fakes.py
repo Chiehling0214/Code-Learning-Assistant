@@ -18,6 +18,7 @@ from app.domain.entities import (
     AIInteraction,
     Choice,
     CodeDraft,
+    ContentVersion,
     Course,
     CourseChatMessage,
     Exercise,
@@ -76,6 +77,9 @@ class FakeUserRepository:
 
     def get_by_id(self, user_id: uuid.UUID) -> User | None:
         return self._by_id.get(user_id)
+
+    def list_all(self) -> list[User]:
+        return sorted(self._by_id.values(), key=lambda user: (user.display_name or "", user.email))
 
     def get_by_firebase_uid(self, firebase_uid: str) -> User | None:
         return next((u for u in self._by_id.values() if u.firebase_uid == firebase_uid), None)
@@ -229,6 +233,9 @@ class FakeCourseRepository:
         items = [c for c in self._items.values() if c.track_id in ids]
         return sorted(items, key=lambda x: x.created_at)
 
+    def list_by_generation_job(self, job_id: uuid.UUID) -> list[Course]:
+        return [course for course in self._items.values() if course.generation_job_id == job_id]
+
     def get_by_id(self, course_id: uuid.UUID) -> Course | None:
         return self._items.get(course_id)
 
@@ -244,6 +251,10 @@ class FakeCourseRepository:
         description: str | None,
         track_id: uuid.UUID | None = None,
         kind: str = "course",
+        prerequisite_course_id: uuid.UUID | None = None,
+        sequence_index: int = 0,
+        recommendation_reason: str | None = None,
+        generation_job_id: uuid.UUID | None = None,
     ) -> Course:
         now = _now()
         course = Course(
@@ -256,6 +267,10 @@ class FakeCourseRepository:
             updated_at=now,
             track_id=track_id,
             kind=kind,
+            prerequisite_course_id=prerequisite_course_id,
+            sequence_index=sequence_index,
+            recommendation_reason=recommendation_reason,
+            generation_job_id=generation_job_id,
         )
         self._items[course.id] = course
         return course
@@ -277,6 +292,12 @@ class FakeCourseRepository:
             description=description if description is not None else e.description,
             created_at=e.created_at,
             updated_at=_now(),
+            track_id=e.track_id,
+            kind=e.kind,
+            prerequisite_course_id=e.prerequisite_course_id,
+            sequence_index=e.sequence_index,
+            recommendation_reason=e.recommendation_reason,
+            generation_job_id=e.generation_job_id,
         )
         self._items[course_id] = updated
         return updated
@@ -301,6 +322,30 @@ class FakeLessonRepository:
     def list_by_source(self, source: str) -> list[Lesson]:
         items = [x for x in self._items.values() if x.source == source]
         return sorted(items, key=lambda x: x.created_at, reverse=True)
+
+    def list_for_review(
+        self,
+        *,
+        source: str,
+        review_status: str | None,
+        query: str,
+        course_id: uuid.UUID | None,
+        course_ids: set[uuid.UUID] | None,
+        offset: int,
+        limit: int,
+    ) -> tuple[list[Lesson], int]:
+        normalized = query.strip().casefold()
+        items = [
+            lesson
+            for lesson in self._items.values()
+            if lesson.source == source
+            and (review_status is None or lesson.review_status == review_status)
+            and (course_id is None or lesson.course_id == course_id)
+            and (course_ids is None or lesson.course_id in course_ids)
+            and (not normalized or normalized in lesson.title.casefold())
+        ]
+        items.sort(key=lambda lesson: (lesson.course_id, lesson.order_index, lesson.title))
+        return items[offset : offset + limit], len(items)
 
     def create(
         self,
@@ -599,6 +644,11 @@ class FakeAIProvider:
 
     model = "fake-model"
 
+    def __init__(self) -> None:
+        self.last_lesson_request = None
+        self.last_exercise_request = None
+        self.last_lesson_pack_request = None
+
     def teach(self, request) -> AIResponse:
         return AIResponse(
             text=f"Explanation of {request.topic}. {request.question}".strip(),
@@ -622,6 +672,7 @@ class FakeAIProvider:
         yield request.code
 
     def generate_lesson(self, request) -> GeneratedLesson:
+        self.last_lesson_request = request
         return GeneratedLesson(
             title=f"Lesson: {request.topic}",
             content=f"# {request.topic}\n\nGenerated content.",
@@ -630,6 +681,7 @@ class FakeAIProvider:
         )
 
     def generate_exercise(self, request) -> GeneratedExercise:
+        self.last_exercise_request = request
         return GeneratedExercise(
             title=f"Exercise: {request.topic}",
             prompt=f"Solve: {request.topic}",
@@ -645,6 +697,7 @@ class FakeAIProvider:
         return GeneratedSyllabus(topics=topics, model=self.model, total_tokens=6)
 
     def generate_lesson_pack(self, request) -> GeneratedLessonPack:
+        self.last_lesson_pack_request = request
         return GeneratedLessonPack(
             title=request.topic,
             content=f"# {request.topic}\n\nContent.",
@@ -779,6 +832,51 @@ class FakeAIInteractionRepository:
         )
 
 
+class FakeContentVersionRepository:
+    def __init__(self) -> None:
+        self._items: dict[uuid.UUID, ContentVersion] = {}
+
+    def create(
+        self,
+        *,
+        item_type: str,
+        item_id: uuid.UUID,
+        snapshot: dict,
+        created_by: uuid.UUID | None,
+    ) -> ContentVersion:
+        version = ContentVersion(
+            id=uuid.uuid4(),
+            item_type=item_type,
+            item_id=item_id,
+            snapshot=snapshot,
+            created_by=created_by,
+            created_at=_now(),
+        )
+        self._items[version.id] = version
+        return version
+
+    def get_by_id(self, version_id: uuid.UUID) -> ContentVersion | None:
+        return self._items.get(version_id)
+
+    def list_for_item(self, item_type: str, item_id: uuid.UUID) -> list[ContentVersion]:
+        return sorted(
+            (
+                version
+                for version in self._items.values()
+                if version.item_type == item_type and version.item_id == item_id
+            ),
+            key=lambda version: version.created_at,
+            reverse=True,
+        )
+
+    def prune(self, item_type: str, item_id: uuid.UUID, keep: int) -> int:
+        versions = self.list_for_item(item_type, item_id)
+        stale = versions[max(0, keep) :]
+        for version in stale:
+            del self._items[version.id]
+        return len(stale)
+
+
 class FakeProgressRepository:
     def __init__(self) -> None:
         self._items: list[ProgressEvent] = []
@@ -889,6 +987,9 @@ class FakeLanguageTrackRepository:
     def get_by_id(self, track_id: uuid.UUID) -> LanguageTrack | None:
         return self._items.get(track_id)
 
+    def list_all(self) -> list[LanguageTrack]:
+        return sorted(self._items.values(), key=lambda track: track.created_at)
+
     def list_by_user(self, user_id: uuid.UUID) -> list[LanguageTrack]:
         items = [t for t in self._items.values() if t.user_id == user_id]
         return sorted(items, key=lambda t: t.created_at)
@@ -959,7 +1060,18 @@ class FakeGenerationJobRepository:
         items = [job for job in self._items.values() if job.user_id == user_id]
         return sorted(items, key=lambda job: job.created_at, reverse=True)
 
-    def create(self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int) -> GenerationJob:
+    def list_all(self) -> list[GenerationJob]:
+        return sorted(self._items.values(), key=lambda job: job.created_at, reverse=True)
+
+    def create(
+        self,
+        *,
+        track_id: uuid.UUID,
+        user_id: uuid.UUID,
+        total: int,
+        kind: str = "initial",
+        course_count: int = 1,
+    ) -> GenerationJob:
         now = _now()
         job = GenerationJob(
             id=uuid.uuid4(),
@@ -972,6 +1084,8 @@ class FakeGenerationJobRepository:
             error=None,
             created_at=now,
             updated_at=now,
+            kind=kind,
+            course_count=course_count,
         )
         self._items[job.id] = job
         return job
@@ -984,6 +1098,9 @@ class FakeGenerationJobRepository:
         completed: int | None = None,
         course_id: uuid.UUID | None = None,
         error: str | None = None,
+        heartbeat_at=None,
+        next_attempt_at=None,
+        cancel_requested: bool | None = None,
     ) -> GenerationJob:
         e = self._items[job_id]
         updated = GenerationJob(
@@ -998,6 +1115,15 @@ class FakeGenerationJobRepository:
             created_at=e.created_at,
             updated_at=_now(),
             seen_at=e.seen_at,
+            kind=e.kind,
+            course_count=e.course_count,
+            attempt_count=e.attempt_count,
+            max_attempts=e.max_attempts,
+            heartbeat_at=heartbeat_at if heartbeat_at is not None else e.heartbeat_at,
+            next_attempt_at=next_attempt_at if next_attempt_at is not None else e.next_attempt_at,
+            cancel_requested=(
+                cancel_requested if cancel_requested is not None else e.cancel_requested
+            ),
         )
         self._items[job_id] = updated
         return updated
@@ -1018,6 +1144,13 @@ class FakeGenerationJobRepository:
             created_at=e.created_at,
             updated_at=_now(),
             seen_at=_now(),
+            kind=e.kind,
+            course_count=e.course_count,
+            attempt_count=e.attempt_count,
+            max_attempts=e.max_attempts,
+            heartbeat_at=e.heartbeat_at,
+            next_attempt_at=e.next_attempt_at,
+            cancel_requested=e.cancel_requested,
         )
         self._items[job_id] = updated
         return updated

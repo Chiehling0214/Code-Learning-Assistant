@@ -20,6 +20,11 @@ export interface AbilityAssessment {
   accuracy: number | null;
   source: string;
   next_evaluation: string;
+  weighted_accuracy: number | null;
+  confidence: "low" | "medium" | "high";
+  sample_status: "insufficient" | "developing" | "sufficient";
+  exercise_weight: number;
+  quiz_weight: number;
 }
 
 export interface MasterySnapshot {

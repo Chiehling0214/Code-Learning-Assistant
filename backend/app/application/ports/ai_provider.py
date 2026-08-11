@@ -65,6 +65,7 @@ class TutorRequest:
 class GenerateLessonRequest:
     topic: str
     level: str = "beginner"
+    instructions: str = ""
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,7 @@ class GenerateExerciseRequest:
     topic: str
     language: str = "python"
     level: str = "beginner"
+    instructions: str = ""
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,7 @@ class GenerateLessonPackRequest:
     level: str = "beginner"
     exercise_count: int = 2
     quiz_question_count: int = 3
+    instructions: str = ""
 
 
 @dataclass(frozen=True)

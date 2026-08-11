@@ -16,6 +16,9 @@ const courses = [
     title: "Java — Intermediate",
     slug: "java-intermediate",
     description: "Build confidence with collections, control flow, and practical exercises.",
+    prerequisite_course_id: null,
+    sequence_index: 0,
+    recommendation_reason: "Start here based on your current ability",
   },
   {
     id: "00000000-0000-0000-0000-000000000102",
@@ -23,6 +26,9 @@ const courses = [
     title: "C++ — Beginner",
     slug: "cpp-beginner",
     description: "Learn core C++ syntax through short, focused lessons.",
+    prerequisite_course_id: "00000000-0000-0000-0000-000000000101",
+    sequence_index: 1,
+    recommendation_reason: "Continue after Java — Intermediate",
   },
 ];
 
@@ -148,6 +154,128 @@ async function mockApi(page: Page) {
     if (path === "/me/generation-jobs") {
       return fulfill(route, { unread_count: 0, jobs: [] });
     }
+    if (path === "/admin/usage") {
+      return fulfill(route, {
+        ai_lessons: 8, pending: 2, approved: 5, hidden: 1,
+        ai_exercises: 14, ai_quizzes: 8,
+      });
+    }
+    if (path === "/admin/content") {
+      return fulfill(route, {
+        items: [{
+          lesson_id: "lesson-1", title: "Collections and Lists",
+          course_id: courses[0].id, course_title: courses[0].title,
+          source: "ai", review_status: "pending", exercise_count: 2, quiz_count: 1,
+        }],
+        total: 1,
+        page: 1,
+        page_size: 20,
+        total_pages: 1,
+      });
+    }
+    if (path === "/admin/content/courses") {
+      return fulfill(route, [{
+        course_id: courses[0].id,
+        title: courses[0].title,
+        total: 1,
+        pending: 1,
+      }]);
+    }
+    if (path === "/admin/content/users") {
+      return fulfill(route, [{
+        user_id: user.id,
+        email: user.email,
+        display_name: user.display_name,
+        course_count: 2,
+        lesson_count: 8,
+        pending: 2,
+      }]);
+    }
+    if (path === "/admin/content/lessons/lesson-1/preview") {
+      return fulfill(route, {
+        lesson_id: "lesson-1",
+        title: "Collections and Lists",
+        content: "Java collections provide reusable data structures.",
+        exercises: [{
+          id: "exercise-1",
+          title: "Deduplicate values",
+          language: "java",
+          prompt: "Return unique values in their original order.",
+          starter_code: "class Main { }",
+          test_spec: { cases: [{ input: "1 1 2", expected: "1 2" }] },
+        }],
+        quizzes: [{
+          id: "quiz-1",
+          title: "Collections check",
+          questions: [{
+            prompt: "Which type stores unique values?",
+            explanation: "A Set stores unique values.",
+            choices: [
+              { text: "Set", is_correct: true },
+              { text: "List", is_correct: false },
+            ],
+          }],
+        }],
+      });
+    }
+    if (/^\/admin\/content\/(lesson|exercise|quiz)\/[^/]+\/regenerate$/.test(path) && method === "POST") {
+      return fulfill(route, null);
+    }
+    if (/^\/admin\/content\/(lesson|exercise|quiz)\/[^/]+\/versions$/.test(path)) {
+      const itemType = path.split("/")[3];
+      const itemId = path.split("/")[4];
+      return fulfill(route, {
+        current_snapshot: itemType === "lesson"
+          ? { title: "Collections and Lists", content: "Current lesson content" }
+          : { title: "Current item", prompt: "Current prompt" },
+        versions: [{
+          id: `version-${itemType}`,
+          item_type: itemType,
+          item_id: itemId,
+          created_by: user.id,
+          created_at: "2026-08-10T08:00:00Z",
+          snapshot: itemType === "lesson"
+            ? { title: "Collections and Lists", content: "Saved lesson content" }
+            : { title: "Saved item", prompt: "Saved prompt" },
+        }],
+      });
+    }
+    if (path === "/admin/content-reports") {
+      return fulfill(route, [{
+        id: "report-1", user_id: user.id, item_type: "exercise",
+        item_id: "exercise-1", reason: "broken",
+        details: "The sample output and hidden test disagree.", status: "open",
+        created_at: "2026-08-10T08:00:00Z", updated_at: "2026-08-10T08:00:00Z",
+      }]);
+    }
+    if (path === "/admin/generation-jobs") {
+      return fulfill(route, [{
+        id: "job-1", user_email: "learner@example.com", language: "Java",
+        kind: "course_set", status: "running", completed: 7, total: 18,
+        attempt_count: 1, max_attempts: 3, error: null,
+        cancel_requested: false, created_at: "2026-08-10T08:00:00Z",
+        updated_at: "2026-08-10T08:05:00Z",
+      }]);
+    }
+    if (path === "/admin/monitoring") {
+      return fulfill(route, {
+        window_hours: 24,
+        counts: {
+          frontend_error: 1,
+          api_5xx: 2,
+          ai_generation_failure: 1,
+          worker_retry: 1,
+        },
+        recent: [{
+          id: "event-1",
+          category: "worker_retry",
+          level: "warning",
+          message: "Generation job scheduled for retry in 5 seconds",
+          details: { job_id: "job-1" },
+          created_at: "2026-08-10T08:10:00Z",
+        }],
+      });
+    }
     if (/^\/me\/generation-jobs\/[^/]+\/seen$/.test(path)) {
       return fulfill(route, {
         id: path.split("/")[3],
@@ -221,6 +349,24 @@ async function mockApi(page: Page) {
         slug: "collections-and-lists",
         order_index: 1,
         content: "Java collections provide reusable data structures.\n\n```java\nList<String> names = new ArrayList<>();\nnames.add(\"Ada\");\n```",
+      });
+    }
+    if (path === "/lessons/lesson-1/adjustments/preview" && method === "POST") {
+      return fulfill(route, {
+        adjustment_id: "adjustment-1",
+        lesson_id: "lesson-1",
+        title: "Collections and Lists",
+        content: "## A practical view\n\nUse a shopping cart to understand the same collection topic.\n\n```java\nList<String> cart = new ArrayList<>();\n```",
+      });
+    }
+    if (path === "/lessons/lesson-1/adjustments/adjustment-1/apply" && method === "POST") {
+      return fulfill(route, {
+        id: "lesson-1",
+        course_id: courses[0].id,
+        title: "Collections and Lists",
+        slug: "collections-and-lists",
+        order_index: 1,
+        content: "## A practical view\n\nUse a shopping cart to understand the same collection topic.\n\n```java\nList<String> cart = new ArrayList<>();\n```",
       });
     }
     if (path === "/lessons/lesson-1/exercises" || path === "/lessons/lesson-1/quizzes") {
@@ -470,6 +616,30 @@ test("lesson code visual", async ({ page }) => {
   await page.goto("/lessons/lesson-1");
   await expect(page.getByRole("button", { name: "Copy code" })).toBeVisible();
   await expect(page).toHaveScreenshot("lesson-code.png", { animations: "disabled", fullPage: true });
+
+  await page.getByRole("button", { name: "Adjust this lesson" }).click();
+  const dialog = page.getByRole("dialog", { name: "Adjust this lesson" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: /Add practical examples/ }).click();
+  await dialog.getByLabel("Anything specific?").fill("Use a shopping-cart example.");
+  const previewRequestPromise = page.waitForRequest((request) =>
+    request.url().endsWith("/lessons/lesson-1/adjustments/preview"),
+  );
+  await dialog.getByRole("button", { name: "Generate preview" }).click();
+  const previewRequest = await previewRequestPromise;
+  expect(previewRequest.postDataJSON()).toEqual({
+    preset: "examples",
+    instructions: "Use a shopping-cart example.",
+  });
+  await expect(dialog.getByText("Original lesson", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Adjusted preview", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Use a shopping cart to understand the same collection topic.")).toBeVisible();
+  await expect(dialog).toHaveScreenshot("lesson-adjustment-preview.png", {
+    animations: "disabled",
+  });
+  await dialog.getByRole("button", { name: "Keep new version" }).click();
+  await expect(page.getByText("Your adjusted lesson is now active. The original version was saved.")).toBeVisible();
+  await expect(page.getByText("Use a shopping cart to understand the same collection topic.")).toBeVisible();
 });
 
 test("course next step visual", async ({ page }) => {
@@ -538,12 +708,21 @@ test("exercise workspace and history visual", async ({ page }) => {
   await page.goto("/exercises/exercise-1");
   await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Saved to account")).toBeVisible();
-  await page.getByRole("button", { name: "Result" }).nth(1).click();
+  await page.getByRole("button", { name: /1\/2 tests passed/i }).click();
+  await expect(page.getByText("Submitted code")).toBeVisible();
   await expect(page.getByText("Wrong Answer")).toBeVisible();
+  const selectedCodeStyle = await page.locator(".dark-code-selection code").evaluate((element) => {
+    const style = getComputedStyle(element, "::selection");
+    return { backgroundColor: style.backgroundColor, color: style.color };
+  });
+  expect(selectedCodeStyle).toEqual({
+    backgroundColor: "rgb(72, 103, 121)",
+    color: "rgb(248, 250, 252)",
+  });
   const compareBoxes = page.getByRole("checkbox", { name: /Compare submission/ });
   await compareBoxes.nth(0).check();
   await compareBoxes.nth(1).check();
-  await expect(page.getByText("Version comparison")).toBeVisible();
+  await expect(page.getByText("Attempt comparison")).toBeVisible();
   await expect(page.locator("main")).toHaveScreenshot("exercise-workspace.png", {
     animations: "disabled",
   });
@@ -593,4 +772,56 @@ test("mobile navigation stays usable", async ({ page }) => {
     animations: "disabled",
     fullPage: true,
   });
+});
+
+test("admin AI operations visual", async ({ page }) => {
+  user.is_admin = true;
+  try {
+    await page.goto("/admin");
+    await expect(page.getByText("AI operations")).toBeVisible();
+    await expect(page.getByText("Choose a learner")).toBeVisible();
+    await page.getByRole("button", { name: /Alex.*learner@example.com/ }).click();
+    await expect(page.getByText("Collections and Lists")).toBeVisible();
+    await page.getByRole("button", { name: "Preview" }).click();
+    await expect(page.getByRole("button", { name: "Regenerate exercise" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Regenerate quiz" })).toBeVisible();
+    await page.getByRole("button", { name: "Regenerate exercise" }).click();
+    const regenerateDialog = page.getByRole("alertdialog", { name: "Regenerate this exercise?" });
+    await expect(regenerateDialog).toBeVisible();
+    const requestPromise = page.waitForRequest((request) =>
+      request.url().endsWith("/admin/content/exercise/exercise-1/regenerate"),
+    );
+    await regenerateDialog.getByLabel("Adjustment instructions").fill(
+      "Use a clearer real-world example and emphasize edge cases.",
+    );
+    await regenerateDialog.getByRole("button", { name: "Regenerate", exact: true }).click();
+    const regenerateRequest = await requestPromise;
+    expect(regenerateRequest.postDataJSON()).toEqual({
+      instructions: "Use a clearer real-world example and emphasize edge cases.",
+    });
+    await expect(page.getByText("Content regenerated successfully and returned to Pending review.")).toBeVisible();
+    await page.getByRole("button", { name: "Compare", exact: true }).first().click();
+    const comparison = page.getByRole("dialog", { name: "Lesson version comparison" });
+    await expect(comparison).toBeVisible();
+    await expect(comparison.getByText("Current version", { exact: true })).toBeVisible();
+    await expect(comparison.getByText("Saved version", { exact: true })).toBeVisible();
+    await expect(comparison.getByText("Current lesson content")).toBeVisible();
+    await expect(comparison.getByText("Saved lesson content")).toBeVisible();
+    await expect(comparison).toHaveScreenshot("admin-version-compare.png", {
+      animations: "disabled",
+    });
+    await page.getByRole("button", { name: "Close comparison dialog" }).click();
+    await page.getByRole("button", { name: "Learner reports" }).click();
+    await expect(page.getByText("The sample output and hidden test disagree.")).toBeVisible();
+    await page.getByRole("button", { name: "Generation jobs" }).click();
+    await expect(page.getByRole("cell", { name: "learner@example.com" })).toBeVisible();
+    await expect(page).toHaveScreenshot("admin-generation-jobs.png", {
+      animations: "disabled",
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "Monitoring" }).click();
+    await expect(page.getByText("Generation job scheduled for retry in 5 seconds")).toBeVisible();
+  } finally {
+    user.is_admin = false;
+  }
 });

@@ -6,7 +6,7 @@ import type { Course } from "@/features/content/hooks";
 export interface GenerationJob {
   id: string;
   track_id: string;
-  status: "pending" | "running" | "done" | "error";
+  status: "pending" | "running" | "done" | "error" | "cancelled";
   total: number;
   completed: number;
   course_id: string | null;
@@ -14,6 +14,13 @@ export interface GenerationJob {
   created_at: string;
   updated_at: string;
   seen_at: string | null;
+  kind: "initial" | "course_set";
+  course_count: number;
+  attempt_count: number;
+  max_attempts: number;
+  heartbeat_at: string | null;
+  next_attempt_at: string | null;
+  cancel_requested: boolean;
 }
 
 export interface GenerationNotifications {
@@ -68,7 +75,7 @@ export function useGenerationStatus(trackId: string | undefined, enabled: boolea
     // is no data yet (e.g. the job row was just created and the first fetch 404'd).
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (status === "done" || status === "error") return false;
+      if (status === "done" || status === "error" || status === "cancelled") return false;
       return 2000;
     },
     // The job is created by the POST; a poll firing a hair earlier can 404, so retry.

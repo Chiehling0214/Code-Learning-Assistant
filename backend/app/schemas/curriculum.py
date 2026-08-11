@@ -19,6 +19,13 @@ class GenerationJobResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     seen_at: datetime | None = None
+    kind: str = "initial"
+    course_count: int = 1
+    attempt_count: int = 0
+    max_attempts: int = 3
+    heartbeat_at: datetime | None = None
+    next_attempt_at: datetime | None = None
+    cancel_requested: bool = False
 
 
 class GenerationNotificationsResponse(BaseModel):

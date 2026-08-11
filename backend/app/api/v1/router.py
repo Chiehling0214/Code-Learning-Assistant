@@ -6,6 +6,7 @@ from app.api.v1.routes import (
     admin_content,
     admin_review,
     ai,
+    content_reports,
     courses,
     curriculum,
     drafts,
@@ -15,6 +16,7 @@ from app.api.v1.routes import (
     languages,
     lessons,
     me,
+    monitoring,
     placement,
     practice,
     profile,
@@ -30,6 +32,7 @@ from app.api.v1.routes import (
 api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(me.router)
+api_router.include_router(monitoring.router)
 api_router.include_router(profile.router)
 api_router.include_router(languages.router)
 api_router.include_router(courses.router)
@@ -51,5 +54,8 @@ api_router.include_router(curriculum.router)
 api_router.include_router(drafts.router)
 api_router.include_router(entitlements.router)
 api_router.include_router(admin_review.router)
+api_router.include_router(content_reports.router)
+api_router.include_router(content_reports.admin_router)
+api_router.include_router(monitoring.admin_router)
 api_router.include_router(review.router)
 api_router.include_router(practice.router)

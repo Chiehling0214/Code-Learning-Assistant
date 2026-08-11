@@ -13,6 +13,7 @@ import re
 import time
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from app.application.ports.ai_provider import (
@@ -24,6 +25,7 @@ from app.application.ports.ai_provider import (
 )
 from app.application.services.ai_usage import AIUsageGuard
 from app.application.services.execution_service import ExecutionService
+from app.application.services.mastery_service import Evidence, score_evidence
 from app.application.services.progress_service import completed_item_ids
 from app.core.config import Settings
 from app.core.logging import get_logger
@@ -91,7 +93,11 @@ class CurriculumService:
         if latest is not None and latest.status in _ACTIVE_STATES:
             return latest  # a generation is already in flight
         return self._jobs.create(
-            track_id=track_id, user_id=user_id, total=self._settings.curriculum_lesson_count
+            track_id=track_id,
+            user_id=user_id,
+            total=self._settings.curriculum_lesson_count,
+            kind="initial",
+            course_count=1,
         )
 
     def list_courses(self, user_id: uuid.UUID):
@@ -187,19 +193,34 @@ class CurriculumService:
                 for quiz in self._quizzes.list_by_lesson(lesson.id):
                     quiz_totals[quiz.id] = len(quiz.questions)
 
-        earned = 0
-        possible = 0
+        evidence: list[Evidence] = []
         for event in self._progress.list_for_user(user_id):
             if event.item_type == "exercise" and event.item_id in exercise_ids:
-                possible += 1
-                earned += 1 if event.status == "passed" else 0
+                evidence.append(
+                    Evidence(
+                        event.item_id,
+                        "exercise",
+                        1.0 if event.status == "passed" else 0.0,
+                        event.completed_at,
+                    )
+                )
             elif event.item_type == "quiz" and event.item_id in quiz_totals:
                 total = quiz_totals[event.item_id]
-                possible += total
-                earned += max(0, min(event.score or 0, total))
+                if total:
+                    evidence.append(
+                        Evidence(
+                            event.item_id,
+                            "quiz",
+                            max(0, min(event.score or 0, total)) / total,
+                            event.completed_at,
+                        )
+                    )
 
-        accuracy = round(earned / possible * 100) if possible else 0
-        if possible == 0:
+        weighted, _exercise_weight, _quiz_weight, _confidence, sample_status = (
+            score_evidence(evidence)
+        )
+        accuracy = weighted or 0
+        if weighted is None or sample_status == "insufficient":
             level = track.level or "beginner"
         elif accuracy >= 85:
             level = "advanced"
@@ -248,6 +269,8 @@ class CurriculumService:
             track_id=track_id,
             user_id=user_id,
             total=max(1, course_count) * self._settings.curriculum_lesson_count,
+            kind="course_set",
+            course_count=max(1, course_count),
         )
         return job, True
 
@@ -278,15 +301,38 @@ class CurriculumService:
         self._jobs.update(job_id, status="running")
         commit()
         completed = 0
+        existing_courses = [
+            course
+            for course in self._courses.list_by_track_ids([track.id])
+            if course.kind != "practice" and course.generation_job_id != job_id
+        ]
+        sequence = max((course.sequence_index for course in existing_courses), default=-1) + 1
+        prerequisite = max(
+            existing_courses, key=lambda course: course.sequence_index, default=None
+        )
 
         for course_index, (name, focus) in enumerate(directions):
+            current_job = self._jobs.get_by_id(job_id)
+            if current_job is not None and current_job.cancel_requested:
+                self._jobs.update(job_id, status="cancelled")
+                commit()
+                return
             course = self._courses.create(
                 language_id=language.id,
                 track_id=track.id,
                 title=f"{language.name} · {name}",
                 slug=_slug(f"{language.slug}-{name}"),
                 description=f"A {level} path selected from your recent course performance.",
+                prerequisite_course_id=prerequisite.id if prerequisite else None,
+                sequence_index=sequence + course_index,
+                recommendation_reason=(
+                    "Recommended after completing your current path"
+                    if course_index == 0
+                    else f"Continue after {prerequisite.title}"
+                ),
+                generation_job_id=job_id,
             )
+            prerequisite = course
             if course_index == 0:
                 self._jobs.update(job_id, course_id=course.id)
                 commit()
@@ -305,6 +351,8 @@ class CurriculumService:
                     focus=focus,
                     usage_kind="generate_course",
                 )
+                if batch is None:
+                    raise RuntimeError("AI could not generate a valid lesson batch")
                 for lesson_data in (batch.lessons if batch else [])[:count]:
                     lesson = self._build_lesson_from_data(
                         course.id, language, order_index, lesson_data
@@ -312,7 +360,9 @@ class CurriculumService:
                     prior_titles.append(lesson.title)
                     order_index += 1
                     completed += 1
-                    self._jobs.update(job_id, completed=completed)
+                    self._jobs.update(
+                        job_id, completed=completed, heartbeat_at=datetime.now(UTC)
+                    )
                     commit()
                 remaining -= count
 
@@ -401,6 +451,13 @@ class CurriculumService:
                 title=f"{language.name} — {level.capitalize()}",
                 slug=_slug(f"{language.slug}-{level}"),
                 description=f"A personalized {level} {language.name} course.",
+                sequence_index=max(
+                    (c.sequence_index for c in self._courses.list_by_track_ids([track.id])),
+                    default=-1,
+                )
+                + 1,
+                recommendation_reason="Start here based on your current ability",
+                generation_job_id=job_id,
             )
             self._jobs.update(job_id, course_id=course.id)
             commit()
@@ -427,6 +484,11 @@ class CurriculumService:
         prior_titles: list[str] = []
         remaining = total
         while remaining > 0:
+            current_job = self._jobs.get_by_id(job_id)
+            if current_job is not None and current_job.cancel_requested:
+                self._jobs.update(job_id, status="cancelled")
+                commit()
+                return
             count = min(batch_size, remaining)
             logger.info(
                 "curriculum: batch of %d (lessons %d-%d/%d)",
@@ -439,6 +501,8 @@ class CurriculumService:
                 language, level, count, prior_titles, job.user_id,
                 usage_kind="generate_course",
             )
+            if batch is None:
+                raise RuntimeError("AI could not generate a valid lesson batch")
             for lesson_data in (batch.lessons if batch else [])[:count]:
                 lesson = self._build_lesson_from_data(
                     course.id, language, order_index, lesson_data
@@ -447,7 +511,9 @@ class CurriculumService:
                 order_index += 1
                 completed += 1
                 # Publish lessons as each batch lands (incremental progress).
-                self._jobs.update(job_id, completed=completed)
+                self._jobs.update(
+                    job_id, completed=completed, heartbeat_at=datetime.now(UTC)
+                )
                 commit()
             remaining -= count
             if remaining > 0 and pause > 0:

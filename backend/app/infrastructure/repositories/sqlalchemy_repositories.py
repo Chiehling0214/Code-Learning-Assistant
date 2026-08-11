@@ -7,14 +7,16 @@ Write methods ``add``/``flush``/``refresh`` only — the request-scoped session
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.domain.entities import AIInteraction as AIInteractionEntity
 from app.domain.entities import Choice as ChoiceEntity
 from app.domain.entities import CodeDraft as CodeDraftEntity
+from app.domain.entities import ContentReport as ContentReportEntity
+from app.domain.entities import ContentVersion as ContentVersionEntity
 from app.domain.entities import Course as CourseEntity
 from app.domain.entities import CourseChatMessage as CourseChatMessageEntity
 from app.domain.entities import Exercise as ExerciseEntity
@@ -35,6 +37,8 @@ from app.domain.entities import User as UserEntity
 from app.infrastructure.models.models import AIInteraction as AIInteractionModel
 from app.infrastructure.models.models import Choice as ChoiceModel
 from app.infrastructure.models.models import CodeDraft as CodeDraftModel
+from app.infrastructure.models.models import ContentReport as ContentReportModel
+from app.infrastructure.models.models import ContentVersion as ContentVersionModel
 from app.infrastructure.models.models import Course as CourseModel
 from app.infrastructure.models.models import CourseChatMessage as CourseChatMessageModel
 from app.infrastructure.models.models import Exercise as ExerciseModel
@@ -89,6 +93,10 @@ class SqlAlchemyUserRepository:
     def get_by_id(self, user_id: uuid.UUID) -> UserEntity | None:
         model = self._session.get(UserModel, user_id)
         return _to_user(model) if model else None
+
+    def list_all(self) -> list[UserEntity]:
+        stmt = select(UserModel).order_by(UserModel.display_name, UserModel.email)
+        return [_to_user(model) for model in self._session.scalars(stmt).all()]
 
     def get_by_firebase_uid(self, firebase_uid: str) -> UserEntity | None:
         stmt = select(UserModel).where(UserModel.firebase_uid == firebase_uid)
@@ -199,6 +207,10 @@ def _to_course(model: CourseModel) -> CourseEntity:
         updated_at=model.updated_at,
         track_id=model.track_id,
         kind=model.kind,
+        prerequisite_course_id=model.prerequisite_course_id,
+        sequence_index=model.sequence_index,
+        recommendation_reason=model.recommendation_reason,
+        generation_job_id=model.generation_job_id,
     )
 
 
@@ -285,6 +297,10 @@ class SqlAlchemyCourseRepository:
         )
         return [_to_course(m) for m in self._session.scalars(stmt).all()]
 
+    def list_by_generation_job(self, job_id: uuid.UUID) -> list[CourseEntity]:
+        stmt = select(CourseModel).where(CourseModel.generation_job_id == job_id)
+        return [_to_course(m) for m in self._session.scalars(stmt).all()]
+
     def get_by_id(self, course_id: uuid.UUID) -> CourseEntity | None:
         model = self._session.get(CourseModel, course_id)
         return _to_course(model) if model else None
@@ -303,6 +319,10 @@ class SqlAlchemyCourseRepository:
         description: str | None,
         track_id: uuid.UUID | None = None,
         kind: str = "course",
+        prerequisite_course_id: uuid.UUID | None = None,
+        sequence_index: int = 0,
+        recommendation_reason: str | None = None,
+        generation_job_id: uuid.UUID | None = None,
     ) -> CourseEntity:
         model = CourseModel(
             language_id=language_id,
@@ -311,6 +331,10 @@ class SqlAlchemyCourseRepository:
             description=description,
             track_id=track_id,
             kind=kind,
+            prerequisite_course_id=prerequisite_course_id,
+            sequence_index=sequence_index,
+            recommendation_reason=recommendation_reason,
+            generation_job_id=generation_job_id,
         )
         self._session.add(model)
         self._session.flush()
@@ -371,6 +395,51 @@ class SqlAlchemyLessonRepository:
             .order_by(LessonModel.created_at.desc())
         )
         return [_to_lesson(m) for m in self._session.scalars(stmt).all()]
+
+    def list_for_review(
+        self,
+        *,
+        source: str,
+        review_status: str | None,
+        query: str,
+        course_id: uuid.UUID | None,
+        course_ids: set[uuid.UUID] | None,
+        offset: int,
+        limit: int,
+    ) -> tuple[list[LessonEntity], int]:
+        conditions = [LessonModel.source == source]
+        if review_status:
+            conditions.append(LessonModel.review_status == review_status)
+        if course_id:
+            conditions.append(LessonModel.course_id == course_id)
+        if course_ids is not None:
+            conditions.append(LessonModel.course_id.in_(course_ids))
+        if query.strip():
+            normalized_query = query.strip().lower()
+            conditions.append(
+                or_(
+                    func.lower(LessonModel.title).contains(normalized_query, autoescape=True),
+                    func.lower(CourseModel.title).contains(normalized_query, autoescape=True),
+                )
+            )
+        joined = LessonModel.__table__.join(
+            CourseModel.__table__, LessonModel.course_id == CourseModel.id
+        )
+        total = self._session.scalar(
+            select(func.count()).select_from(joined).where(*conditions)
+        ) or 0
+        stmt = (
+            select(LessonModel)
+            .select_from(joined)
+            .where(*conditions)
+            .order_by(CourseModel.title, LessonModel.order_index, LessonModel.title)
+            .offset(max(0, offset))
+            .limit(max(1, limit))
+        )
+        return (
+            [_to_lesson(model) for model in self._session.scalars(stmt).all()],
+            int(total),
+        )
 
     def create(
         self,
@@ -518,6 +587,27 @@ class SqlAlchemyExerciseRepository:
             raise LookupError(f"Exercise {exercise_id} not found")
         self._session.delete(model)
         self._session.flush()
+
+    def update_generated(
+        self,
+        exercise_id: uuid.UUID,
+        *,
+        title: str,
+        prompt: str,
+        starter_code: str,
+        test_spec: dict,
+    ) -> ExerciseEntity:
+        model = self._session.get(ExerciseModel, exercise_id)
+        if model is None:
+            raise LookupError("Exercise not found")
+        model.title = title
+        model.prompt = prompt
+        model.starter_code = starter_code
+        model.test_spec = test_spec
+        model.source = "ai"
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_exercise(model)
 
 
 class SqlAlchemySubmissionRepository:
@@ -690,6 +780,30 @@ class SqlAlchemyQuizRepository:
             raise LookupError(f"Quiz {quiz_id} not found")
         self._session.delete(model)
         self._session.flush()
+
+    def replace_generated(
+        self, quiz_id: uuid.UUID, *, title: str, questions: list[dict]
+    ) -> QuizEntity:
+        model = self._session.get(QuizModel, quiz_id)
+        if model is None:
+            raise LookupError("Quiz not found")
+        model.title = title
+        model.questions.clear()
+        self._session.flush()
+        for index, item in enumerate(questions):
+            choices = item.get("choices") or []
+            if len(choices) < 2 or not any(choice.get("is_correct") for choice in choices):
+                continue
+            self.add_question(
+                quiz_id=quiz_id,
+                prompt=str(item.get("prompt", "")),
+                type="single",
+                order_index=index,
+                choices=choices,
+                explanation=str(item.get("explanation", "")),
+            )
+        self._session.refresh(model)
+        return _to_quiz(model)
 
 
 class SqlAlchemyQuizAttemptRepository:
@@ -886,6 +1000,10 @@ class SqlAlchemyLanguageTrackRepository:
         model = self._session.get(LanguageTrackModel, track_id)
         return _to_track(model) if model else None
 
+    def list_all(self) -> list[LanguageTrackEntity]:
+        stmt = select(LanguageTrackModel).order_by(LanguageTrackModel.created_at)
+        return [_to_track(model) for model in self._session.scalars(stmt).all()]
+
     def list_by_user(self, user_id: uuid.UUID) -> list[LanguageTrackEntity]:
         stmt = (
             select(LanguageTrackModel)
@@ -1002,6 +1120,13 @@ def _to_job(model: GenerationJobModel) -> GenerationJobEntity:
         created_at=model.created_at,
         updated_at=model.updated_at,
         seen_at=model.seen_at,
+        kind=model.kind,
+        course_count=model.course_count,
+        attempt_count=model.attempt_count,
+        max_attempts=model.max_attempts,
+        heartbeat_at=model.heartbeat_at,
+        next_attempt_at=model.next_attempt_at,
+        cancel_requested=model.cancel_requested,
     )
 
 
@@ -1032,10 +1157,26 @@ class SqlAlchemyGenerationJobRepository:
         )
         return [_to_job(model) for model in self._session.scalars(stmt).all()]
 
+    def list_all(self) -> list[GenerationJobEntity]:
+        stmt = select(GenerationJobModel).order_by(GenerationJobModel.created_at.desc())
+        return [_to_job(model) for model in self._session.scalars(stmt).all()]
+
     def create(
-        self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int
+        self,
+        *,
+        track_id: uuid.UUID,
+        user_id: uuid.UUID,
+        total: int,
+        kind: str = "initial",
+        course_count: int = 1,
     ) -> GenerationJobEntity:
-        model = GenerationJobModel(track_id=track_id, user_id=user_id, total=total)
+        model = GenerationJobModel(
+            track_id=track_id,
+            user_id=user_id,
+            total=total,
+            kind=kind,
+            course_count=course_count,
+        )
         self._session.add(model)
         self._session.flush()
         self._session.refresh(model)
@@ -1049,6 +1190,9 @@ class SqlAlchemyGenerationJobRepository:
         completed: int | None = None,
         course_id: uuid.UUID | None = None,
         error: str | None = None,
+        heartbeat_at: datetime | None = None,
+        next_attempt_at: datetime | None = None,
+        cancel_requested: bool | None = None,
     ) -> GenerationJobEntity:
         model = self._session.get(GenerationJobModel, job_id)
         if model is None:
@@ -1061,6 +1205,79 @@ class SqlAlchemyGenerationJobRepository:
             model.course_id = course_id
         if error is not None:
             model.error = error
+        if heartbeat_at is not None:
+            model.heartbeat_at = heartbeat_at
+        if next_attempt_at is not None:
+            model.next_attempt_at = next_attempt_at
+        if cancel_requested is not None:
+            model.cancel_requested = cancel_requested
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_job(model)
+
+    def claim_next(self) -> GenerationJobEntity | None:
+        now = datetime.now(UTC)
+        stmt = (
+            select(GenerationJobModel)
+            .where(
+                GenerationJobModel.status == "pending",
+                GenerationJobModel.cancel_requested.is_(False),
+                GenerationJobModel.attempt_count < GenerationJobModel.max_attempts,
+                (GenerationJobModel.next_attempt_at.is_(None))
+                | (GenerationJobModel.next_attempt_at <= now),
+            )
+            .order_by(GenerationJobModel.created_at)
+            .with_for_update(skip_locked=True)
+        )
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            return None
+        model.status = "running"
+        model.attempt_count += 1
+        model.heartbeat_at = now
+        model.error = None
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_job(model)
+
+    def recover_stale(self, *, minutes: int = 5) -> int:
+        cutoff = datetime.now(UTC) - timedelta(minutes=minutes)
+        stmt = select(GenerationJobModel).where(
+            GenerationJobModel.status == "running",
+            (GenerationJobModel.heartbeat_at.is_(None))
+            | (GenerationJobModel.heartbeat_at < cutoff),
+        )
+        models = list(self._session.scalars(stmt).all())
+        for model in models:
+            model.status = "pending"
+            model.next_attempt_at = datetime.now(UTC)
+            model.error = "Worker interrupted; queued for recovery."
+        self._session.flush()
+        return len(models)
+
+    def retry(self, job_id: uuid.UUID) -> GenerationJobEntity:
+        model = self._session.get(GenerationJobModel, job_id)
+        if model is None:
+            raise LookupError("Generation job not found")
+        if model.status not in {"error", "cancelled"}:
+            raise ValueError("Only failed or cancelled jobs can be retried")
+        model.status = "pending"
+        model.cancel_requested = False
+        model.next_attempt_at = datetime.now(UTC)
+        model.error = None
+        if model.attempt_count >= model.max_attempts:
+            model.attempt_count = 0
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_job(model)
+
+    def cancel(self, job_id: uuid.UUID) -> GenerationJobEntity:
+        model = self._session.get(GenerationJobModel, job_id)
+        if model is None:
+            raise LookupError("Generation job not found")
+        model.cancel_requested = True
+        if model.status == "pending":
+            model.status = "cancelled"
         self._session.flush()
         self._session.refresh(model)
         return _to_job(model)
@@ -1073,6 +1290,139 @@ class SqlAlchemyGenerationJobRepository:
         self._session.flush()
         self._session.refresh(model)
         return _to_job(model)
+
+
+def _to_content_report(model: ContentReportModel) -> ContentReportEntity:
+    return ContentReportEntity(
+        id=model.id,
+        user_id=model.user_id,
+        item_type=model.item_type,
+        item_id=model.item_id,
+        reason=model.reason,
+        details=model.details,
+        status=model.status,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+class SqlAlchemyContentReportRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+        reason: str,
+        details: str,
+    ) -> ContentReportEntity:
+        model = ContentReportModel(
+            user_id=user_id,
+            item_type=item_type,
+            item_id=item_id,
+            reason=reason,
+            details=details,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_content_report(model)
+
+    def list_all(self, status: str | None = None) -> list[ContentReportEntity]:
+        stmt = select(ContentReportModel)
+        if status:
+            stmt = stmt.where(ContentReportModel.status == status)
+        stmt = stmt.order_by(ContentReportModel.created_at.desc())
+        return [_to_content_report(m) for m in self._session.scalars(stmt).all()]
+
+    def get_by_id(self, report_id: uuid.UUID) -> ContentReportEntity | None:
+        model = self._session.get(ContentReportModel, report_id)
+        return _to_content_report(model) if model else None
+
+    def set_status(self, report_id: uuid.UUID, status: str) -> ContentReportEntity:
+        model = self._session.get(ContentReportModel, report_id)
+        if model is None:
+            raise LookupError("Content report not found")
+        model.status = status
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_content_report(model)
+
+
+def _to_content_version(model: ContentVersionModel) -> ContentVersionEntity:
+    return ContentVersionEntity(
+        id=model.id,
+        item_type=model.item_type,
+        item_id=model.item_id,
+        snapshot=model.snapshot,
+        created_by=model.created_by,
+        created_at=model.created_at,
+    )
+
+
+class SqlAlchemyContentVersionRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def create(
+        self,
+        *,
+        item_type: str,
+        item_id: uuid.UUID,
+        snapshot: dict,
+        created_by: uuid.UUID | None,
+    ) -> ContentVersionEntity:
+        model = ContentVersionModel(
+            item_type=item_type,
+            item_id=item_id,
+            snapshot=snapshot,
+            created_by=created_by,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_content_version(model)
+
+    def get_by_id(self, version_id: uuid.UUID) -> ContentVersionEntity | None:
+        model = self._session.get(ContentVersionModel, version_id)
+        return _to_content_version(model) if model else None
+
+    def list_for_item(
+        self, item_type: str, item_id: uuid.UUID
+    ) -> list[ContentVersionEntity]:
+        stmt = (
+            select(ContentVersionModel)
+            .where(
+                ContentVersionModel.item_type == item_type,
+                ContentVersionModel.item_id == item_id,
+            )
+            .order_by(ContentVersionModel.created_at.desc())
+        )
+        return [_to_content_version(model) for model in self._session.scalars(stmt).all()]
+
+    def prune(self, item_type: str, item_id: uuid.UUID, keep: int) -> int:
+        stale_ids = list(
+            self._session.scalars(
+                select(ContentVersionModel.id)
+                .where(
+                    ContentVersionModel.item_type == item_type,
+                    ContentVersionModel.item_id == item_id,
+                )
+                .order_by(ContentVersionModel.created_at.desc(), ContentVersionModel.id.desc())
+                .offset(max(0, keep))
+            ).all()
+        )
+        if not stale_ids:
+            return 0
+        self._session.execute(
+            delete(ContentVersionModel).where(ContentVersionModel.id.in_(stale_ids))
+        )
+        self._session.flush()
+        return len(stale_ids)
+
 
 def _to_review(model: ReviewItemModel) -> ReviewItemEntity:
     return ReviewItemEntity(

@@ -14,6 +14,8 @@ from typing import Protocol
 from app.domain.entities import (
     AIInteraction,
     CodeDraft,
+    ContentReport,
+    ContentVersion,
     Course,
     CourseChatMessage,
     Exercise,
@@ -38,6 +40,8 @@ class UserRepository(Protocol):
     """Persistence operations for :class:`~app.domain.entities.User`."""
 
     def get_by_id(self, user_id: uuid.UUID) -> User | None: ...
+
+    def list_all(self) -> list[User]: ...
 
     def get_by_firebase_uid(self, firebase_uid: str) -> User | None: ...
 
@@ -99,6 +103,8 @@ class CourseRepository(Protocol):
 
     def list_by_track_ids(self, track_ids: list[uuid.UUID]) -> list[Course]: ...
 
+    def list_by_generation_job(self, job_id: uuid.UUID) -> list[Course]: ...
+
     def get_by_id(self, course_id: uuid.UUID) -> Course | None: ...
 
     def get_by_slug(self, slug: str) -> Course | None: ...
@@ -112,6 +118,10 @@ class CourseRepository(Protocol):
         description: str | None,
         track_id: uuid.UUID | None = None,
         kind: str = "course",
+        prerequisite_course_id: uuid.UUID | None = None,
+        sequence_index: int = 0,
+        recommendation_reason: str | None = None,
+        generation_job_id: uuid.UUID | None = None,
     ) -> Course: ...
 
     def update(
@@ -134,6 +144,18 @@ class LessonRepository(Protocol):
     def list_by_course(self, course_id: uuid.UUID) -> list[Lesson]: ...
 
     def list_by_source(self, source: str) -> list[Lesson]: ...
+
+    def list_for_review(
+        self,
+        *,
+        source: str,
+        review_status: str | None,
+        query: str,
+        course_id: uuid.UUID | None,
+        course_ids: set[uuid.UUID] | None,
+        offset: int,
+        limit: int,
+    ) -> tuple[list[Lesson], int]: ...
 
     def create(
         self,
@@ -184,6 +206,16 @@ class ExerciseRepository(Protocol):
 
     def delete(self, exercise_id: uuid.UUID) -> None: ...
 
+    def update_generated(
+        self,
+        exercise_id: uuid.UUID,
+        *,
+        title: str,
+        prompt: str,
+        starter_code: str,
+        test_spec: dict,
+    ) -> Exercise: ...
+
 
 class SubmissionRepository(Protocol):
     """Persistence operations for :class:`~app.domain.entities.Submission`."""
@@ -231,6 +263,10 @@ class QuizRepository(Protocol):
     ) -> Question: ...
 
     def delete(self, quiz_id: uuid.UUID) -> None: ...
+
+    def replace_generated(
+        self, quiz_id: uuid.UUID, *, title: str, questions: list[dict]
+    ) -> Quiz: ...
 
 
 class QuizAttemptRepository(Protocol):
@@ -295,6 +331,8 @@ class LanguageTrackRepository(Protocol):
 
     def get_by_id(self, track_id: uuid.UUID) -> LanguageTrack | None: ...
 
+    def list_all(self) -> list[LanguageTrack]: ...
+
     def list_by_user(self, user_id: uuid.UUID) -> list[LanguageTrack]: ...
 
     def get_by_user_and_language(
@@ -321,8 +359,16 @@ class GenerationJobRepository(Protocol):
 
     def list_for_user(self, user_id: uuid.UUID) -> list[GenerationJob]: ...
 
+    def list_all(self) -> list[GenerationJob]: ...
+
     def create(
-        self, *, track_id: uuid.UUID, user_id: uuid.UUID, total: int
+        self,
+        *,
+        track_id: uuid.UUID,
+        user_id: uuid.UUID,
+        total: int,
+        kind: str = "initial",
+        course_count: int = 1,
     ) -> GenerationJob: ...
 
     def update(
@@ -333,9 +379,47 @@ class GenerationJobRepository(Protocol):
         completed: int | None = None,
         course_id: uuid.UUID | None = None,
         error: str | None = None,
+        heartbeat_at: datetime | None = None,
+        next_attempt_at: datetime | None = None,
+        cancel_requested: bool | None = None,
     ) -> GenerationJob: ...
 
     def mark_seen(self, job_id: uuid.UUID, user_id: uuid.UUID) -> GenerationJob: ...
+
+
+class ContentReportRepository(Protocol):
+    def create(
+        self,
+        *,
+        user_id: uuid.UUID,
+        item_type: str,
+        item_id: uuid.UUID,
+        reason: str,
+        details: str,
+    ) -> ContentReport: ...
+
+    def list_all(self, status: str | None = None) -> list[ContentReport]: ...
+
+    def get_by_id(self, report_id: uuid.UUID) -> ContentReport | None: ...
+
+    def set_status(self, report_id: uuid.UUID, status: str) -> ContentReport: ...
+
+
+class ContentVersionRepository(Protocol):
+    def create(
+        self,
+        *,
+        item_type: str,
+        item_id: uuid.UUID,
+        snapshot: dict,
+        created_by: uuid.UUID | None,
+    ) -> ContentVersion: ...
+
+    def get_by_id(self, version_id: uuid.UUID) -> ContentVersion | None: ...
+
+    def list_for_item(self, item_type: str, item_id: uuid.UUID) -> list[ContentVersion]: ...
+
+    def prune(self, item_type: str, item_id: uuid.UUID, keep: int) -> int: ...
 
 
 class ReviewItemRepository(Protocol):

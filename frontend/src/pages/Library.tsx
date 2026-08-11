@@ -9,7 +9,7 @@ import { useMyCourses } from "@/features/curriculum/hooks";
 import { useProgress } from "@/features/progress/hooks";
 
 type StatusFilter = "all" | "not-started" | "in-progress" | "completed";
-type SortOption = "recent" | "progress" | "name";
+type SortOption = "recommended" | "recent" | "progress" | "name";
 
 const fieldClass =
   "h-10 rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus:border-primary/40 focus:ring-2 focus:ring-primary/10";
@@ -21,7 +21,7 @@ export function LibraryPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [languageId, setLanguageId] = useState("all");
-  const [sort, setSort] = useState<SortOption>("recent");
+  const [sort, setSort] = useState<SortOption>("recommended");
 
   const progressByCourse = useMemo(
     () => new Map(progress?.courses.map((item) => [item.course_id, item])),
@@ -31,6 +31,25 @@ export function LibraryPage() {
     () => new Map(languages.map((language) => [language.id, language.name])),
     [languages],
   );
+  const courseById = useMemo(
+    () => new Map(courses.map((course) => [course.id, course])),
+    [courses],
+  );
+  const recommendedIds = useMemo(() => {
+    const result = new Set<string>();
+    for (const language of languages) {
+      const next = courses
+        .filter((course) => course.language_id === language.id)
+        .sort((left, right) => left.sequence_index - right.sequence_index)
+        .find((course) => {
+          if ((progressByCourse.get(course.id)?.percent ?? 0) >= 100) return false;
+          if (!course.prerequisite_course_id) return true;
+          return (progressByCourse.get(course.prerequisite_course_id)?.percent ?? 0) >= 100;
+        });
+      if (next) result.add(next.id);
+    }
+    return result;
+  }, [courses, languages, progressByCourse]);
 
   const filteredCourses = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -52,6 +71,10 @@ export function LibraryPage() {
     });
 
     return result.sort((left, right) => {
+      if (sort === "recommended") {
+        const recommendationOrder = Number(recommendedIds.has(right.id)) - Number(recommendedIds.has(left.id));
+        return recommendationOrder || left.sequence_index - right.sequence_index;
+      }
       if (sort === "name") return left.title.localeCompare(right.title);
       if (sort === "progress") {
         return (progressByCourse.get(right.id)?.percent ?? 0) -
@@ -60,7 +83,7 @@ export function LibraryPage() {
       const resumeId = progress?.resume?.course_id;
       return Number(right.id === resumeId) - Number(left.id === resumeId);
     });
-  }, [courses, languageById, languageId, progress?.resume?.course_id, progressByCourse, query, sort, status]);
+  }, [courses, languageById, languageId, progress?.resume?.course_id, progressByCourse, query, recommendedIds, sort, status]);
 
   return (
     <div className="space-y-8">
@@ -95,6 +118,7 @@ export function LibraryPage() {
             <option value="completed">Completed</option>
           </select>
           <select value={sort} onChange={(event) => setSort(event.target.value as SortOption)} className={fieldClass} aria-label="Sort courses">
+            <option value="recommended">Recommended path</option>
             <option value="recent">Recently learned</option>
             <option value="progress">Highest progress</option>
             <option value="name">Course name</option>
@@ -125,6 +149,13 @@ export function LibraryPage() {
               courseProgress={progressByCourse.get(course.id)}
               index={index}
               language={languageById.get(course.language_id)}
+              recommended={recommendedIds.has(course.id)}
+              prerequisiteTitle={
+                course.prerequisite_course_id &&
+                (progressByCourse.get(course.prerequisite_course_id)?.percent ?? 0) < 100
+                  ? courseById.get(course.prerequisite_course_id)?.title
+                  : undefined
+              }
             />
           ))}
         </div>

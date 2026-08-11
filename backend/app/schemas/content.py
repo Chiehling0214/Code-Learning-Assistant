@@ -23,6 +23,9 @@ class CourseResponse(BaseModel):
     title: str
     slug: str
     description: str | None = None
+    prerequisite_course_id: uuid.UUID | None = None
+    sequence_index: int = 0
+    recommendation_reason: str | None = None
 
 
 class CourseItemSummary(BaseModel):

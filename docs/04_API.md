@@ -28,6 +28,8 @@
 | GET | `/api/v1/courses` | none | 2 | List courses. |
 | GET | `/api/v1/courses/{slug}` | none | 2 | Course detail with ordered lessons. |
 | GET | `/api/v1/lessons/{id}` | none | 2 | Single lesson (markdown content). |
+| POST | `/api/v1/lessons/{id}/adjustments/preview` | bearer | current | Generate an on-topic personal lesson preview; original stays unchanged. |
+| POST | `/api/v1/lessons/{id}/adjustments/{adjustment_id}/apply` | bearer | current | Keep a generated preview and save the original as a restorable version. |
 | POST/PUT/DELETE | `/api/v1/admin/languages[/{id}]` | admin | 2 | Manage languages. |
 | POST/PUT/DELETE | `/api/v1/admin/courses[/{id}]` | admin | 2 | Manage courses. |
 | POST/PUT/DELETE | `/api/v1/admin/lessons[/{id}]` | admin | 2 | Manage lessons. |
@@ -210,6 +212,14 @@ or provider is a config change. Requests are built server-side; learner text is
 fenced against prompt injection. Per-user rate limiting guards the Gemini free
 tier; when AI is unconfigured or out of quota the endpoints return `503`, and
 exceeding the per-user budget returns `429`.
+
+Learners can adjust a lesson from its existing topic using a bounded preset
+(`simpler`, `examples`, `challenge`, or `practical`) plus optional details. The
+preview endpoint validates course ownership, plan generation quota, and the AI
+burst limit, then stores the generated result as a private `lesson_draft` while
+leaving the served lesson unchanged. Applying that draft rejects stale previews,
+saves the original content in version history, updates only that learner's
+personalized lesson, and returns it to Pending admin review.
 
 `POST /ai/teacher` explains a lesson/topic/question for the learner's level.
 `POST /ai/tutor` reviews the submitted code and returns a hint, not the full

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from app.domain.repositories import (
     CourseRepository,
@@ -47,6 +48,46 @@ class AbilityAssessment:
     accuracy: int | None
     source: str
     next_evaluation: str
+    weighted_accuracy: int | None = None
+    confidence: str = "low"
+    sample_status: str = "insufficient"
+    exercise_weight: float = 0
+    quiz_weight: float = 0
+
+
+@dataclass(frozen=True)
+class Evidence:
+    item_id: uuid.UUID
+    kind: str
+    score: float
+    occurred_at: datetime
+
+
+def score_evidence(evidence: list[Evidence]) -> tuple[int | None, float, float, str, str]:
+    now = datetime.now(UTC)
+    per_item: dict[uuid.UUID, list[Evidence]] = {}
+    for entry in evidence:
+        per_item.setdefault(entry.item_id, []).append(entry)
+    earned = exercise_weight = quiz_weight = 0.0
+    for entries in per_item.values():
+        for retry_index, entry in enumerate(sorted(entries, key=lambda x: x.occurred_at)):
+            age_days = max(0, (now - entry.occurred_at).days)
+            recency = max(0.55, 1 - age_days / 365)
+            retry = 1 / (1 + retry_index * 0.65)
+            base = 2.0 if entry.kind == "exercise" else 1.0
+            weight = base * recency * retry
+            earned += max(0, min(entry.score, 1)) * weight
+            if entry.kind == "exercise":
+                exercise_weight += weight
+            else:
+                quiz_weight += weight
+    total = exercise_weight + quiz_weight
+    accuracy = round(earned / total * 100) if total else None
+    if total < 3:
+        return accuracy, exercise_weight, quiz_weight, "low", "insufficient"
+    if total < 12:
+        return accuracy, exercise_weight, quiz_weight, "medium", "developing"
+    return accuracy, exercise_weight, quiz_weight, "high", "sufficient"
 
 
 def _level_for(rate: float) -> str:
@@ -161,12 +202,49 @@ class MasteryService:
         topics = self.snapshot(user_id=user_id, language_slug=language_slug)
         attempts = sum(topic.attempts for topic in topics)
         correct = sum(topic.correct for topic in topics)
-        accuracy = round(correct / attempts * 100) if attempts else None
-        if accuracy is None:
+        course_ids = {
+            course.id
+            for course in self._courses.list_by_track_ids([track.id])
+            if course.language_id == language.id
+        }
+        exercise_ids: set[uuid.UUID] = set()
+        quiz_totals: dict[uuid.UUID, int] = {}
+        for course_id in course_ids:
+            for lesson in self._lessons.list_by_course(course_id):
+                exercise_ids.update(ex.id for ex in self._exercises.list_by_lesson(lesson.id))
+                for quiz in self._quizzes.list_by_lesson(lesson.id):
+                    quiz_totals[quiz.id] = len(quiz.questions)
+        evidence: list[Evidence] = []
+        for event in self._progress.list_for_user(user_id):
+            if event.item_type == "exercise" and event.item_id in exercise_ids:
+                evidence.append(
+                    Evidence(
+                        event.item_id,
+                        "exercise",
+                        1.0 if event.status == "passed" else 0.0,
+                        event.completed_at,
+                    )
+                )
+            elif event.item_type == "quiz" and event.item_id in quiz_totals:
+                total = quiz_totals[event.item_id]
+                if total:
+                    evidence.append(
+                        Evidence(
+                            event.item_id,
+                            "quiz",
+                            (event.score or 0) / total,
+                            event.completed_at,
+                        )
+                    )
+        weighted_accuracy, exercise_weight, quiz_weight, confidence, sample_status = (
+            score_evidence(evidence)
+        )
+        raw_accuracy = round(correct / attempts * 100) if attempts else None
+        if weighted_accuracy is None or sample_status == "insufficient":
             evidence_level = track.level or "beginner"
-        elif accuracy >= 85:
+        elif weighted_accuracy >= 85:
             evidence_level = "advanced"
-        elif accuracy >= 60:
+        elif weighted_accuracy >= 60:
             evidence_level = "intermediate"
         else:
             evidence_level = "beginner"
@@ -176,10 +254,15 @@ class MasteryService:
             evidence_level=evidence_level,
             attempts=attempts,
             correct=correct,
-            accuracy=accuracy,
+            accuracy=raw_accuracy,
             source="course performance" if attempts else "placement assessment",
             next_evaluation=(
                 "Your level is recalculated after every current course is completed; "
                 "the next three courses use that result."
             ),
+            weighted_accuracy=weighted_accuracy,
+            confidence=confidence,
+            sample_status=sample_status,
+            exercise_weight=round(exercise_weight, 1),
+            quiz_weight=round(quiz_weight, 1),
         )

@@ -1,196 +1,318 @@
 # Code Learning Assistant
 
-> AI-powered, personalized programming learning platform.
+[![CI](https://github.com/Chiehling0214/Code-Learning-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Chiehling0214/Code-Learning-Assistant/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/demo-live-38587f)](https://code-learning-assistant.duckdns.org)
 
-Code Learning Assistant guides each learner through a tailored path of lessons, coding
-exercises, and quizzes — taught and tutored by AI, with code executed in a
-sandbox.
+An AI-powered programming learning platform that turns a learner's current ability into a
+personalized course of lessons, coding exercises, quizzes, and spaced review.
 
-**Status — Sprints 0–13 and 15–17 complete** (14 — GCP deployment — designed, deferred to avoid hosting costs; see [docs/Sprint_14.md](docs/Sprint_14.md)).
-The platform also includes **spaced review** (Sprint 15 — every wrong quiz/placement
-answer and failed exercise lands in a mistakes notebook and comes back on a
-1→2→4-day schedule until mastered, surfaced first in "Today") and a **practice
-arena** (Sprint 16 — on-demand AI drills on any topic or your measured weak
-spots, with a per-topic mastery view on Progress).
-The product is pivoting to AI-generated, personalized curricula (Sprints 9–13,
-see [docs/00_PROJECT.md](docs/00_PROJECT.md)): learners now pick a language on
-first login and hold plan-capped language "tracks". Foundation:
-production-quality scaffold (Sprint 0),
-authentication & user profiles (Sprint 1), a content domain (Sprint 2 —
-languages, courses, lessons + admin CRUD), coding exercises (Sprint 3 — model +
-Monaco editor + submissions), **code execution & grading via Judge0** (Sprint 4 —
-Run for live output, Submit graded against hidden tests in the background),
-**quizzes with auto-grading** (Sprint 5 — multiple-choice quizzes attached to
-lessons, taken without the answer key leaking, scored instantly, with admin
-authoring), **AI Teacher / AI Tutor + content generation** (Sprint 6 — Gemini
-behind an `AIProvider` port; explain lessons, hint on code, and generate
-self-verified lessons/exercises into the existing tables), and a **personalized
-"Today" plan + progress analytics** (Sprint 7 — completion tracking across
-lessons/exercises/quizzes, an ordered daily plan, and per-course completion +
-streak), **subscriptions + hardening** (Sprint 8 — Stripe checkout & signature-verified
-webhooks, premium gating of the AI Tutor, an in-process rate limiter, and a
-production `docker-compose.prod.yml`), and **onboarding & language tracks**
-(Sprint 9 — first-login language picker, per-user tracks, free-tier cap of 2
-languages), and a **placement test** (Sprint 10 — AI-generated MCQs + coding
-tasks, self-verified, graded into an assessed level on the track/profile), and
-**AI curriculum generation** (Sprint 11 — a background job builds a full
-personalized course of lessons/exercises/quizzes for the track+level; manual
-course authoring is retired), **continuous learning** (Sprint 12 — a
-near-completion "Learn more" action and an in-course chat where the learner asks
-for a topic and the AI appends a matching lesson + exercises + quiz, reusing the
-generation pipeline), and **entitlements & admin review** (Sprint 13 — plan-aware
-limits on languages, AI Tutor hints, and generation quota, exposed via
-`/me/entitlements` with a `402`/upgrade prompt over-limit; the admin surface is
-now an AI-content review console, where hidden lessons are withheld from learners).
+Instead of asking learners to choose their own level, Code Learning Assistant assesses their
+answers and code, generates an appropriate curriculum, and keeps adapting the next step as they
+progress.
 
-See [`docs/`](docs/) for full design documentation — start with
-[00_PROJECT.md](docs/00_PROJECT.md) and the per-sprint plans
-[Sprint_01.md](docs/Sprint_01.md) … [Sprint_08.md](docs/Sprint_08.md).
+![Code Learning Assistant dashboard](e2e/__screenshots__/dashboard.png)
 
----
+## What it does
 
-## Tech Stack
+1. The learner chooses a programming language.
+2. A placement test evaluates their current ability.
+3. Gemini generates a personalized course at the assessed level.
+4. The learner follows a focused daily plan of lessons, exercises, and quizzes.
+5. Mistakes return through spaced review, while progress and topic mastery update over time.
+6. Completing a course can generate the next three courses automatically.
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React, TypeScript, Vite, TailwindCSS, shadcn/ui, TanStack Query, Zustand, Monaco Editor |
-| Backend | FastAPI, SQLAlchemy 2.0, Alembic (Clean Architecture) |
-| Database | PostgreSQL 16 |
-| Auth | Firebase Authentication (token verification; stubbed in Sprint 0) |
-| Infra | Docker Compose |
+## Key features
 
-## Repository Structure
+- **AI-assessed learning paths** — skill level is derived from placement and learning performance,
+  not manually selected by the learner.
+- **Personalized curricula** — background generation creates lessons, exercises, and quizzes for
+  each language track.
+- **Hands-on coding** — Monaco Editor, autosaved drafts, custom stdin, Judge0 execution, hidden-test
+  grading, readable submission history, and attempt comparison.
+- **AI Teacher and Tutor** — contextual lesson explanations, questions, and code hints without
+  exposing the final answer.
+- **Clear next steps** — the dashboard, daily plan, course page, and library keep reading a course
+  separate from resuming the most recent learning activity.
+- **Review and practice** — a mistakes notebook, spaced-review schedule, weak-topic filters, notes,
+  and on-demand practice drills.
+- **Progress tracking** — course completion, learning streaks, topic mastery, and the reasoning
+  behind the assessed level.
+- **Content controls** — learners can preview a focused lesson adjustment while preserving its
+  topic and keep either the original or adjusted version.
+- **Admin operations** — user-first content review, structured version comparison, content
+  regeneration, learner reports, generation-job controls, usage data, and production monitoring.
+- **Operational safeguards** — Firebase authentication, Redis-backed rate limiting, generation
+  retries, request IDs, API/AI/frontend error tracking, and optional Stripe billing.
 
-```text
-.
-├── docs/                 # Design documentation (00–09)
-├── frontend/             # React + Vite app
-│   └── src/
-│       ├── pages/        # Route pages (Landing, Dashboard, ...)
-│       ├── components/   # ui/ (shadcn) + layout
-│       ├── lib/          # api, query-client, firebase, utils
-│       └── store/        # Zustand stores
-├── backend/              # FastAPI app (Clean Architecture)
-│   ├── app/
-│   │   ├── api/          # routers + DI (presentation)
-│   │   ├── application/  # use cases / services
-│   │   ├── domain/       # entities + repository interfaces (pure)
-│   │   ├── infrastructure/  # db, models, repositories
-│   │   ├── core/         # config, logging, security
-│   │   └── schemas/      # Pydantic DTOs
-│   └── alembic/          # migrations
-├── docker/               # shared docker assets/notes
-├── scripts/              # dev helper scripts
-├── .github/workflows/    # CI
-├── docker-compose.yml
-└── .env.example
+## Architecture
+
+```mermaid
+flowchart LR
+    Browser[React application] -->|REST and SSE| API[FastAPI API]
+    API --> DB[(PostgreSQL)]
+    API --> Cache[(Redis)]
+    API --> Auth[Firebase Auth]
+    API --> Judge[Judge0]
+    API --> Billing[Stripe]
+    API -->|creates generation jobs| DB
+    Worker[Generation worker] -->|claims and updates jobs| DB
+    Worker --> AI[Gemini]
 ```
 
-## Quick Start (Docker — recommended)
+The API uses a layered architecture: route handlers depend on application services, services depend
+on domain repository interfaces, and SQLAlchemy provides the infrastructure implementation. Long AI
+generation tasks run in a separate worker so API requests remain responsive.
 
-Prerequisites: Docker + Docker Compose.
+## Technology
+
+| Area | Stack |
+| --- | --- |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, Zustand, Monaco Editor |
+| Backend | FastAPI, Pydantic, SQLAlchemy 2, Alembic |
+| Data | PostgreSQL 16, Redis 7 |
+| AI | Google Gemini |
+| Code execution | Judge0, hosted through RapidAPI or self-hosted |
+| Authentication | Firebase Authentication |
+| Billing | Stripe, optional |
+| Infrastructure | Docker Compose, Caddy, GitHub Actions |
+| Testing | Pytest, Ruff, ESLint, TypeScript, Playwright visual tests |
+
+## Quick start with Docker
+
+### Requirements
+
+- Docker Desktop or Docker Engine with Docker Compose
+- A Gemini API key for curriculum generation and AI assistance
+- A Judge0 RapidAPI key, or the optional local Judge0 profile, for code execution
+
+### 1. Clone and configure
 
 ```bash
+git clone https://github.com/Chiehling0214/Code-Learning-Assistant.git
+cd Code-Learning-Assistant
 cp .env.example .env
-docker compose up --build
 ```
 
-Then open:
+On Windows PowerShell, replace the last command with:
 
-- Frontend: <http://localhost:5173>
-- API: <http://localhost:8000/api/v1/health>
-- API docs: <http://localhost:8000/docs>
+```powershell
+Copy-Item .env.example .env
+```
 
-The backend applies database migrations automatically on startup, so the stack
-is ready with no manual steps.
+The default configuration enables development authentication, so Firebase is not required for a
+local UI/API smoke test. Add at least `GEMINI_API_KEY` to `.env` to use the personalized learning
+flow. Add `JUDGE0_RAPIDAPI_KEY` to run and grade code through the hosted Judge0 service.
 
-**Code execution (Judge0)** is opt-in — it's a heavy, privileged service kept
-behind a compose profile so the default stack stays lean:
+### 2. Start the application
 
 ```bash
-docker compose --profile judge0 up --build
+docker compose up -d --build
 ```
 
-Without it, the app still runs; exercise submissions resolve to an `error`
-verdict (graceful degradation). See [docs/08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md).
+The backend automatically runs database migrations and installs the supported language records.
+Open:
 
-## Local Development (without Docker)
+- Application: <http://localhost:5173>
+- API documentation: <http://localhost:8000/docs>
+- Health check: <http://localhost:8000/health>
+
+Check service status or follow logs with:
+
+```bash
+docker compose ps
+docker compose logs -f backend worker
+```
+
+Stop the stack without deleting database data:
+
+```bash
+docker compose down
+```
+
+### Local Judge0 option
+
+If a hosted Judge0 key is not configured, the repository includes an opt-in self-hosted profile:
+
+```bash
+docker compose --profile judge0 up -d --build
+```
+
+Judge0 requires privileged containers and may need additional host configuration. Without either
+Judge0 option, the rest of the platform still starts, but code execution returns an unavailable
+result.
+
+## Configuration
+
+Copy [.env.example](.env.example) and keep all real secrets in the untracked `.env` file.
+
+| Capability | Main variables | Local default |
+| --- | --- | --- |
+| Authentication | `AUTH_STUB_ENABLED`, `FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_*`, `VITE_FIREBASE_*` | Development stub enabled |
+| AI | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TEACHER_MODEL` | Disabled without a key |
+| Code execution | `JUDGE0_RAPIDAPI_KEY`, `JUDGE0_URL`, `JUDGE0_AUTH_TOKEN` | Local profile URL |
+| Curriculum | `CURRICULUM_*` | Six lessons, two exercises per lesson, three quiz questions |
+| Billing | `BILLING_ENABLED`, `STRIPE_*` | Disabled |
+| Rate limiting | `RATE_LIMIT_ENABLED`, `RATE_LIMIT_PER_MINUTE`, `REDIS_URL` | Disabled; Redis still included |
+| Monitoring | `MONITORING_ENABLED`, `MONITORING_RETENTION_DAYS` | Enabled with 30-day retention |
+
+Never commit `.env`, Firebase service-account JSON files, Gemini keys, Judge0 keys, or Stripe
+secrets.
+
+## Admin access
+
+Users are created on their first sign-in. After the intended admin has signed in once, promote the
+account from the project root:
+
+```bash
+docker compose exec backend python -m scripts.set_admin admin@admin.com
+```
+
+To revoke access:
+
+```bash
+docker compose exec backend python -m scripts.set_admin admin@admin.com --revoke
+```
+
+The Admin page provides content review and version history, regeneration controls, learner reports,
+generation-job recovery, usage summaries, and operational monitoring.
+
+## Local development
+
+Docker is the recommended setup because it supplies PostgreSQL, Redis, the API, worker, and frontend
+together. For host-based development, start only the data services first:
+
+```bash
+docker compose up -d postgres redis
+```
 
 ### Backend
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/Scripts/activate     # Windows; use .venv/bin/activate on macOS/Linux
+```
+
+Activate the environment:
+
+```powershell
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+```
+
+```bash
+# macOS or Linux
+source .venv/bin/activate
+```
+
+Then install and start the API:
+
+```bash
 pip install -r requirements.txt
-cp .env.example .env              # point DATABASE_URL at a running Postgres
+cp .env.example .env
 alembic upgrade head
+python -m app.infrastructure.db.bootstrap
 uvicorn app.main:app --reload
+```
+
+Run `python -m app.worker` in a second backend terminal when testing curriculum generation.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
+
+The frontend development server runs at <http://localhost:5173>.
+
+## Testing
+
+### Backend
+
+```bash
+cd backend
+ruff check .
+pytest -q
 ```
 
 ### Frontend
 
 ```bash
 cd frontend
-cp .env.example .env
-npm install
-npm run dev
+npm run lint
+npm run build
 ```
 
-## Development Commands
+### Browser and visual regression tests
 
-| Command | Where | Purpose |
-|---------|-------|---------|
-| `docker compose up --build` | root | Run the whole stack |
-| `npm run dev` | frontend | Vite dev server |
-| `npm run build` | frontend | Type-check + production build |
-| `npm run lint` | frontend | ESLint |
-| `uvicorn app.main:app --reload` | backend | Run API |
-| `alembic upgrade head` | backend | Apply migrations |
-| `alembic revision --autogenerate -m "..."` | backend | New migration |
-| `python -m scripts.seed` | backend | Seed sample content |
-| `python -m scripts.set_admin <email>` | backend | Promote a user to admin |
-| `ruff check .` | backend | Lint |
-| `pytest -q` | backend | Tests |
+```bash
+cd e2e
+npm install
+npm run install-browsers
+npm test
+```
 
-## Configuration
+The Playwright suite uses deterministic API fixtures and committed screenshots to cover the primary
+learner and admin workflows. See [e2e/README.md](e2e/README.md) for smoke-test and snapshot-update
+instructions.
 
-All configuration is environment-driven. Copy [.env.example](.env.example) to
-`.env` and adjust. Never commit a real `.env`. Variable reference lives in the
-example file and [docs/08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md).
+## Repository layout
 
-**Authentication:** with `AUTH_STUB_ENABLED=true` (default) the backend accepts a
-fixed dev identity and the frontend offers a "Continue (development mode)"
-sign-in — no Firebase needed for local work. To use real auth, set the
-`FIREBASE_*` (backend) and `VITE_FIREBASE_*` (frontend) variables and set
-`AUTH_STUB_ENABLED=false`.
+```text
+.
+├── backend/
+│   ├── app/
+│   │   ├── api/             # FastAPI routes and dependency wiring
+│   │   ├── application/     # Use cases and application services
+│   │   ├── domain/          # Entities and repository interfaces
+│   │   ├── infrastructure/  # SQLAlchemy, Redis, monitoring, worker adapters
+│   │   └── schemas/         # API request and response models
+│   ├── alembic/             # Database migrations
+│   ├── scripts/             # Seed and admin utilities
+│   └── tests/               # Backend test suite
+├── frontend/
+│   └── src/
+│       ├── components/      # Shared UI and learning components
+│       ├── features/        # API hooks grouped by feature
+│       ├── pages/           # Route-level pages
+│       └── lib/             # Authentication, API, SSE, and monitoring clients
+├── e2e/                     # Playwright flows and visual snapshots
+├── docs/                    # Product and technical documentation
+├── deploy/                  # Caddy and backup configuration
+├── docker-compose.yml       # Local stack
+└── docker-compose.prod.yml  # Single-server production stack
+```
 
-**AI (Sprint 6):** set `GEMINI_API_KEY` (from [Google AI Studio](https://aistudio.google.com))
-to enable the AI Teacher/Tutor and content generation. Left empty, those
-endpoints return a friendly `503` and the rest of the app works unchanged.
+## Production deployment
 
-**Billing (Sprint 8):** billing is off by default (`BILLING_ENABLED=false`), so
-premium gating is a no-op in dev. To enable it, set `BILLING_ENABLED=true` and
-the `STRIPE_*` variables, and point a Stripe webhook at `/api/v1/webhooks/stripe`.
-For production use [docker-compose.prod.yml](docker-compose.prod.yml) (Nginx-served
-frontend, gunicorn workers, rate limiting on). See [docs/08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md).
+The production Compose stack serves the frontend and API through Caddy with automatic HTTPS, runs
+AI generation in a dedicated worker, and persists PostgreSQL and Caddy data in named volumes.
+
+```bash
+cp .env.prod.example .env
+# Fill in the domain and production credentials before starting.
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+See [docs/08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md) for the deployment, backup, rollback, Firebase,
+and Stripe setup procedures.
 
 ## Documentation
 
-| Doc | Topic |
-|-----|-------|
-| [00_PROJECT.md](docs/00_PROJECT.md) | Overview & roadmap |
-| [01_PRD.md](docs/01_PRD.md) | Product requirements |
-| [02_ARCHITECTURE.md](docs/02_ARCHITECTURE.md) | System & clean architecture |
-| [03_DATABASE.md](docs/03_DATABASE.md) | Schema & migrations |
-| [04_API.md](docs/04_API.md) | Endpoints |
-| [05_AI.md](docs/05_AI.md) | AI design (deferred) |
-| [06_FRONTEND.md](docs/06_FRONTEND.md) | Frontend structure |
-| [07_BACKEND.md](docs/07_BACKEND.md) | Backend structure |
-| [08_DEPLOYMENT.md](docs/08_DEPLOYMENT.md) | Running & deployment |
-| [09_TESTING.md](docs/09_TESTING.md) | Testing & quality |
-| [Sprint_01.md](docs/Sprint_01.md) … [Sprint_08.md](docs/Sprint_08.md) | Per-sprint implementation plans |
+| Document | Description |
+| --- | --- |
+| [Product requirements](docs/01_PRD.md) | Product goals, personas, and behavior |
+| [Architecture](docs/02_ARCHITECTURE.md) | Application boundaries and system design |
+| [Database](docs/03_DATABASE.md) | Schema, relationships, and migrations |
+| [API](docs/04_API.md) | Endpoints and authentication behavior |
+| [AI design](docs/05_AI.md) | Teacher, tutor, and generation design |
+| [Frontend](docs/06_FRONTEND.md) | Routes, state, and component organization |
+| [Backend](docs/07_BACKEND.md) | Services, repositories, and infrastructure |
+| [Deployment](docs/08_DEPLOYMENT.md) | Production runbook |
+| [Testing](docs/09_TESTING.md) | Test strategy and quality gates |
 
 ## License
 
-Proprietary — internal hackathon project (placeholder).
+Proprietary. All rights reserved.

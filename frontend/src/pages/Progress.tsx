@@ -123,8 +123,16 @@ function MasteryPanel() {
               </summary>
               <div className="mt-2 space-y-2 text-sm leading-6 text-muted-foreground">
                 <p>
-                  Exercises and quiz questions are counted as evidence. Below 60% maps to
-                  Beginner, 60–84% to Intermediate, and 85% or higher to Advanced.
+                  First attempts count most, retries have diminishing influence, coding
+                  exercises carry more weight than quiz questions, and recent work matters
+                  more. A small sample stays at your current level instead of guessing.
+                </p>
+                <p>
+                  Weighted result: {assessment.weighted_accuracy ?? assessment.accuracy ?? "—"}% ·{" "}
+                  {assessment.confidence ?? "low"} confidence. Evidence mix:{" "}
+                  {(assessment.exercise_weight ?? 0).toFixed(1)} coding ·{" "}
+                  {(assessment.quiz_weight ?? 0).toFixed(1)} quiz. Sample:{" "}
+                  {assessment.sample_status ?? "insufficient"}.
                 </p>
                 <p>{assessment.next_evaluation}</p>
               </div>
