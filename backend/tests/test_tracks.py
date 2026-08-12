@@ -14,6 +14,30 @@ def _provisioned_user_id(fakes: SimpleNamespace) -> uuid.UUID:
     return next(iter(fakes.users._by_id.values())).id
 
 
+def _complete_track_setup(fakes: SimpleNamespace, track_id: str, language_id: uuid.UUID) -> None:
+    parsed_track_id = uuid.UUID(track_id)
+    user_id = _provisioned_user_id(fakes)
+    placement = fakes.placements.create(
+        track_id=parsed_track_id,
+        user_id=user_id,
+        items={"mcqs": [], "coding": []},
+    )
+    fakes.placements.save_result(
+        placement.id,
+        result={},
+        score=0,
+        level="beginner",
+    )
+    fakes.tracks.set_level(parsed_track_id, "beginner")
+    fakes.courses.create(
+        language_id=language_id,
+        title="Starter course",
+        slug=f"starter-{track_id}",
+        description=None,
+        track_id=parsed_track_id,
+    )
+
+
 def test_new_user_is_not_onboarded(client: TestClient) -> None:
     res = client.get("/api/v1/me")
     assert res.status_code == 200
@@ -74,6 +98,21 @@ def test_duplicate_track_409(client: TestClient, fakes: SimpleNamespace) -> None
     assert dup.status_code == 409
 
 
+def test_cannot_add_language_until_current_setup_is_complete(
+    client: TestClient, fakes: SimpleNamespace
+) -> None:
+    python = _lang(fakes, "Python", "python")
+    java = _lang(fakes, "Java", "java")
+    first = client.post("/api/v1/me/tracks", json={"language_id": str(python.id)}).json()
+
+    blocked = client.post("/api/v1/me/tracks", json={"language_id": str(java.id)})
+    assert blocked.status_code == 409
+    assert "Finish the current language" in blocked.json()["detail"]
+
+    _complete_track_setup(fakes, first["id"], python.id)
+    assert client.post("/api/v1/me/tracks", json={"language_id": str(java.id)}).status_code == 201
+
+
 def test_free_user_capped_at_two_languages(client: TestClient, fakes: SimpleNamespace) -> None:
     for name, slug in [("Python", "python"), ("Go", "go"), ("Rust", "rust")]:
         lang = _lang(fakes, name, slug)
@@ -82,6 +121,7 @@ def test_free_user_capped_at_two_languages(client: TestClient, fakes: SimpleName
             assert res.status_code == 402  # third one is blocked
         else:
             assert res.status_code == 201, res.text
+            _complete_track_setup(fakes, res.json()["id"], lang.id)
 
 
 def test_subscriber_exceeds_language_cap(client: TestClient, fakes: SimpleNamespace) -> None:
@@ -94,6 +134,7 @@ def test_subscriber_exceeds_language_cap(client: TestClient, fakes: SimpleNamesp
     for lang in langs:
         res = client.post("/api/v1/me/tracks", json={"language_id": str(lang.id)})
         assert res.status_code == 201, res.text
+        _complete_track_setup(fakes, res.json()["id"], lang.id)
 
 
 def test_remove_track(client: TestClient, fakes: SimpleNamespace) -> None:

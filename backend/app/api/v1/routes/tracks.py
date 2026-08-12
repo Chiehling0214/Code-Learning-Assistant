@@ -5,7 +5,11 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentDbUser, TrackServiceDep
-from app.application.services.track_service import DuplicateTrackError, LanguageLimitError
+from app.application.services.track_service import (
+    DuplicateTrackError,
+    LanguageLimitError,
+    TrackSetupIncompleteError,
+)
 from app.schemas.track import AddTrackRequest, TrackResponse
 
 router = APIRouter(tags=["tracks"])
@@ -27,6 +31,8 @@ def add_my_track(
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except DuplicateTrackError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except TrackSetupIncompleteError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except LanguageLimitError as exc:
         raise HTTPException(

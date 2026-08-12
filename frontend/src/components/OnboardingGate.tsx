@@ -5,10 +5,9 @@ import { useTracks } from "@/features/tracks/hooks";
 import { useSessionStore } from "@/store/session";
 
 /**
- * Restores the learner to the first unfinished setup step after a refresh or a
- * new sign-in. The database remains the source of truth: a track without a
- * completed placement still needs the test, while an assessed track without a
- * course needs generation. Admins are not forced through the learner setup flow.
+ * Keeps the app shell available once a learner has selected a language. An
+ * unfinished placement or course setup is presented as a resumable action in
+ * the dashboard instead of blocking access to the rest of the product.
  */
 export function OnboardingGate() {
   const user = useSessionStore((s) => s.user);
@@ -49,18 +48,6 @@ export function OnboardingGate() {
   const learnerTracks = tracks.data ?? [];
   if (learnerTracks.length === 0) {
     return <Navigate to="/onboarding" replace />;
-  }
-
-  const awaitingPlacement = learnerTracks.find(
-    (track) => track.placement_status !== "completed",
-  );
-  if (awaitingPlacement) {
-    return <Navigate to={`/tracks/${awaitingPlacement.id}/placement`} replace />;
-  }
-
-  const awaitingCourse = learnerTracks.find((track) => !track.has_course);
-  if (awaitingCourse) {
-    return <Navigate to={`/tracks/${awaitingCourse.id}/generating`} replace />;
   }
 
   return <Outlet />;

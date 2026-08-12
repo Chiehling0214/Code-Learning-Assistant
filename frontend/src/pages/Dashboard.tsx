@@ -7,16 +7,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMyCourses } from "@/features/curriculum/hooks";
 import { useProgress } from "@/features/progress/hooks";
+import { useTracks } from "@/features/tracks/hooks";
 import { useSessionStore } from "@/store/session";
 
 export function DashboardPage() {
   const user = useSessionStore((state) => state.user);
   const { data: myCourses = [], isLoading } = useMyCourses();
   const { data: progress } = useProgress();
+  const { data: tracks = [] } = useTracks();
   const firstName = user?.displayName?.trim().split(/\s+/)[0];
   const resume = progress?.resume;
   const featured = myCourses.find((course) => course.id === resume?.course_id) ?? myCourses[0];
   const progressByCourse = new Map(progress?.courses.map((item) => [item.course_id, item]));
+  const pendingPlacement = tracks.find((track) => track.placement_status !== "completed");
+  const pendingCourse = tracks.find(
+    (track) => track.placement_status === "completed" && !track.has_course,
+  );
+  const pendingSetup = pendingPlacement ?? pendingCourse;
+  const pendingSetupPath = pendingPlacement
+    ? `/tracks/${pendingPlacement.id}/placement`
+    : pendingCourse
+      ? `/tracks/${pendingCourse.id}/generating`
+      : null;
 
   return (
     <div className="space-y-10">
@@ -30,6 +42,34 @@ export function DashboardPage() {
           <Link to="/today">Open today’s plan <ArrowRight className="size-4" /></Link>
         </Button>
       </header>
+
+      {pendingSetup && pendingSetupPath && (
+        <Card className="border-primary/25">
+          <CardContent className="flex flex-col justify-between gap-4 py-5 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary/70">
+                Finish setup
+              </p>
+              <h2 className="mt-1 font-semibold tracking-[-0.02em]">
+                {pendingPlacement
+                  ? `Continue your ${pendingSetup.language_name} placement test`
+                  : `Build your ${pendingSetup.language_name} course`}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {pendingPlacement
+                  ? "Pick up where you left off when you’re ready. You can keep browsing in the meantime."
+                  : "Your placement is complete. Continue when you’re ready to create the course."}
+              </p>
+            </div>
+            <Button asChild className="shrink-0">
+              <Link to={pendingSetupPath}>
+                {pendingPlacement ? "Continue your placement test" : "Continue course setup"}
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <section className="grid gap-4 lg:grid-cols-[1.55fr_0.85fr]">
         <Card className="flex min-h-52 overflow-hidden border-primary/20">

@@ -28,6 +28,10 @@ class LanguageLimitError(RuntimeError):
     """Raised when adding a track would exceed the plan's language cap."""
 
 
+class TrackSetupIncompleteError(RuntimeError):
+    """Raised when another language still needs placement or course setup."""
+
+
 class TrackService:
     def __init__(
         self,
@@ -81,6 +85,26 @@ class TrackService:
             raise LookupError(f"Language {language_id} not found")
         if self._tracks.get_by_user_and_language(user_id, language_id) is not None:
             raise DuplicateTrackError("You are already studying this language")
+        existing_tracks = self._tracks.list_by_user(user_id)
+        existing_course_track_ids = {
+            course.track_id
+            for course in self._courses.list_by_track_ids([track.id for track in existing_tracks])
+            if course.track_id is not None and course.kind != "practice"
+        }
+        incomplete = next(
+            (
+                track
+                for track in existing_tracks
+                if (placement := self._placements.get_by_track(track.id)) is None
+                or placement.status != "completed"
+                or track.id not in existing_course_track_ids
+            ),
+            None,
+        )
+        if incomplete is not None:
+            raise TrackSetupIncompleteError(
+                "Finish the current language's placement and course setup before adding another."
+            )
         if self._tracks.count_by_user(user_id) >= self.max_languages(user_id):
             raise LanguageLimitError(
                 "You've reached your plan's language limit. Upgrade to add more."
