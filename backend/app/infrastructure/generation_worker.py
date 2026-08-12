@@ -31,6 +31,24 @@ from app.infrastructure.repositories.sqlalchemy_repositories import (
 logger = get_logger(__name__)
 
 
+def _heartbeat_loop(job_id: uuid.UUID, stop: threading.Event, interval: float) -> None:
+    """Renew a running job's lease while a slow Gemini request is in flight."""
+    while not stop.wait(interval):
+        session = SessionLocal()
+        try:
+            jobs = SqlAlchemyGenerationJobRepository(session)
+            job = jobs.get_by_id(job_id)
+            if job is None or job.status != "running":
+                return
+            jobs.update(job_id, heartbeat_at=datetime.now(UTC))
+            session.commit()
+        except Exception:  # noqa: BLE001 - generation continues until the stale lease expires
+            session.rollback()
+            logger.exception("Could not renew heartbeat for generation job %s", job_id)
+        finally:
+            session.close()
+
+
 def _service(session, settings: Settings) -> CurriculumService:  # noqa: ANN001
     return CurriculumService(
         GeminiAIProvider(settings),
@@ -61,10 +79,24 @@ def run_generation(job_id: uuid.UUID) -> None:
     settings = get_settings()
     session = SessionLocal()
     jobs = SqlAlchemyGenerationJobRepository(session)
+    heartbeat_stop: threading.Event | None = None
+    heartbeat_thread: threading.Thread | None = None
     try:
         job = jobs.get_by_id(job_id)
         if job is None or job.status in {"done", "cancelled"}:
             return
+        heartbeat_stop = threading.Event()
+        heartbeat_interval = max(
+            5.0,
+            min(60.0, settings.generation_worker_stale_minutes * 60 / 3),
+        )
+        heartbeat_thread = threading.Thread(
+            target=_heartbeat_loop,
+            args=(job_id, heartbeat_stop, heartbeat_interval),
+            name=f"generation-heartbeat-{job_id}",
+            daemon=True,
+        )
+        heartbeat_thread.start()
         _clean_partial_courses(session, job_id)
         service = _service(session, settings)
         if job.kind == "course_set":
@@ -116,6 +148,10 @@ def run_generation(job_id: uuid.UUID) -> None:
                 monitoring.prune(retention_days=settings.monitoring_retention_days)
             session.commit()
     finally:
+        if heartbeat_stop is not None:
+            heartbeat_stop.set()
+        if heartbeat_thread is not None:
+            heartbeat_thread.join(timeout=2)
         session.close()
 
 

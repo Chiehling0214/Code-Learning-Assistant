@@ -55,13 +55,14 @@ flowchart LR
     API --> Judge[Judge0]
     API --> Billing[Stripe]
     API -->|creates generation jobs| DB
-    Worker[Generation worker] -->|claims and updates jobs| DB
+    Worker[Generation workers x2] -->|claim and update jobs| DB
     Worker --> AI[Gemini]
 ```
 
 The API uses a layered architecture: route handlers depend on application services, services depend
 on domain repository interfaces, and SQLAlchemy provides the infrastructure implementation. Long AI
-generation tasks run in a separate worker so API requests remain responsive.
+generation tasks run across two dedicated worker replicas so API requests remain responsive and two
+learners can generate curricula concurrently.
 
 ## Technology
 

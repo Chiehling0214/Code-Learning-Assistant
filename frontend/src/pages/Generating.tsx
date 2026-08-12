@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { useGenerateCourse, useGenerationStatus } from "@/features/curriculum/ho
 export function GeneratingPage() {
   const { id: trackId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const generate = useGenerateCourse(trackId);
   const started = useRef(false);
   // Drives the status poll. Set via state (not a ref) so flipping it re-renders
@@ -34,10 +36,19 @@ export function GeneratingPage() {
   // Move on once the course is built.
   useEffect(() => {
     if (job?.status === "done") {
-      const t = setTimeout(() => navigate("/dashboard", { replace: true }), 800);
+      const t = setTimeout(() => {
+        // The setup gate may have cached an empty course list before generation
+        // started. Refresh it before navigating, otherwise the learner can be
+        // sent back here even though the course now exists.
+        void Promise.all([
+          queryClient.refetchQueries({ queryKey: ["my-courses"], type: "all" }),
+          queryClient.refetchQueries({ queryKey: ["tracks"], type: "all" }),
+        ])
+          .finally(() => navigate("/dashboard", { replace: true }));
+      }, 800);
       return () => clearTimeout(t);
     }
-  }, [job, navigate]);
+  }, [job, navigate, queryClient]);
 
   const total = job?.total ?? 0;
   const completed = job?.completed ?? 0;

@@ -40,7 +40,8 @@
     overflow-wrap: break-word;
   }
   ::selection {
-    @apply bg-primary/15 text-foreground;
+    background: hsl(var(--primary) / 0.88);
+    color: hsl(var(--primary-foreground));
   }
   h1, h2, h3 {
     text-wrap: balance;
@@ -107,9 +108,17 @@
     @apply rounded px-2 py-1 normal-case tracking-normal text-slate-300 transition-colors hover:bg-white/10 hover:text-white;
   }
 
+  /* Browser selection needs a fixed, opaque contrast inside both light and
+     syntax-highlighted code. Token-level foreground colours from highlight.js
+     otherwise make selected code almost disappear on the dark background. */
+  code::selection,
+  code *::selection,
+  pre::selection,
+  pre *::selection,
   .dark-code-selection::selection,
   .dark-code-selection *::selection {
-    background: #486779;
-    color: #f8fafc;
+    background: #527b96;
+    color: #ffffff;
+    text-shadow: none;
   }
 }

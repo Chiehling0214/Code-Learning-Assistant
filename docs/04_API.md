@@ -57,7 +57,7 @@
 | GET | `/api/v1/subscription` | bearer | 8 | Current subscription status. |
 | POST | `/api/v1/subscription/checkout` | bearer | 8 | Start a Stripe checkout session. |
 | POST | `/api/v1/webhooks/stripe` | signature | 8 | Stripe webhook (verified). |
-| GET | `/api/v1/me/tracks` | bearer | 9 | The learner's language tracks. |
+| GET | `/api/v1/me/tracks` | bearer | 9 | The learner's language tracks, including `placement_status` and `has_course` setup state. |
 | POST | `/api/v1/me/tracks` | bearer | 9 | Add a language track (plan-capped). |
 | DELETE | `/api/v1/me/tracks/{id}` | bearer | 9 | Remove a language track. |
 | POST | `/api/v1/me/tracks/{id}/placement` | bearer | 10 | Generate the placement test (idempotent). |

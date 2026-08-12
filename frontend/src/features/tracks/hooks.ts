@@ -10,6 +10,8 @@ export interface Track {
   language_slug: string;
   level: string | null;
   status: string;
+  placement_status: "ready" | "completed" | null;
+  has_course: boolean;
 }
 
 export function useTracks() {

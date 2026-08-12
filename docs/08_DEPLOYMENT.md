@@ -103,7 +103,8 @@ Differences from the dev compose:
   migrations on start;
 - **hardening on**: Redis-backed shared request limiting,
   `AUTH_STUB_ENABLED=false`, and CORS restricted to `CORS_ORIGINS`;
-- **worker** runs curriculum generation separately from the API processes;
+- **worker** runs two curriculum-generation replicas separately from the API processes. PostgreSQL
+  row locking with `SKIP LOCKED` ensures that each queued job is claimed by only one replica;
 - **billing on**: `BILLING_ENABLED=true` with the `STRIPE_*` secrets;
 - Postgres is **not** published to the host.
 

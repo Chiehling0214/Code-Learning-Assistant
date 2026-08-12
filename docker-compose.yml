@@ -88,6 +88,8 @@ services:
     build:
       context: ./backend
     command: ["python", "-m", "app.worker"]
+    deploy:
+      replicas: 2
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}

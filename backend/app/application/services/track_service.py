@@ -12,7 +12,12 @@ from typing import Any
 
 from app.application.services.entitlement_service import EntitlementService
 from app.domain.entities import LanguageTrack
-from app.domain.repositories import LanguageRepository, LanguageTrackRepository
+from app.domain.repositories import (
+    CourseRepository,
+    LanguageRepository,
+    LanguageTrackRepository,
+    PlacementRepository,
+)
 
 
 class DuplicateTrackError(RuntimeError):
@@ -29,10 +34,14 @@ class TrackService:
         tracks: LanguageTrackRepository,
         languages: LanguageRepository,
         entitlements: EntitlementService,
+        placements: PlacementRepository,
+        courses: CourseRepository,
     ) -> None:
         self._tracks = tracks
         self._languages = languages
         self._entitlements = entitlements
+        self._placements = placements
+        self._courses = courses
 
     def has_tracks(self, user_id: uuid.UUID) -> bool:
         return self._tracks.count_by_user(user_id) > 0
@@ -43,9 +52,16 @@ class TrackService:
     def list_tracks(self, user_id: uuid.UUID) -> list[dict[str, Any]]:
         """Return the user's tracks enriched with language name/slug."""
         by_id = {lang.id: lang for lang in self._languages.list_all()}
+        tracks = self._tracks.list_by_user(user_id)
+        course_track_ids = {
+            course.track_id
+            for course in self._courses.list_by_track_ids([track.id for track in tracks])
+            if course.track_id is not None and course.kind != "practice"
+        }
         result: list[dict[str, Any]] = []
-        for track in self._tracks.list_by_user(user_id):
+        for track in tracks:
             language = by_id.get(track.language_id)
+            placement = self._placements.get_by_track(track.id)
             result.append(
                 {
                     "id": track.id,
@@ -54,6 +70,8 @@ class TrackService:
                     "language_slug": language.slug if language else "",
                     "level": track.level,
                     "status": track.status,
+                    "placement_status": placement.status if placement else None,
+                    "has_course": track.id in course_track_ids,
                 }
             )
         return result

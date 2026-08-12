@@ -239,6 +239,8 @@ def client(fakes: SimpleNamespace) -> Iterator[TestClient]:
         fakes.tracks,
         fakes.languages,
         _entitlements(),
+        fakes.placements,
+        fakes.courses,
     )
     app.dependency_overrides[get_admin_review_service] = lambda: AdminReviewService(
         fakes.lessons,

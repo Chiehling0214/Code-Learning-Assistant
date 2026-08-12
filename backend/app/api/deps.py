@@ -310,6 +310,8 @@ def get_track_service(session: DbSession, settings: SettingsDep) -> TrackService
         SqlAlchemyLanguageTrackRepository(session),
         SqlAlchemyLanguageRepository(session),
         get_entitlement_service(session, settings),
+        SqlAlchemyPlacementRepository(session),
+        SqlAlchemyCourseRepository(session),
     )
 
 

@@ -26,6 +26,7 @@ def test_generate_returns_sanitized_assessment(
     assert "is_correct" not in res.text
     assert "reference_solution" not in res.text
     assert "test_spec" not in res.text
+    assert client.get("/api/v1/me/tracks").json()[0]["placement_status"] == "ready"
 
 
 def test_generate_is_idempotent(client: TestClient, fakes: SimpleNamespace) -> None:
@@ -81,6 +82,7 @@ def test_submit_all_correct_is_advanced(client: TestClient, fakes: SimpleNamespa
     # Level persisted on the track and profile.
     track = next(t for t in client.get("/api/v1/me/tracks").json() if t["id"] == track_id)
     assert track["level"] == "advanced"
+    assert track["placement_status"] == "completed"
     assert client.get("/api/v1/me/profile").json()["skill_level"] == "advanced"
 
 

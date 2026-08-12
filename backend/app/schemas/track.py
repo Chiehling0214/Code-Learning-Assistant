@@ -14,6 +14,8 @@ class TrackResponse(BaseModel):
     language_slug: str
     level: str | None = None
     status: str
+    placement_status: str | None = None
+    has_course: bool = False
 
 
 class AddTrackRequest(BaseModel):

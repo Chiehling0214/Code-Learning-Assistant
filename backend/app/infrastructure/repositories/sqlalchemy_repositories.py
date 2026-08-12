@@ -1242,10 +1242,14 @@ class SqlAlchemyGenerationJobRepository:
 
     def recover_stale(self, *, minutes: int = 5) -> int:
         cutoff = datetime.now(UTC) - timedelta(minutes=minutes)
-        stmt = select(GenerationJobModel).where(
-            GenerationJobModel.status == "running",
-            (GenerationJobModel.heartbeat_at.is_(None))
-            | (GenerationJobModel.heartbeat_at < cutoff),
+        stmt = (
+            select(GenerationJobModel)
+            .where(
+                GenerationJobModel.status == "running",
+                (GenerationJobModel.heartbeat_at.is_(None))
+                | (GenerationJobModel.heartbeat_at < cutoff),
+            )
+            .with_for_update(skip_locked=True)
         )
         models = list(self._session.scalars(stmt).all())
         for model in models:
